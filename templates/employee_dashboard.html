@@ -1,0 +1,176 @@
+{% extends "base_employee.html" %}
+
+{% block title %}Employee Dashboard - Smart Animal Farming{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="mb-6 sm:mb-8">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-2">Employee Dashboard</h1>
+    <p class="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage your farm operations and view activity logs</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+    <!-- Total Animals -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                <i class="fas fa-paw text-blue-600 dark:text-blue-400 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4">
+                <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Animals</p>
+                <p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">247</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Health Checks -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-full bg-green-100 dark:bg-green-900">
+                <i class="fas fa-heartbeat text-green-600 dark:text-green-400 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4">
+                <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Health Checks</p>
+                <p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">12</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Production -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                <i class="fas fa-chart-line text-purple-600 dark:text-purple-400 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4">
+                <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Today's Production</p>
+                <p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">340L</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center">
+            <div class="p-2 sm:p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                <i class="fas fa-check-circle text-yellow-600 dark:text-yellow-400 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="ml-3 sm:ml-4">
+                <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">System Status</p>
+                <p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Online</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-paw text-white text-2xl"></i>
+            </div>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-2">Animal Records</h3>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">View and manage animal information</p>
+            <a href="/employee/cattle" class="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2 px-4 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 inline-block text-center">
+                Manage Animals
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-heartbeat text-white text-2xl"></i>
+            </div>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-2">Health Records</h3>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">Track animal health and medical records</p>
+            <a href="/employee/health-records" class="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white py-2 px-4 rounded-lg hover:from-green-600 hover:to-teal-600 transition-all duration-300 inline-block text-center">
+                View Health Records
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-chart-bar text-white text-2xl"></i>
+            </div>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-2">Production Reports</h3>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">View production analytics and reports</p>
+            <a href="/employee/reports" class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 px-4 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-300 inline-block text-center">
+                View Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+    <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Recent Activity</h3>
+    <div class="space-y-4">
+        <div class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
+                <i class="fas fa-check text-green-600 dark:text-green-400"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-800 dark:text-white">Morning feeding completed for all cattle</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">2 minutes ago</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-4">
+                <i class="fas fa-syringe text-blue-600 dark:text-blue-400"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-800 dark:text-white">Vaccination scheduled for 5 pigs</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">15 minutes ago</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mr-4">
+                <i class="fas fa-tint text-purple-600 dark:text-purple-400"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-800 dark:text-white">Milk production recorded: 340L</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">1 hour ago</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center mr-4">
+                <i class="fas fa-weight text-yellow-600 dark:text-yellow-400"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-800 dark:text-white">Weight measurement completed for 12 animals</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">2 hours ago</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Add some interactive animations
+    document.addEventListener('DOMContentLoaded', function() {
+        // Animate stats cards on load
+        const statsCards = document.querySelectorAll('.grid > div');
+        statsCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    });
+</script>
+{% endblock %}

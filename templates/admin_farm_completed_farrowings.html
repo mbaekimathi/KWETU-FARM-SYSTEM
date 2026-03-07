@@ -1,0 +1,2064 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completed Farrowings - Pig Farm Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    screens: {
+                        'xs': '475px',
+                        'sm': '640px',
+                        'md': '768px',
+                        'lg': '1024px',
+                        'xl': '1280px',
+                        '2xl': '1536px',
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        secondary: {
+                            50: '#fdf4ff',
+                            100: '#fae8ff',
+                            200: '#f5d0fe',
+                            300: '#f0abfc',
+                            400: '#e879f9',
+                            500: '#d946ef',
+                            600: '#c026d3',
+                            700: '#a21caf',
+                            800: '#86198f',
+                            900: '#701a75',
+                        },
+                        accent: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.2s ease-out',
+                        'bounce-subtle': 'bounceSubtle 0.6s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.95)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        bounceSubtle: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-4px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar.closed {
+            transform: translateX(-100%);
+        }
+        @media (min-width: 768px) {
+            .sidebar.closed {
+                transform: translateX(0);
+            }
+        }
+        
+        /* Custom animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0, -8px, 0);
+            }
+            70% {
+                transform: translate3d(0, -4px, 0);
+            }
+            90% {
+                transform: translate3d(0, -2px, 0);
+            }
+        }
+        
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        .animate-slideInRight {
+            animation: slideInRight 0.6s ease-out forwards;
+        }
+        
+        .animate-bounce {
+            animation: bounce 1s infinite;
+        }
+        
+        /* Enhanced hover effects */
+        .group:hover .group-hover\:scale-110 {
+            transform: scale(1.1);
+        }
+        
+        .group:hover .group-hover\:scale-105 {
+            transform: scale(1.05);
+        }
+        
+        .group:hover .group-hover\:translate-x-1 {
+            transform: translateX(0.25rem);
+        }
+        
+        .group:hover .group-hover\:translate-y-1 {
+            transform: translateY(0.25rem);
+        }
+        
+        /* Custom scrollbar */
+        .scrollbar-thin {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(156 163 175) transparent;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background-color: rgb(156 163 175);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background-color: rgb(107 114 128);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+    <!-- Sidebar -->
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 shadow-2xl transform -translate-x-full transition-all duration-300 ease-in-out md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
+        <!-- Sidebar Header -->
+        <div class="flex items-center justify-between h-20 px-6 bg-gradient-to-br from-green-600 via-green-700 to-emerald-800 shadow-lg">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-check-circle text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">PigFarm Pro</h1>
+                    <p class="text-sm text-white/90 font-medium">Completed Farrowings</p>
+                </div>
+            </div>
+            <button id="close-sidebar" class="md:hidden text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200" aria-label="Close sidebar">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <nav class="mt-8 px-4">
+            <div class="space-y-2">
+                <!-- Breeding Management -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}management" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                        <i class="fas fa-heart text-primary-600 dark:text-primary-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm">Breeding Management</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Manage breeding</p>
+                    </div>
+                </a>
+
+                <!-- Breeding Records -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}records" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
+                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                        <i class="fas fa-clipboard-list text-gray-600 dark:text-gray-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm">Breeding Records</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Active & Pregnant</p>
+                    </div>
+                </a>
+
+                <!-- Failed Conceptions -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/failed-conceptions{% else %}/admin/farm/failed-conceptions{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
+                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                        <i class="fas fa-times-circle text-gray-600 dark:text-gray-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm">Failed Conceptions</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Failed Attempts</p>
+                    </div>
+                </a>
+
+                <!-- Completed Farrowings (Active) -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/completed-farrowings{% else %}/admin/farm/completed-farrowings{% endif %}" class="group flex items-center px-4 py-4 bg-gradient-to-r from-green-50 via-green-100 to-emerald-50 dark:from-green-900/40 dark:via-green-800/40 dark:to-emerald-900/40 text-green-700 dark:text-green-300 rounded-xl shadow-lg border border-green-200 dark:border-green-700/50 relative overflow-hidden" role="menuitem" aria-current="page">
+                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10"></div>
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 via-green-600 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg mr-4 group-hover:scale-110 transition-transform duration-200 relative z-10">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                    <div class="flex-1 relative z-10">
+                        <span class="font-bold text-sm text-gray-900 dark:text-white block">Completed Farrowings</span>
+                        <span class="text-xs text-green-600 dark:text-green-400 font-medium">Successful Births</span>
+                    </div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse-slow"></div>
+                </a>
+
+                <!-- Family Tree -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/family-tree{% else %}/admin/farm/family-tree{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
+                    <div class="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                        <i class="fas fa-sitemap text-purple-600 dark:text-purple-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm">Family Tree</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Pedigree View</p>
+                    </div>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-user text-white text-lg"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-gray-900 dark:text-white truncate">Admin User</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Administrator</p>
+                    <div class="flex items-center mt-1">
+                        <div class="w-2 h-2 bg-accent-500 rounded-full mr-2"></div>
+                        <span class="text-xs text-accent-600 dark:text-accent-400 font-medium">Online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
+
+    <!-- Main Content -->
+    <main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+        <div class="p-6 lg:p-8">
+            <!-- Page Header -->
+            <div class="mb-8 animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <!-- Header Background -->
+                    <div class="h-2 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
+                    
+                    <div class="p-8">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-check-circle text-white text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Completed Farrowings</h1>
+                                    <p class="text-gray-600 dark:text-gray-400 font-medium mt-1">Unweaned litter details for sows with 'farrowed' breeding status</p>
+                                    <div class="flex items-center mt-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                                        <span class="text-sm text-green-600 dark:text-green-400 font-medium">Successful Births</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-4">
+                                <!-- Mobile Menu Button -->
+                                <button id="mobile-menu-btn" class="lg:hidden p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Open menu">
+                                    <i class="fas fa-bars text-lg"></i>
+                                </button>
+                                
+                                <!-- Refresh Button -->
+                                <button onclick="loadCompletedFarrowings()" class="group p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md hover:-translate-y-0.5" aria-label="Refresh data">
+                                    <i class="fas fa-sync-alt text-lg group-hover:rotate-180 transition-transform duration-500"></i>
+                                </button>
+                                
+                                <!-- Dark Mode Toggle -->
+                                <button onclick="toggleDarkMode()" class="p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Toggle dark mode">
+                                    <i class="fas fa-moon dark:hidden text-lg"></i>
+                                    <i class="fas fa-sun hidden dark:block text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Bar -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 mb-6">
+                <div class="flex flex-wrap items-center justify-between gap-6">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <div>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Unweaned Litters:</span>
+                            <span id="total-farrowings-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-baby text-blue-500"></i>
+                        <div>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Unweaned Piglets:</span>
+                            <span id="total-piglets-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-calendar-alt text-yellow-500"></i>
+                        <div>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">This Month:</span>
+                            <span id="this-month-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-weight text-purple-500"></i>
+                        <div>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Avg Weight:</span>
+                            <span id="avg-weight" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0 kg</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Completed Farrowings Section -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-slide-up">
+                <!-- Section Header -->
+                <div class="px-8 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Unweaned Litter Records</h2>
+                            <p class="text-gray-600 dark:text-gray-400 font-medium mt-1">Detailed records of unweaned litters for sows with 'farrowed' breeding status</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <!-- Search Bar -->
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" id="search-completed-farrowings" placeholder="Search farrowings..." 
+                                       class="pl-12 pr-4 py-3 w-full lg:w-80 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm font-medium transition-all duration-200" 
+                                       aria-label="Search completed farrowings">
+                            </div>
+                            
+                            <!-- Status Indicator -->
+                            <div class="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-xl border border-green-200 dark:border-green-700">
+                                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span class="text-sm font-semibold text-green-700 dark:text-green-300">Completed Records</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Records Container -->
+                <div id="completed-farrowings-container" class="p-6 space-y-4">
+                    <!-- Completed farrowings will be loaded here as cards -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Dark mode toggle functionality
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+        }
+
+        // Initialize dark mode from localStorage
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Mobile sidebar functionality
+        function setupMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const closeSidebarBtn = document.getElementById('close-sidebar');
+
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    sidebar.classList.remove('-translate-x-full');
+                    sidebarOverlay.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                });
+            }
+
+            if (closeSidebarBtn) {
+                closeSidebarBtn.addEventListener('click', function() {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                    document.body.style.overflow = '';
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                    document.body.style.overflow = '';
+                });
+            }
+        }
+
+        // Search functionality
+        function setupSearch() {
+            const searchInput = document.getElementById('search-completed-farrowings');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const cards = document.querySelectorAll('#completed-farrowings-container .completed-farrowing-card');
+                    
+                    cards.forEach(card => {
+                        const text = card.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            card.style.display = '';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        }
+
+        // Load completed farrowings
+        async function loadCompletedFarrowings() {
+            try {
+                console.log('Loading completed farrowings...');
+                const response = await fetch('/api/breeding/completed-farrowings');
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    const records = data.records || [];
+                    console.log(`Loaded ${records.length} completed farrowing records`);
+                    
+                    // Update the counts in the statistics card
+                    document.getElementById('total-farrowings-count').textContent = records.length;
+                    
+                    // Calculate total piglets from unweaned litters
+                    const totalPiglets = records.reduce((sum, record) => sum + (record.alive_piglets || 0), 0);
+                    document.getElementById('total-piglets-count').textContent = totalPiglets;
+                    
+                    // Calculate this month's count
+                    const thisMonth = new Date().getMonth();
+                    const thisMonthRecords = records.filter(record => {
+                        const farrowingDate = new Date(record.farrowing_date);
+                        return farrowingDate.getMonth() === thisMonth;
+                    });
+                    document.getElementById('this-month-count').textContent = thisMonthRecords.length;
+                    
+                    // Calculate average weight
+                    const totalWeight = records.reduce((sum, record) => sum + (record.avg_weight || 0), 0);
+                    const avgWeight = records.length > 0 ? (totalWeight / records.length).toFixed(2) : 0;
+                    document.getElementById('avg-weight').textContent = `${avgWeight} kg`;
+                    
+                    const container = document.getElementById('completed-farrowings-container');
+                    container.innerHTML = '';
+                    
+                    if (records.length === 0) {
+                        container.innerHTML = `
+                            <div class="text-center py-12">
+                                <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                    <i class="fas fa-baby text-gray-400 text-2xl"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Unweaned Litters</h3>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">No unweaned litter records found for sows with 'farrowed' breeding status.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Create table structure
+                    const tableHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Litter ID</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Farrowing Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Alive Piglets</th>
+                                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    ${records.map((record, index) => {
+                                        const farrowingDate = new Date(record.farrowing_date);
+                                        const daysSinceFarrowing = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
+                                        
+                                        return `
+                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                    <div class="flex items-center">
+                                                        <i class="fas fa-baby text-green-500 mr-2"></i>
+                                                        <span class="text-sm font-medium text-gray-900 dark:text-white">${record.litter_id || 'N/A'}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900 dark:text-white">${record.farrowing_date}</div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">${daysSinceFarrowing} days ago</div>
+                                                </td>
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                    <span class="text-sm font-semibold text-orange-600 dark:text-orange-400">${record.alive_piglets || 0}</span>
+                                                </td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-center">
+                                                    <button 
+                                                        onclick="showLitterDetailsModalFromButton(this)"
+                                                        data-record='${JSON.stringify(record).replace(/'/g, "&apos;")}'
+                                                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all duration-200"
+                                                        title="View Details"
+                                                    >
+                                                        <i class="fas fa-eye mr-1"></i>
+                                                        View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = tableHTML;
+                } else {
+                    console.error('API returned unsuccessful response:', data);
+                    const container = document.getElementById('completed-farrowings-container');
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <div class="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Error Loading Data</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">${data.error || 'Failed to load completed farrowings data.'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading completed farrowings:', error);
+                const container = document.getElementById('completed-farrowings-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <div class="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Error Loading Data</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">An error occurred while loading completed farrowings. Please refresh the page or contact support.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Error: ${error.message || 'Unknown error'}</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCompletedFarrowings();
+            setupSearch();
+            setupMobileMenu();
+        });
+
+        // Check recovery status for a sow
+        async function checkRecoveryStatus(farrowingId) {
+            try {
+                const response = await fetch(`/api/farrowing/check-recovery/${farrowingId}`);
+                const data = await response.json();
+                if (data.success) {
+                    showRecoveryStatusModal(data.data, farrowingId);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error checking recovery status:', error);
+                alert('Error checking recovery status. Please try again.');
+            }
+        }
+
+        // Show recovery status modal
+        function showRecoveryStatusModal(recoveryData, farrowingId) {
+            const modalHTML = `
+                <div id="recovery-status-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Sow Recovery Status</h3>
+                            <button onclick="closeRecoveryStatusModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="p-6">
+                            <!-- Information Table -->
+                            <div class="overflow-x-auto mb-6">
+                                <table class="w-full border-collapse">
+                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 w-1/3">Sow Tag ID</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.sow_tag_id}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Breed</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.sow_breed}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Farrowing Date</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.farrowing_date}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Recovery Date</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.recovery_date}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Current Status</td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBreedingStatusColor(recoveryData.current_breeding_status)}">
+                                                    ${recoveryData.current_breeding_status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Activities Status</td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${recoveryData.all_activities_completed ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}">
+                                                    ${recoveryData.all_activities_completed ? 'All Completed' : 'Some Pending'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        ${recoveryData.days_until_recovery > 0 ? `
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Days Until Recovery</td>
+                                            <td class="px-4 py-3 text-sm text-yellow-600 dark:text-yellow-400 font-semibold">${recoveryData.days_until_recovery} day(s)</td>
+                                        </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Status Messages -->
+                            ${recoveryData.days_until_recovery > 0 ? `
+                                <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                                    <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                                        <strong>Recovery in Progress:</strong> Sow will be ready for next breeding in ${recoveryData.days_until_recovery} day(s)
+                                    </p>
+                                </div>
+                            ` : ''}
+                            
+                            ${recoveryData.sow_ready ? `
+                                <div class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                                    <p class="text-sm text-green-800 dark:text-green-200 mb-2">
+                                        <strong>Ready for Next Breeding!</strong> All activities completed and recovery period finished.
+                                    </p>
+                                    <p class="text-xs text-green-700 dark:text-green-300 mb-3">
+                                        <strong>Note:</strong> Before marking the sow as available, you'll need to register the litter from this farrowing to ensure proper tracking.
+                                    </p>
+                                    <button onclick="markSowAvailable(${farrowingId})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">
+                                        Mark Sow as Available
+                                    </button>
+                                </div>
+                            ` : ''}
+                            
+                            ${!recoveryData.all_activities_completed ? `
+                                <div class="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
+                                    <p class="text-sm text-orange-800 dark:text-orange-200">
+                                        <strong>Activities Pending:</strong> Complete all farrowing activities before marking sow as available
+                                    </p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Close recovery status modal
+        function closeRecoveryStatusModal() {
+            const modal = document.getElementById('recovery-status-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Show litter details modal from button
+        function showLitterDetailsModalFromButton(button) {
+            const recordData = button.getAttribute('data-record');
+            const record = JSON.parse(recordData.replace(/&apos;/g, "'"));
+            showLitterDetailsModal(record);
+        }
+
+        // Show litter details modal
+        function showLitterDetailsModal(record) {
+            // Calculate days since farrowing
+            const farrowingDate = new Date(record.farrowing_date);
+            const daysSinceFarrowing = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
+            const matingDaysAgo = Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24));
+            
+            const modalHTML = `
+                <div id="litter-details-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <!-- Modal Header -->
+                        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Litter ${record.litter_id || 'N/A'} - Details
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Record ID: #${record.id}</p>
+                            </div>
+                            <button onclick="closeLitterDetailsModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Modal Body -->
+                        <div class="p-6">
+                            <!-- Information Table -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full border-collapse">
+                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                        <!-- Parent Information -->
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 w-1/3">Sow Tag ID</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.sow_tag_id || 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Sow Breed</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.sow_breed || 'Unknown'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Boar Tag ID</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.boar_tag_id || 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Boar Breed</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.boar_breed || 'Unknown'}</td>
+                                        </tr>
+                                        
+                                        <!-- Dates -->
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Mating Date</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.mating_date || 'N/A'} <span class="text-gray-500 dark:text-gray-400 ml-2">(${matingDaysAgo} days ago)</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Farrowing Date</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.farrowing_date || 'N/A'} <span class="text-gray-500 dark:text-gray-400 ml-2">(${daysSinceFarrowing} days ago)</span></td>
+                                        </tr>
+                                        
+                                        <!-- Litter Statistics -->
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Alive Piglets</td>
+                                            <td class="px-4 py-3 text-sm font-semibold text-orange-600 dark:text-orange-400">${record.alive_piglets || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Still Births</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.still_births || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Dead Piglets</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.dead_piglets || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Weak Piglets</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.weak_piglets || 0}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Average Weight</td>
+                                            <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${record.avg_weight || 0} kg</td>
+                                        </tr>
+                                        
+                                        <!-- Notes -->
+                                        ${record.health_notes ? `
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 align-top">Health Notes</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.health_notes}</td>
+                                        </tr>
+                                        ` : ''}
+                                        ${record.litter_notes ? `
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 align-top">Litter Notes</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.litter_notes}</td>
+                                        </tr>
+                                        ` : ''}
+                                        ${record.notes ? `
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 align-top">Additional Notes</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.notes}</td>
+                                        </tr>
+                                        ` : ''}
+                                        
+                                        <!-- Footer Info -->
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Recorded By</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.created_by_name || 'Unknown'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Status</td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                                    <div class="w-1.5 h-1.5 rounded-full mr-1.5 bg-orange-500"></div>
+                                                    UNWEANED
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex flex-wrap gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                                <button onclick="showEditFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.farrowing_date}', ${record.alive_piglets || 0}, ${record.dead_piglets || 0}, ${record.weak_piglets || 0}, '${(record.notes || '').replace(/'/g, "\\'")}'); closeLitterDetailsModal();" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
+                                    <i class="fas fa-edit mr-2"></i>Edit
+                                </button>
+                                <button onclick="viewFarrowingActivities(${record.id}); closeLitterDetailsModal();" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">
+                                    <i class="fas fa-tasks mr-2"></i>View Activities
+                                </button>
+                                <button onclick="checkRecoveryStatus(${record.id}); closeLitterDetailsModal();" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-lg transition-colors">
+                                    <i class="fas fa-heartbeat mr-2"></i>Check Recovery
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Close litter details modal
+        function closeLitterDetailsModal() {
+            const modal = document.getElementById('litter-details-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Mark sow as available for next breeding
+        async function markSowAvailable(farrowingId) {
+            if (confirm('Are you sure you want to mark this sow as available for next breeding? This will complete the successful breeding cycle.')) {
+                try {
+                    const response = await fetch(`/api/farrowing/mark-sow-available/${farrowingId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('Success! ' + data.message);
+                        closeRecoveryStatusModal();
+                        loadCompletedFarrowings(); // Refresh the list
+                    } else if (data.requires_litter_registration) {
+                        // Show litter registration modal
+                        showLitterRegistrationModal(data.farrowing_data);
+                    } else if (data.incomplete_activities) {
+                        // Show incomplete activities popup
+                        showIncompleteActivitiesPopup(data.incomplete_activities);
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+                        console.error('Error marking sow as available:', error);
+                        alert('Error marking sow as available. Please try again.');
+                }
+            }
+        }
+
+        // Get breeding status color
+        function getBreedingStatusColor(status) {
+            switch (status) {
+                case 'available': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                case 'served': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+                case 'pregnant': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+                case 'farrowed': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+                default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+            }
+        }
+
+        // Check if the activity day has been reached
+        function isActivityDayReached(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            
+            // Set both dates to start of day for accurate comparison
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            return today >= due;
+        }
+
+        // Get activity status color based on due date
+        function getActivityStatusColor(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            
+            // Set both dates to start of day for accurate comparison
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            if (today > due) {
+                return 'text-orange-600'; // Overdue - can still complete
+            } else if (today.getTime() === due.getTime()) {
+                return 'text-green-600'; // Due today
+            } else {
+                return 'text-blue-600'; // Future date
+            }
+        }
+
+        // Get activity status text based on due date
+        function getActivityStatusText(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            
+            // Set both dates to start of day for accurate comparison
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            if (today > due) {
+                return 'Overdue - Can Still Complete';
+            } else if (today.getTime() === due.getTime()) {
+                return 'Ready to Complete';
+            } else {
+                return 'Day Not Yet Reached';
+            }
+        }
+
+        // Check if activity can be completed (on due day or overdue, but not future)
+        function canCompleteActivity(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            
+            // Set both dates to start of day for accurate comparison
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            // Can complete on due day or any day after (overdue), but not before
+            return today >= due;
+        }
+
+        // Get button text based on due date
+        function getButtonText(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            
+            // Set both dates to start of day for accurate comparison
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            if (today > due) {
+                return 'Mark Complete (Overdue)';
+            } else if (today.getTime() === due.getTime()) {
+                return 'Mark Complete';
+            } else {
+                return 'Day Not Reached';
+            }
+        }
+
+        // Get button style based on due date
+        function getButtonStyle(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            
+            // Set both dates to start of day for accurate comparison
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            
+            if (today > due) {
+                return 'bg-orange-600 hover:bg-orange-700 text-white'; // Overdue - orange
+            } else if (today.getTime() === due.getTime()) {
+                return 'bg-green-600 hover:bg-green-700 text-white'; // Due today - green
+            } else {
+                return 'bg-gray-400 text-gray-200 cursor-not-allowed'; // Future - gray
+            }
+        }
+
+        // View farrowing activities
+        async function viewFarrowingActivities(farrowingId) {
+            try {
+                const response = await fetch(`/api/farrowing/activities/${farrowingId}`);
+                const data = await response.json();
+                if (data.success) {
+                    showActivitiesModal(data.activities, farrowingId);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error loading farrowing activities:', error);
+                alert('Error loading activities. Please try again.');
+            }
+        }
+
+        function showActivitiesModal(activities, farrowingId) {
+            const modalHTML = `
+                <div id="activities-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Farrowing Activities</h3>
+                            <button onclick="closeActivitiesModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="w-full border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Activity</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        ${activities.map(activity => `
+                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" data-activity-id="${activity.id}">
+                                                <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Day ${activity.due_day}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white activity-name">${activity.activity_name}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${activity.due_date}</td>
+                                                <td class="px-4 py-3 text-sm">
+                                                    ${activity.completed ? `
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                                            Completed
+                                                        </span>
+                                                        ${activity.completed_date ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${activity.completed_date}</div>` : ''}
+                                                        ${activity.completed_by_name ? `<div class="text-xs text-gray-500 dark:text-gray-400">by ${activity.completed_by_name}</div>` : ''}
+                                                    ` : `
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                                            ${getActivityStatusText(activity.due_date)}
+                                                        </span>
+                                                    `}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-center">
+                                                    ${!activity.completed ? `
+                                                        <button onclick="completeActivity(${activity.id})" 
+                                                                class="px-3 py-1.5 text-sm rounded-lg transition-colors ${getButtonStyle(activity.due_date)}"
+                                                                ${!canCompleteActivity(activity.due_date) ? 'disabled' : ''}>
+                                                            ${getButtonText(activity.due_date)}
+                                                        </button>
+                                                    ` : '<span class="text-gray-400 dark:text-gray-500">-</span>'}
+                                                </td>
+                                            </tr>
+                                            ${(activity.notes || (activity.completed && activity.activity_name === 'Weaning' && (activity.weaning_weight || activity.weaning_date))) ? `
+                                            <tr class="bg-gray-50 dark:bg-gray-700/30">
+                                                <td colspan="5" class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400">
+                                                    ${activity.notes ? `<div><strong>Notes:</strong> ${activity.notes}</div>` : ''}
+                                                    ${activity.completed && activity.activity_name === 'Weaning' && activity.weaning_weight ? `<div><strong>Weaning Weight:</strong> ${activity.weaning_weight} kg</div>` : ''}
+                                                    ${activity.completed && activity.activity_name === 'Weaning' && activity.weaning_date ? `<div><strong>Weaning Date:</strong> ${new Date(activity.weaning_date).toLocaleString()}</div>` : ''}
+                                                </td>
+                                            </tr>
+                                            ` : ''}
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function closeActivitiesModal() {
+            const modal = document.getElementById('activities-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function completeActivity(activityId) {
+            // Check if this is a weaning activity
+            const activityRow = document.querySelector(`[data-activity-id="${activityId}"]`);
+            const isWeaning = activityRow && activityRow.querySelector('.activity-name').textContent.includes('Weaning');
+            
+            if (isWeaning) {
+                // Show weaning completion modal
+                showWeaningCompletionModal(activityId);
+            } else {
+                // Regular activity completion
+                const notes = prompt('Add any notes about this activity completion:');
+                completeActivityWithData(activityId, { notes: notes || '' });
+            }
+        }
+
+        // Complete activity with data
+        async function completeActivityWithData(activityId, activityData) {
+            try {
+                const response = await fetch(`/api/farrowing/activities/${activityId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(activityData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Activity marked as completed!');
+                    closeActivitiesModal();
+                    // Refresh the activities view
+                    // You could reload the specific farrowing activities here if needed
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error completing activity:', error);
+                alert('Error completing activity. Please try again.');
+            }
+        }
+
+        // Show weaning completion modal
+        function showWeaningCompletionModal(activityId) {
+            const modalHTML = `
+                <div id="weaning-completion-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Complete Weaning Activity</h3>
+                            <button onclick="closeWeaningCompletionModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <form id="weaningCompletionForm" class="space-y-4">
+                            <input type="hidden" id="weaningActivityId" value="${activityId}">
+                            
+                            <!-- Weaning Weight -->
+                            <div>
+                                <label for="weaningWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Weaning Weight (kg) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" id="weaningWeight" name="weaning_weight" min="0.1" max="50.0" step="0.1" 
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                            </div>
+                            
+                            <!-- Weaning Date and Time -->
+                            <div>
+                                <label for="weaningDateTime" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Weaning Date & Time <span class="text-red-500">*</span>
+                                </label>
+                                <input type="datetime-local" id="weaningDateTime" name="weaning_date" 
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                            </div>
+                            
+                            <!-- Notes -->
+                            <div>
+                                <label for="weaningNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Notes
+                                </label>
+                                <textarea id="weaningNotes" name="notes" rows="3" placeholder="Additional notes about the weaning..." 
+                                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex justify-end space-x-3 pt-4">
+                                <button type="button" onclick="closeWeaningCompletionModal()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="button" onclick="submitWeaningCompletion()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                    Complete Weaning
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Set default datetime to current time
+            const now = new Date();
+            const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            document.getElementById('weaningDateTime').value = localDateTime;
+        }
+
+        // Submit weaning completion
+        function submitWeaningCompletion() {
+            const form = document.getElementById('weaningCompletionForm');
+            const formData = new FormData(form);
+            
+            const weaningData = {
+                weaning_weight: parseFloat(formData.get('weaning_weight')),
+                weaning_date: formData.get('weaning_date'),
+                notes: formData.get('notes') || ''
+            };
+            
+            const activityId = document.getElementById('weaningActivityId').value;
+            completeActivityWithData(activityId, weaningData);
+            closeWeaningCompletionModal();
+        }
+
+        // Close weaning completion modal
+        function closeWeaningCompletionModal() {
+            const modal = document.getElementById('weaning-completion-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Litter Registration Modal Functions
+        let currentLitterData = null;
+
+        // Show litter registration modal
+        function showLitterRegistrationModal(farrowingData) {
+            currentLitterData = farrowingData;
+            populateLitterForm(farrowingData);
+            document.getElementById('litter-registration-modal').classList.remove('hidden');
+        }
+
+        // Populate litter registration form
+        function populateLitterForm(farrowingData) {
+            document.getElementById('litterSowTagId').textContent = farrowingData.sow_tag_id;
+            document.getElementById('litterSowTagIdInfo').textContent = farrowingData.sow_tag_id;
+            document.getElementById('litterFarrowingDate').value = farrowingData.farrowing_date;
+            document.getElementById('litterSowId').value = farrowingData.sow_id;
+            document.getElementById('litterFarrowingRecordId').value = farrowingData.farrowing_id;
+            
+            // Check for weaning data
+            checkWeaningData(farrowingData.farrowing_id);
+            
+            // Generate next litter ID
+            generateNextLitterId();
+        }
+
+        // Check for weaning data and display if available
+        async function checkWeaningData(farrowingId) {
+            try {
+                const response = await fetch(`/api/farrowing/activities/${farrowingId}`);
+                const data = await response.json();
+                if (data.success) {
+                    const weaningActivity = data.activities.find(activity => 
+                        activity.activity_name === 'Weaning' && activity.completed
+                    );
+                    
+                    if (weaningActivity && weaningActivity.weaning_weight && weaningActivity.weaning_date) {
+                        // Show weaning information
+                        document.getElementById('weaningWeightInfo').textContent = `${weaningActivity.weaning_weight} kg`;
+                        document.getElementById('weaningDateInfo').textContent = new Date(weaningActivity.weaning_date).toLocaleString();
+                        document.getElementById('weaningInfoSection').classList.remove('hidden');
+                    } else {
+                        document.getElementById('weaningInfoSection').classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking weaning data:', error);
+            }
+        }
+
+        // Generate next available litter ID
+        function generateNextLitterId() {
+            fetch('/api/litter/next-id')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('litterIdInput').value = data.next_litter_id;
+                }
+            })
+            .catch(error => {
+                console.error('Error generating litter ID:', error);
+            });
+        }
+
+        // Register litter
+        function registerLitter() {
+            const form = document.getElementById('litterRegistrationForm');
+            const formData = new FormData(form);
+            
+            // Validate required fields
+            const requiredFields = ['total_piglets', 'alive_piglets'];
+            for (const field of requiredFields) {
+                if (!formData.get(field)) {
+                    alert(`${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} is required`);
+                    return;
+                }
+            }
+
+            const litterData = {
+                litter_id: formData.get('litter_id'),
+                farrowing_record_id: formData.get('farrowing_record_id'),
+                sow_id: formData.get('sow_id'),
+                farrowing_date: formData.get('farrowing_date'),
+                total_piglets: parseInt(formData.get('total_piglets')),
+                alive_piglets: parseInt(formData.get('alive_piglets')),
+                still_births: parseInt(formData.get('still_births') || 0),
+                avg_weight: parseFloat(formData.get('avg_weight') || 0),
+                notes: formData.get('notes') || ''
+            };
+
+            // Submit litter registration
+            fetch('/api/litter/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(litterData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Litter registered successfully!');
+                    closeLitterRegistrationModal();
+                    loadCompletedFarrowings(); // Refresh the list
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error registering litter:', error);
+                alert('Error registering litter. Please try again.');
+            });
+        }
+
+        // Close litter registration modal
+        function closeLitterRegistrationModal() {
+            document.getElementById('litter-registration-modal').classList.add('hidden');
+            currentLitterData = null;
+            document.getElementById('litterRegistrationForm').reset();
+        }
+
+        // Show incomplete activities popup
+        function showIncompleteActivitiesPopup(incompleteActivities) {
+            const activitiesList = incompleteActivities.map(activity => `<li>${activity}</li>`).join('');
+            
+            const popupHTML = `
+                <div id="incomplete-activities-popup" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Incomplete Farrowing Activities</h3>
+                        </div>
+                        <div class="px-6 py-4">
+                            <div class="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                                <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                                    <strong>Cannot mark sow as available</strong> until all farrowing activities are completed.
+                                </p>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Missing activities:</p>
+                                <ul class="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                    ${activitiesList}
+                                </ul>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                Please complete all farrowing activities before marking the sow as available for next breeding.
+                            </p>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <button onclick="closeIncompleteActivitiesPopup()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', popupHTML);
+        }
+
+        // Close incomplete activities popup
+        function closeIncompleteActivitiesPopup() {
+            const popup = document.getElementById('incomplete-activities-popup');
+            if (popup) {
+                popup.remove();
+            }
+        }
+
+        // Edit Farrowing Modal
+        function showEditFarrowingModal(farrowingId, sowTagId, boarTagId, farrowingDate, alivePiglets, deadPiglets, weakPiglets, notes) {
+            console.log('showEditFarrowingModal called with:', {
+                farrowingId, sowTagId, boarTagId, farrowingDate, alivePiglets, deadPiglets, weakPiglets, notes
+            });
+            console.log('weakPiglets value:', weakPiglets, 'type:', typeof weakPiglets);
+            console.log('notes value:', notes, 'type:', typeof notes);
+            
+            // Format date for HTML date input
+            const formattedFarrowingDate = formatDateForInput(farrowingDate);
+            console.log('Formatted farrowing date:', formattedFarrowingDate);
+            
+            const modalHTML = `
+                <div id="edit-farrowing-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-1 sm:p-4 transition-all duration-300 overflow-y-auto">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl w-full max-w-2xl mx-1 sm:mx-4 my-2 sm:my-4 max-h-[98vh] sm:max-h-[90vh] transform scale-95 opacity-0 transition-all duration-300">
+                        <!-- Modal Header -->
+                        <div class="relative px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 rounded-t-2xl sm:rounded-t-3xl">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-t-2xl sm:rounded-t-3xl"></div>
+                            <div class="relative flex items-center justify-between">
+                                <div class="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
+                                    <div class="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl">
+                                        <i class="fas fa-edit text-white text-lg sm:text-xl lg:text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Edit Farrowing Record</h3>
+                                        <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium mt-1">Update farrowing details</p>
+                                        <div class="flex items-center mt-1 sm:mt-2">
+                                            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-1 sm:mr-2 animate-pulse"></div>
+                                            <span class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium">Live Editing</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="closeEditFarrowingModal()" class="p-2 sm:p-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg sm:rounded-xl transition-all duration-200" aria-label="Close modal">
+                                    <i class="fas fa-times text-lg sm:text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Body -->
+                        <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 border-b border-gray-200 dark:border-gray-700">
+                            <form id="edit-farrowing-form" class="space-y-3 sm:space-y-6 lg:space-y-8">
+                                <input type="hidden" id="edit-farrowing-id" value="${farrowingId}">
+                                
+                                <!-- Basic Information Grid -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+                                    <div class="group">
+                                        <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                            <i class="fas fa-female text-pink-500 mr-1 sm:mr-2 text-sm"></i>Sow Tag ID
+                                        </label>
+                                        <input type="text" id="edit-sow-tag-id" value="${sowTagId}" readonly 
+                                               class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-gradient-to-r from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 text-gray-900 dark:text-white font-bold text-xs sm:text-base lg:text-lg border-pink-200 dark:border-pink-700/50">
+                                    </div>
+                                    
+                                    <div class="group">
+                                        <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                            <i class="fas fa-male text-blue-500 mr-1 sm:mr-2 text-sm"></i>Boar Tag ID
+                                        </label>
+                                        <input type="text" id="edit-boar-tag-id" value="${boarTagId}" readonly 
+                                               class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 text-gray-900 dark:text-white font-bold text-xs sm:text-base lg:text-lg border-blue-200 dark:border-blue-700/50">
+                                    </div>
+                                    
+                                    <div class="group">
+                                        <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                            <i class="fas fa-calendar text-purple-500 mr-1 sm:mr-2 text-sm"></i>Farrowing Date
+                                        </label>
+                                        <input type="date" id="edit-farrowing-date" value="${formattedFarrowingDate}" required 
+                                               class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-base lg:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300">
+                                    </div>
+                                    
+                                    <div class="group">
+                                        <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                            <i class="fas fa-baby text-green-500 mr-1 sm:mr-2 text-sm"></i>Alive Piglets
+                                        </label>
+                                        <input type="number" id="edit-alive-piglets" value="${alivePiglets}" min="0" required 
+                                               class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-base lg:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300">
+                                    </div>
+                                    
+                                    <div class="group">
+                                        <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                            <i class="fas fa-skull text-red-500 mr-1 sm:mr-2 text-sm"></i>Dead Piglets
+                                        </label>
+                                        <input type="number" id="edit-dead-piglets" value="${deadPiglets}" min="0" 
+                                               class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-base lg:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300">
+                                    </div>
+                                    
+                                    <div class="group">
+                                        <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                            <i class="fas fa-exclamation-triangle text-yellow-500 mr-1 sm:mr-2 text-sm"></i>Weak Piglets
+                                        </label>
+                                        <input type="number" id="edit-weak-piglets" value="${weakPiglets}" min="0" 
+                                               class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-base lg:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300">
+                                    </div>
+                                </div>
+                                
+                                <!-- Notes Section -->
+                                <div class="group">
+                                    <label class="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                        <i class="fas fa-sticky-note text-gray-500 mr-1 sm:mr-2 text-sm"></i>Notes
+                                    </label>
+                                    <textarea id="edit-notes" rows="3" 
+                                              class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-base lg:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 resize-none"
+                                              placeholder="Additional notes about the farrowing...">${notes}</textarea>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Modal Footer -->
+                        <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 flex flex-col sm:flex-row gap-2 sm:gap-4">
+                            <button type="button" onclick="closeEditFarrowingModal()" class="group flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 rounded-lg sm:rounded-2xl font-bold text-xs sm:text-base lg:text-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <i class="fas fa-times mr-2 text-sm"></i>Cancel
+                            </button>
+                            <button type="button" onclick="submitEditFarrowing()" class="group flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 rounded-lg sm:rounded-2xl font-bold text-xs sm:text-base lg:text-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <i class="fas fa-save mr-2 text-sm"></i>Update Farrowing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Animate modal in
+            setTimeout(() => {
+                const modal = document.getElementById('edit-farrowing-modal');
+                const modalContent = modal.querySelector('.bg-white');
+                modalContent.style.transform = 'scale(1)';
+                modalContent.style.opacity = '1';
+            }, 10);
+        }
+
+        function closeEditFarrowingModal() {
+            const modal = document.getElementById('edit-farrowing-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function submitEditFarrowing() {
+            const farrowingId = document.getElementById('edit-farrowing-id').value;
+            const farrowingDate = document.getElementById('edit-farrowing-date').value;
+            const alivePiglets = document.getElementById('edit-alive-piglets').value;
+            const deadPiglets = document.getElementById('edit-dead-piglets').value;
+            const weakPiglets = document.getElementById('edit-weak-piglets').value;
+            const notes = document.getElementById('edit-notes').value;
+            
+            if (!farrowingDate) {
+                alert('Please select a farrowing date');
+                return;
+            }
+            
+            if (!alivePiglets || alivePiglets < 0) {
+                alert('Please enter a valid number of alive piglets');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/farrowing/${farrowingId}/edit`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        farrowing_date: farrowingDate,
+                        alive_piglets: parseInt(alivePiglets),
+                        dead_piglets: parseInt(deadPiglets) || 0,
+                        weak_piglets: parseInt(weakPiglets) || 0,
+                        notes: notes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Farrowing record updated successfully');
+                    closeEditFarrowingModal();
+                    loadCompletedFarrowings();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error updating farrowing:', error);
+                alert('Error updating farrowing. Please try again.');
+            }
+        }
+
+        // Delete Farrowing Modal
+        function showDeleteFarrowingModal(farrowingId, sowTagId) {
+            const modalHTML = `
+                <div id="delete-farrowing-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-1 sm:p-4 transition-all duration-300 overflow-y-auto">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl w-full max-w-lg mx-1 sm:mx-4 my-2 sm:my-4 max-h-[98vh] sm:max-h-[90vh] transform scale-95 opacity-0 transition-all duration-300">
+                        <!-- Modal Header -->
+                        <div class="relative px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-red-500/5 via-pink-500/5 to-rose-500/5 rounded-t-2xl sm:rounded-t-3xl">
+                            <div class="absolute inset-0 bg-gradient-to-r from-red-500/5 to-pink-500/5 rounded-t-2xl sm:rounded-t-3xl"></div>
+                            <div class="relative flex items-center justify-between">
+                                <div class="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
+                                    <div class="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-red-500 via-pink-500 to-rose-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl">
+                                        <i class="fas fa-trash text-white text-lg sm:text-xl lg:text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Delete Farrowing Record</h3>
+                                        <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium mt-1">This action cannot be undone</p>
+                                        <div class="flex items-center mt-1 sm:mt-2">
+                                            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full mr-1 sm:mr-2 animate-pulse"></div>
+                                            <span class="text-xs sm:text-sm text-red-600 dark:text-red-400 font-medium">Permanent Action</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="closeDeleteFarrowingModal()" class="p-2 sm:p-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg sm:rounded-xl transition-all duration-200" aria-label="Close modal">
+                                    <i class="fas fa-times text-lg sm:text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Body -->
+                        <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 border-b border-gray-200 dark:border-gray-700">
+                            <div class="text-center">
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/20 dark:to-pink-900/20 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl sm:text-3xl"></i>
+                                </div>
+                                <h4 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-4">Are you sure you want to delete this farrowing record?</h4>
+                                <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">
+                                    This will permanently delete the farrowing record for <strong>${sowTagId}</strong> and all associated data.
+                                </p>
+                                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg p-3 sm:p-4">
+                                    <p class="text-sm text-red-700 dark:text-red-400 font-medium">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        This action cannot be undone. All piglet records and associated data will be lost.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Footer -->
+                        <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 flex flex-col sm:flex-row gap-2 sm:gap-4">
+                            <button type="button" onclick="closeDeleteFarrowingModal()" class="group flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 rounded-lg sm:rounded-2xl font-bold text-xs sm:text-base lg:text-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <i class="fas fa-times mr-2 text-sm"></i>Cancel
+                            </button>
+                            <button type="button" onclick="submitDeleteFarrowing(${farrowingId})" class="group flex-1 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 rounded-lg sm:rounded-2xl font-bold text-xs sm:text-base lg:text-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                <i class="fas fa-trash mr-2 text-sm"></i>Delete Farrowing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Animate modal in
+            setTimeout(() => {
+                const modal = document.getElementById('delete-farrowing-modal');
+                const modalContent = modal.querySelector('.bg-white');
+                modalContent.style.transform = 'scale(1)';
+                modalContent.style.opacity = '1';
+            }, 10);
+        }
+
+        function closeDeleteFarrowingModal() {
+            const modal = document.getElementById('delete-farrowing-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function submitDeleteFarrowing(farrowingId) {
+            try {
+                const response = await fetch(`/api/farrowing/${farrowingId}/delete`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Farrowing record deleted successfully.');
+                    closeDeleteFarrowingModal();
+                    loadCompletedFarrowings();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting farrowing:', error);
+                alert('Error deleting farrowing. Please try again.');
+            }
+        }
+
+        // Farrowing Audit Modal
+        function showFarrowingAuditModal(farrowingId) {
+            const modalHTML = `
+                <div id="farrowing-audit-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-1 sm:p-4 transition-all duration-300 overflow-y-auto">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl w-full max-w-4xl mx-1 sm:mx-4 my-2 sm:my-4 max-h-[98vh] sm:max-h-[90vh] transform scale-95 opacity-0 transition-all duration-300">
+                        <!-- Modal Header -->
+                        <div class="relative px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 rounded-t-2xl sm:rounded-t-3xl">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-t-2xl sm:rounded-t-3xl"></div>
+                            <div class="relative flex items-center justify-between">
+                                <div class="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
+                                    <div class="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl">
+                                        <i class="fas fa-history text-white text-lg sm:text-xl lg:text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Farrowing Edit History</h3>
+                                        <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium mt-1">Audit trail for farrowing record #${farrowingId}</p>
+                                        <div class="flex items-center mt-1 sm:mt-2">
+                                            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-1 sm:mr-2 animate-pulse"></div>
+                                            <span class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium">Live Audit</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="closeFarrowingAuditModal()" class="p-2 sm:p-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg sm:rounded-xl transition-all duration-200" aria-label="Close modal">
+                                    <i class="fas fa-times text-lg sm:text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Body -->
+                        <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
+                            <div id="farrowing-audit-content" class="space-y-4">
+                                <div class="flex justify-center items-center py-8">
+                                    <div class="text-center">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                        <p class="text-gray-600 dark:text-gray-400 font-medium">Loading audit history...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Animate modal in
+            setTimeout(() => {
+                const modal = document.getElementById('farrowing-audit-modal');
+                const modalContent = modal.querySelector('.bg-white');
+                modalContent.style.transform = 'scale(1)';
+                modalContent.style.opacity = '1';
+            }, 10);
+            
+            // Load audit history
+            loadFarrowingAuditHistory(farrowingId);
+        }
+
+        function closeFarrowingAuditModal() {
+            const modal = document.getElementById('farrowing-audit-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function loadFarrowingAuditHistory(farrowingId) {
+            try {
+                const response = await fetch(`/api/farrowing/${farrowingId}/audit`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayFarrowingAuditHistory(data.audit_records);
+                } else {
+                    displayFarrowingAuditHistory([]);
+                }
+            } catch (error) {
+                console.error('Error loading farrowing audit history:', error);
+                displayFarrowingAuditHistory([]);
+            }
+        }
+
+        function displayFarrowingAuditHistory(auditRecords) {
+            const container = document.getElementById('farrowing-audit-content');
+            
+            if (!auditRecords || auditRecords.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <i class="fas fa-history text-gray-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Edit History</h3>
+                        <p class="text-gray-600 dark:text-gray-400">This farrowing record has not been edited.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = auditRecords.map(record => {
+                const fieldNames = {
+                    'farrowing_date': 'Farrowing Date',
+                    'alive_piglets': 'Alive Piglets',
+                    'dead_piglets': 'Dead Piglets',
+                    'weak_piglets': 'Weak Piglets',
+                    'notes': 'Notes'
+                };
+                
+                const fieldName = fieldNames[record.field_name] || record.field_name;
+                const editDate = new Date(record.edited_at).toLocaleString();
+                
+                return `
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-edit text-white text-sm"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900 dark:text-white">${fieldName}</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">${editDate}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Edited by:</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${record.edited_by_name || 'Unknown'}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Previous Value:</p>
+                                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg p-3">
+                                    <p class="text-sm text-red-700 dark:text-red-400 font-medium">${record.old_value || 'Empty'}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">New Value:</p>
+                                <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50 rounded-lg p-3">
+                                    <p class="text-sm text-green-700 dark:text-green-400 font-medium">${record.new_value || 'Empty'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Date formatting function (reuse from breeding records)
+        function formatDateForInput(dateString) {
+            console.log('formatDateForInput called with:', dateString, 'type:', typeof dateString);
+            
+            if (!dateString || dateString === 'null' || dateString === 'undefined') {
+                console.log('Empty or null date, returning empty string');
+                return '';
+            }
+            
+            try {
+                // Handle different date formats from database
+                let date;
+                
+                if (typeof dateString === 'string') {
+                    // If it's already in YYYY-MM-DD format, return as is
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                        console.log('Date already in YYYY-MM-DD format:', dateString);
+                        return dateString;
+                    }
+                    
+                    // Handle JavaScript Date string format like "Wed, 08 Oct 2025 00:00:00 GMT"
+                    if (dateString.includes('GMT') || dateString.includes('UTC')) {
+                        console.log('Creating date from JavaScript Date string:', dateString);
+                        date = new Date(dateString);
+                    }
+                    // If it contains time, extract just the date part
+                    else if (dateString.includes('T')) {
+                        const datePart = dateString.split('T')[0];
+                        console.log('Extracted date part from ISO string:', datePart);
+                        date = new Date(datePart);
+                    } else {
+                        console.log('Creating date from string:', dateString);
+                        date = new Date(dateString);
+                    }
+                } else {
+                    console.log('Creating date from non-string:', dateString);
+                    date = new Date(dateString);
+                }
+                
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    console.error('Invalid date created from:', dateString);
+                    return '';
+                }
+                
+                // Format as YYYY-MM-DD for HTML date input
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                const formattedDate = `${year}-${month}-${day}`;
+                console.log('Formatted date:', formattedDate);
+                return formattedDate;
+            } catch (error) {
+                console.error('Error formatting date:', error, 'Input:', dateString);
+                return '';
+            }
+        }
+    </script>
+
+    <!-- Litter Registration Modal -->
+    <div id="litter-registration-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-black bg-opacity-50"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Litter Registration Required</h3>
+                    <button onclick="closeLitterRegistrationModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                        <p class="text-sm text-blue-800 dark:text-blue-200">
+                            <strong>Important:</strong> Before marking this sow as available for next breeding, 
+                            you must register the litter from this farrowing. This ensures proper tracking of piglet production.
+                        </p>
+                        <p class="text-sm text-blue-700 dark:text-blue-300 mt-2">
+                            <strong>Note:</strong> If weaning activities have been completed, the weaning weight and date will be automatically included in the litter registration.
+                        </p>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Sow Information</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Sow Tag ID:</span>
+                                <span id="litterSowTagIdInfo" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Farrowing Date:</span>
+                                <span id="litterFarrowingDate" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Weaning Information (if available) -->
+                        <div id="weaningInfoSection" class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg hidden">
+                            <h5 class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">Weaning Information Available</h5>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="font-medium text-green-600 dark:text-green-400">Weaning Weight:</span>
+                                    <span id="weaningWeightInfo" class="ml-2 font-medium text-green-800 dark:text-green-200"></span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-green-600 dark:text-green-400">Weaning Date:</span>
+                                    <span id="weaningDateInfo" class="ml-2 font-medium text-green-800 dark:text-green-200"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Litter Registration Form -->
+                    <form id="litterRegistrationForm" class="space-y-4">
+                        <input type="hidden" id="litterSowId" name="sow_id">
+                        <input type="hidden" id="litterFarrowingRecordId" name="farrowing_record_id">
+                        <input type="hidden" id="litterFarrowingDate" name="farrowing_date">
+
+                        <!-- Litter ID -->
+                        <div>
+                            <label for="litterIdInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Litter ID <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="litterIdInput" name="litter_id" value="L001" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" readonly>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Litter ID is automatically generated</p>
+                        </div>
+
+                        <!-- Total Piglets -->
+                        <div>
+                            <label for="litterTotalPiglets" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Total Piglets <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" id="litterTotalPiglets" name="total_piglets" min="1" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                        </div>
+
+                        <!-- Alive Piglets -->
+                        <div>
+                            <label for="litterAlivePiglets" name="alive_piglets" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Alive Piglets <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" id="litterAlivePiglets" name="alive_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                        </div>
+
+                        <!-- Still Births -->
+                        <div>
+                            <label for="litterStillBirths" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Still Births
+                            </label>
+                            <input type="number" id="litterStillBirths" name="still_births" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" value="0">
+                        </div>
+
+                        <!-- Average Weight -->
+                        <div>
+                            <label for="litterAvgWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Average Weight (kg)
+                            </label>
+                            <input type="number" id="litterAvgWeight" name="avg_weight" min="0.1" max="5.0" step="0.1" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+
+                        <!-- Notes -->
+                        <div>
+                            <label for="litterNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Notes
+                            </label>
+                            <textarea id="litterNotes" name="notes" rows="3" placeholder="Additional notes about the litter..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button type="button" onclick="closeLitterRegistrationModal()" class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                                Cancel
+                            </button>
+                            <button type="button" onclick="registerLitter()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                Register Litter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

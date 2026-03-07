@@ -1,0 +1,171 @@
+{# Admin/manager header notification: button + badge + popup. Requires `user` in context. #}
+<div class="relative">
+    <button id="notification-btn" class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 flex items-center justify-center" aria-label="Notifications" style="min-width: 40px; min-height: 40px;">
+        <svg class="w-6 h-6 text-slate-600 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path>
+        </svg>
+        <span id="notification-badge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800 hidden flex items-center justify-center">
+            <span class="text-xs text-white font-bold" id="notification-count"></span>
+        </span>
+    </button>
+    <div id="notification-popup" class="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 hidden overflow-hidden z-[100] max-h-[80vh] flex flex-col" style="top: 100%; margin-top: 8px;">
+        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path>
+                </svg>
+                Feeding Notifications
+            </h3>
+            <button id="close-notifications" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="notifications-list" class="overflow-y-auto flex-1 p-4">
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <svg class="w-8 h-8 mx-auto mb-3 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <p class="text-sm font-medium">Loading notifications...</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var notificationBtn, notificationPopup, notificationBadge, notificationsList, closeNotifications;
+    var feedingUrl = "{{ '/manager/farm/feeding-management' if user and user.role == 'manager' else '/admin/farm/feeding-management' }}";
+    var cowFeedingUrl = "{{ '/manager/farm/cow-feeding-management' if user and user.role == 'manager' else '/admin/farm/cow-feeding-management' }}";
+    var breedingUrl = "{{ '/manager/farm/breeding-records' if user and user.role == 'manager' else '/admin/farm/breeding-records' }}";
+    var farrowingsUrl = "{{ '/manager/farm/completed-farrowings' if user and user.role == 'manager' else '/admin/farm/completed-farrowings' }}";
+    var vaccinationUrl = "{{ '/manager/farm/vaccination-tracking' if user and user.role == 'manager' else '/admin/farm/vaccination-tracking' }}";
+    var insertWeightUrl = "{{ '/manager/farm/insert-weight' if user and user.role == 'manager' else '/admin/farm/insert-weight' }}";
+
+    function initNotifications() {
+        notificationBtn = document.getElementById('notification-btn');
+        notificationPopup = document.getElementById('notification-popup');
+        notificationBadge = document.getElementById('notification-badge');
+        notificationsList = document.getElementById('notifications-list');
+        closeNotifications = document.getElementById('close-notifications');
+        if (!notificationBtn || !notificationPopup) return;
+        notificationBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            var isHidden = notificationPopup.classList.contains('hidden');
+            if (isHidden) {
+                notificationPopup.classList.remove('hidden');
+                notificationPopup.style.display = 'flex';
+                window.loadNotifications && window.loadNotifications();
+            } else {
+                notificationPopup.classList.add('hidden');
+                notificationPopup.style.display = 'none';
+            }
+        });
+        if (closeNotifications) {
+            closeNotifications.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationPopup.classList.add('hidden');
+                notificationPopup.style.display = 'none';
+            });
+        }
+        document.addEventListener('click', function(e) {
+            if (notificationPopup && !notificationPopup.classList.contains('hidden')) {
+                if (!notificationBtn.contains(e.target) && !notificationPopup.contains(e.target)) {
+                    notificationPopup.classList.add('hidden');
+                    notificationPopup.style.display = 'none';
+                }
+            }
+        });
+    }
+    window.loadNotifications = function() {
+        if (!notificationsList) notificationsList = document.getElementById('notifications-list');
+        if (!notificationsList) return;
+        notificationsList.innerHTML = '<div class="text-center py-8 text-slate-500 dark:text-slate-400"><svg class="w-8 h-8 mx-auto mb-3 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg><p class="text-sm font-medium">Loading notifications...</p></div>';
+        fetch('/api/feed/notifications').then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success && data.notifications && data.notifications.length > 0) {
+                notificationsList.innerHTML = data.notifications.map(function(group) {
+                    var bgColor = '', borderColor = '', icon = '', title = '', description = '', actionButton = '', actionUrl = '';
+                    if (group.type === 'feeding') {
+                        bgColor = 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20';
+                        borderColor = 'border-green-200 dark:border-green-700';
+                        icon = '<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>';
+                        title = 'Feeding Notifications';
+                        description = group.count + ' feeding time' + (group.count > 1 ? 's' : '') + ' require attention';
+                        actionUrl = feedingUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span>View Feedings</span></a>';
+                    } else if (group.type === 'cow_feeding') {
+                        bgColor = 'from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20';
+                        borderColor = 'border-orange-200 dark:border-orange-700';
+                        icon = '<svg class="w-5 h-5 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>';
+                        title = 'Cow Feeding';
+                        description = group.count + ' cow feeding time' + (group.count > 1 ? 's' : '') + ' due';
+                        actionUrl = cowFeedingUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span>Record Cow Feeding</span></a>';
+                    } else if (group.type === 'farrowing') {
+                        bgColor = 'from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20';
+                        borderColor = 'border-pink-200 dark:border-pink-700';
+                        icon = '<svg class="w-5 h-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path></svg>';
+                        title = 'Farrowing Notifications';
+                        description = group.count + ' sow' + (group.count > 1 ? 's' : '') + ' due to farrow soon';
+                        actionUrl = breedingUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><span>View Breeding Records</span></a>';
+                    } else if (group.type === 'weaning') {
+                        bgColor = 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20';
+                        borderColor = 'border-blue-200 dark:border-blue-700';
+                        icon = '<svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>';
+                        title = 'Weaning Notifications';
+                        description = group.count + ' litter' + (group.count > 1 ? 's' : '') + ' ready for weaning';
+                        actionUrl = farrowingsUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg><span>View Litters</span></a>';
+                    } else if (group.type === 'vaccination') {
+                        bgColor = 'from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20';
+                        borderColor = 'border-yellow-200 dark:border-yellow-700';
+                        icon = '<svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path></svg>';
+                        title = 'Vaccination Notifications';
+                        description = group.count + ' animal' + (group.count > 1 ? 's' : '') + ' due for vaccination';
+                        actionUrl = vaccinationUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path></svg><span>View Vaccinations</span></a>';
+                    } else if (group.type === 'weight') {
+                        bgColor = 'from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20';
+                        borderColor = 'border-purple-200 dark:border-purple-700';
+                        icon = '<svg class="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>';
+                        title = 'Weight Notifications';
+                        description = group.count + ' animal' + (group.count > 1 ? 's' : '') + ' need weight tracking';
+                        actionUrl = insertWeightUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-lg hover:from-purple-600 hover:to-violet-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg><span>Insert Weight</span></a>';
+                    }
+                    return '<div class="mb-3 p-4 bg-gradient-to-r ' + bgColor + ' rounded-xl border ' + borderColor + ' hover:shadow-lg transition-all duration-200"><div class="flex items-start justify-between mb-2"><div class="flex items-center space-x-2">' + icon + '<span class="text-sm font-bold text-slate-900 dark:text-white">' + title + '</span></div><span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-full font-semibold">' + group.count + '</span>' + (group.highest_priority === 'critical' ? '<span class="text-xs bg-red-500 text-white px-2 py-1 rounded-full ml-2">URGENT</span>' : '') + '</div><p class="text-xs text-slate-600 dark:text-slate-400 mb-2">' + description + '</p>' + actionButton + '</div>';
+                }).join('');
+                if (notificationBadge) { notificationBadge.classList.remove('hidden'); }
+            } else {
+                notificationsList.innerHTML = '<div class="text-center py-8 text-slate-500 dark:text-slate-400"><svg class="w-12 h-12 mx-auto mb-3 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path></svg><p class="text-sm font-medium">No feeding notifications</p><p class="text-xs mt-1">All animals are up to date</p></div>';
+                if (notificationBadge) { notificationBadge.classList.add('hidden'); }
+            }
+            var countEl = document.getElementById('notification-count');
+            var badgeEl = document.getElementById('notification-badge');
+            if (data.success && data.notifications && data.notifications.length > 0) {
+                if (countEl) countEl.textContent = data.total_count || data.notifications.length;
+                if (badgeEl) badgeEl.classList.remove('hidden');
+            } else {
+                if (countEl) countEl.textContent = '';
+                if (badgeEl) badgeEl.classList.add('hidden');
+            }
+        }).catch(function() {
+            notificationsList.innerHTML = '<div class="text-center py-4 text-red-500 dark:text-red-400"><p class="text-sm">Error loading notifications</p></div>';
+        });
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNotifications);
+    } else {
+        initNotifications();
+    }
+    setTimeout(function() { window.loadNotifications && window.loadNotifications(); }, 2000);
+    setInterval(function() {
+        var popup = document.getElementById('notification-popup');
+        if (popup && !popup.classList.contains('hidden')) {
+            window.loadNotifications && window.loadNotifications();
+        }
+    }, 60000);
+})();
+</script>

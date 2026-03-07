@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Animal Farming - Employee Dashboard{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Error handling for external script conflicts
+        window.addEventListener('error', function(e) {
+            if (e.filename && (e.filename.includes('screen-shader.js') || e.filename.includes('night-mode.js'))) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.2s ease-out',
+                    },
+                    backdropBlur: {
+                        xs: '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(16px) saturate(180%);
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        .dark .glass-effect {
+            background: rgba(17, 24, 39, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #10b981, #f59e0b, #ef4444);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradient-shift 3s ease infinite;
+        }
+        
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .nav-item {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .nav-item:hover::before {
+            left: 100%;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+        }
+        
+        .nav-item.active::before {
+            display: none;
+        }
+        
+        /* Smooth scrollbar */
+        .nav-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+        
+        .nav-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .nav-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .nav-scroll::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+        }
+        
+        .nav-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.7);
+        }
+        
+        /* Header height variables for consistent layout */
+        :root {
+            --header-height: 4rem;   /* 64px default */
+        }
+        @media (min-width: 640px) {
+            :root {
+                --header-height: 5rem;   /* 80px on sm+ */
+            }
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 1024px) {
+            #sidebar {
+                z-index: 45;
+            }
+            
+            #sidebar-overlay {
+                z-index: 40;
+                top: var(--header-height);
+                height: calc(100vh - var(--header-height));
+            }
+        }
+        
+        @media (max-width: 768px) {
+            #sidebar {
+                width: min(320px, 85vw);
+            }
+            
+            .mobile-full-width {
+                width: 100vw;
+                margin-left: 0;
+            }
+        }
+        
+        /* Pulse glow for active items */
+        @keyframes pulse-glow {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4),
+                            0 0 0 0 rgba(139, 92, 246, 0.4);
+            }
+            50% { 
+                box-shadow: 0 0 0 8px rgba(59, 130, 246, 0),
+                            0 0 0 12px rgba(139, 92, 246, 0);
+            }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        
+        /* Enhanced hover effects */
+        .hover-lift {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        
+        /* Focus visible for accessibility */
+        *:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100 dark:bg-gray-950 transition-colors duration-300 min-h-screen">
+    <!-- Modern Header with Glass Effect -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+        <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16 sm:h-20">
+            <!-- Left Section: Mobile Menu + Logo + Page Title -->
+            <div class="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="lg:hidden p-2.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-110 active:scale-95" aria-label="Toggle menu">
+                    <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                
+                <!-- Farm Logo and Name -->
+                <div class="flex items-center space-x-3 flex-shrink-0">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 via-green-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-3">
+                        <i class="fas fa-seedling text-white text-base sm:text-xl"></i>
+                    </div>
+                    <div class="hidden sm:block">
+                        <h1 class="text-lg sm:text-xl font-bold gradient-text">Smart Animal Farming</h1>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Employee Portal</p>
+                    </div>
+                </div>
+                
+                <!-- Current Page Indicator -->
+                <div class="hidden lg:flex items-center space-x-2 ml-4 px-4 py-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">
+                    <span class="text-gray-400 dark:text-gray-500">/</span>
+                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{% block page_title %}Dashboard{% endblock %}</span>
+                </div>
+            </div>
+            
+            <!-- Right Section: Time, Theme Toggle, and User Profile -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- Live Time and Date -->
+                <div class="hidden md:block text-right px-3 py-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">
+                    <div id="live-time" class="text-sm font-bold text-gray-900 dark:text-white">12:00:00 PM</div>
+                    <div id="live-date" class="text-xs text-gray-600 dark:text-gray-400">January 1, 2024</div>
+                </div>
+                
+                <!-- Notification Bell -->
+                <div class="relative">
+                    <button id="notification-btn" class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 flex items-center justify-center" aria-label="Notifications" style="min-width: 40px; min-height: 40px;">
+                        <svg class="w-6 h-6 text-slate-600 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path>
+                        </svg>
+                        <span id="notification-badge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800 hidden flex items-center justify-center">
+                            <span class="text-xs text-white font-bold" id="notification-count"></span>
+                        </span>
+                    </button>
+                    
+                    <!-- Notification Popup -->
+                    <div id="notification-popup" class="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 hidden overflow-hidden z-[100] max-h-[80vh] flex flex-col" style="top: 100%; margin-top: 8px;">
+                        <!-- Header -->
+                        <div class="px-5 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                                <i class="fas fa-bell mr-2 text-blue-500"></i>
+                                Feeding Notifications
+                            </h3>
+                            <button id="close-notifications" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Notifications List -->
+                        <div id="notifications-list" class="overflow-y-auto flex-1 p-4">
+                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-3 text-blue-500"></i>
+                                <p class="text-sm font-medium">Loading notifications...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="p-2.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-110 active:scale-95" aria-label="Toggle theme">
+                    <svg id="sun-icon" class="w-5 h-5 text-gray-700 dark:text-gray-300 hidden" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
+                    </svg>
+                    <svg id="moon-icon" class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                    </svg>
+                </button>
+                
+                <!-- User Profile Dropdown -->
+                <div class="relative">
+                    <button id="user-dropdown-btn" class="flex items-center space-x-2 sm:space-x-3 p-2 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105 active:scale-95" aria-label="User menu">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white/50 dark:ring-gray-700/50">
+                            <span class="text-white font-bold text-sm sm:text-base">{{ session.employee_name[0] if session.employee_name else 'E' }}</span>
+                        </div>
+                        <div class="hidden sm:block text-left">
+                            <div class="text-sm font-bold text-gray-900 dark:text-white">{{ session.employee_name or 'Employee' }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">{{ session.employee_role or 'Employee' }}</div>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-600 dark:text-gray-300 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Dropdown Menu with Animation -->
+                    <div id="user-dropdown" class="absolute right-0 mt-2 w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 hidden animate-scale-in overflow-hidden">
+                        <!-- User Info Section -->
+                        <div class="px-5 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white/50 dark:ring-gray-700/50">
+                                    <span class="text-white font-bold text-lg">{{ session.employee_name[0] if session.employee_name else 'E' }}</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ session.employee_name or 'Employee' }}</div>
+                                    <div class="text-xs text-gray-600 dark:text-gray-400 truncate">{{ session.employee_email or 'employee@farm.com' }}</div>
+                                    <div class="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1">{{ session.employee_role or 'Employee' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Menu Items -->
+                        <div class="py-2">
+                            <a href="/employee/profile" class="flex items-center px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group">
+                                <i class="fas fa-user w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                                My Profile
+                            </a>
+                            <a href="/employee/settings" class="flex items-center px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group">
+                                <i class="fas fa-cog w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                                Account Settings
+                            </a>
+                            <a href="/employee/preferences" class="flex items-center px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group">
+                                <i class="fas fa-sliders-h w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                                Preferences
+                            </a>
+                            <hr class="my-2 border-gray-200 dark:border-gray-700">
+                            <button id="logout-btn" class="w-full flex items-center px-5 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 dark:hover:from-red-900/20 dark:hover:to-pink-900/20 transition-all duration-200 group">
+                                <i class="fas fa-sign-out-alt w-5 h-5 mr-3 group-hover:scale-110 transition-transform"></i>
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Admin Preview Banner -->
+    <div id="admin-preview-banner" class="fixed top-16 sm:top-20 left-0 right-0 z-40 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white py-2.5 px-4 shadow-lg hidden animate-slide-in" style="display: none;">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="text-xl">👑</span>
+                <span class="font-semibold text-sm sm:text-base">Admin Preview Mode - Viewing as Employee</span>
+            </div>
+            <a href="/admin/role-view" class="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium hover:scale-105 active:scale-95">
+                ← Back to Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <!-- Modern Sidebar with Glass Effect (starts below header, responsive) -->
+    <aside id="sidebar" class="fixed left-0 top-16 sm:top-20 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] w-72 bg-white dark:bg-gray-900 shadow-2xl z-40 transform -translate-x-full lg:translate-x-0 transition-all duration-300 ease-in-out border-r-2 border-gray-300 dark:border-gray-700 flex flex-col">
+        <div class="flex flex-col h-full">
+            <!-- Sidebar Header -->
+            <div class="flex items-center justify-between p-5 border-b-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-orange-50 dark:from-gray-800 dark:to-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 via-green-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold gradient-text">Smart Animal</h2>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Employee Portal</p>
+                    </div>
+                </div>
+                <button id="close-sidebar" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-110 active:scale-95" aria-label="Close sidebar">
+                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto nav-scroll">
+                <!-- Dashboard -->
+                <a href="/employee/dashboard" class="nav-item group flex items-center space-x-3 px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300 {% if request.endpoint == 'employee_dashboard' %}active pulse-glow{% endif %}">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                        <i class="fas fa-tachometer-alt text-sm"></i>
+                    </div>
+                    <span class="font-semibold">Dashboard</span>
+                </a>
+
+                <!-- Animal Management -->
+                <div class="space-y-1">
+                    <button class="nav-item group flex items-center justify-between w-full px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-green-500 hover:to-teal-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300" onclick="toggleSubmenu('animals')" aria-expanded="false" aria-controls="animals-submenu">
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                                <i class="fas fa-paw text-sm"></i>
+                            </div>
+                            <span class="font-semibold">Animal Management</span>
+                        </div>
+                        <i class="fas fa-chevron-down w-4 h-4 transition-all duration-300 group-hover:scale-110" id="animals-arrow"></i>
+                    </button>
+                    <div id="animals-submenu" class="ml-4 space-y-1 hidden overflow-hidden">
+                        <a href="/employee/pig-management" class="nav-item group flex items-center space-x-3 px-4 py-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-pink-500 hover:to-rose-600 hover:text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
+                            <div class="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-pink-500 to-rose-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                                <i class="fas fa-piggy-bank text-xs"></i>
+                            </div>
+                            <span class="text-sm font-medium">Pig Management</span>
+                        </a>
+                        <a href="/employee/cow-management" class="nav-item group flex items-center space-x-3 px-4 py-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-600 hover:text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
+                            <div class="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-orange-500 to-amber-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                                <i class="fas fa-cow text-xs"></i>
+                            </div>
+                            <span class="text-sm font-medium">Cow Management</span>
+                        </a>
+                        <a href="/employee/chicken-management" class="nav-item group flex items-center space-x-3 px-4 py-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-yellow-500 hover:to-orange-600 hover:text-white hover:shadow-lg hover:scale-105 transition-all duration-300">
+                            <div class="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-yellow-500 to-orange-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                                <i class="fas fa-egg text-xs"></i>
+                            </div>
+                            <span class="text-sm font-medium">Chicken Management</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Human Resource Management -->
+                <a href="/employee/hr" class="nav-item group flex items-center space-x-3 px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-indigo-500 hover:to-blue-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                        <i class="fas fa-users text-sm"></i>
+                    </div>
+                    <span class="font-semibold">Human Resource</span>
+                </a>
+
+                <!-- Feeds Management -->
+                <a href="/employee/feeds" class="nav-item group flex items-center space-x-3 px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-green-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                        <i class="fas fa-seedling text-sm"></i>
+                    </div>
+                    <span class="font-semibold">Feeds Management</span>
+                </a>
+
+                <!-- Inventory Management -->
+                <a href="/employee/inventory" class="nav-item group flex items-center space-x-3 px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-violet-500 hover:to-purple-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                        <i class="fas fa-boxes text-sm"></i>
+                    </div>
+                    <span class="font-semibold">Inventory</span>
+                </a>
+
+                <!-- Reports and Analytics -->
+                <a href="/employee/reports" class="nav-item group flex items-center space-x-3 px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-blue-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                        <i class="fas fa-chart-bar text-sm"></i>
+                    </div>
+                    <span class="font-semibold">Reports & Analytics</span>
+                </a>
+
+                <!-- System Settings -->
+                <a href="/employee/settings" class="nav-item group flex items-center space-x-3 px-4 py-3.5 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-500 hover:to-slate-600 hover:text-white hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-gray-500 to-slate-600 text-white group-hover:scale-110 transition-transform duration-300 shadow-md">
+                        <i class="fas fa-cog text-sm"></i>
+                    </div>
+                    <span class="font-semibold">Settings</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                <div class="text-center">
+                    <p class="text-xs font-semibold text-gray-700 dark:text-gray-300">Smart Animal Farming</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">v2.0.1</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area (padding-top for header, margin-left for sidebar on lg+) -->
+    <main class="pt-16 sm:pt-20 min-h-screen lg:pl-72 bg-gray-50 dark:bg-gray-900 transition-[padding] duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Modern Footer (aligns with main content when sidebar visible) -->
+    <footer class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-700/50 mt-auto lg:ml-72 transition-[margin] duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 via-green-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-seedling text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-800 dark:text-white">Smart Animal Farming</p>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Employee Management System</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/privacy" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors hover:underline">Privacy Policy</a>
+                    <a href="/terms" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors hover:underline">Terms of Service</a>
+                    <a href="/support" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors hover:underline">Support</a>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50 text-center">
+                <p class="text-xs text-gray-500 dark:text-gray-400">© 2024 Smart Animal Farming. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden lg:hidden transition-opacity duration-300"></div>
+
+    <script>
+        // Theme Toggle Functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+        
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+        updateThemeIcon();
+        
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
+        });
+        
+        function updateThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            sunIcon.classList.toggle('hidden', isDark);
+            moonIcon.classList.toggle('hidden', !isDark);
+        }
+
+        // Logout functionality
+        document.getElementById('logout-btn').addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect;
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/';
+            }
+        });
+
+        // User Dropdown Functionality
+        const userDropdownBtn = document.getElementById('user-dropdown-btn');
+        const userDropdown = document.getElementById('user-dropdown');
+        
+        userDropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!userDropdownBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+
+        // Mobile Sidebar Functionality
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+        
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+
+        // Submenu Toggle Functionality with Smooth Animations
+        function toggleSubmenu(menuId) {
+            const submenu = document.getElementById(menuId + '-submenu');
+            const arrow = document.getElementById(menuId + '-arrow');
+            const button = submenu.previousElementSibling;
+            
+            if (submenu.classList.contains('hidden')) {
+                submenu.classList.remove('hidden');
+                submenu.style.maxHeight = '0px';
+                submenu.style.opacity = '0';
+                
+                submenu.offsetHeight;
+                
+                submenu.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
+                submenu.style.maxHeight = '300px';
+                submenu.style.opacity = '1';
+                
+                arrow.style.transition = 'transform 0.3s ease-in-out';
+                arrow.style.transform = 'rotate(180deg)';
+                button.setAttribute('aria-expanded', 'true');
+            } else {
+                submenu.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
+                submenu.style.maxHeight = '0px';
+                submenu.style.opacity = '0';
+                
+                arrow.style.transition = 'transform 0.3s ease-in-out';
+                arrow.style.transform = 'rotate(0deg)';
+                button.setAttribute('aria-expanded', 'false');
+                
+                setTimeout(() => {
+                    submenu.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // Live Time and Date
+        function updateTime() {
+            const now = new Date();
+            const timeElement = document.getElementById('live-time');
+            const dateElement = document.getElementById('live-date');
+            
+            if (timeElement) {
+                timeElement.textContent = now.toLocaleTimeString('en-US', {
+                    hour12: true,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+            
+            if (dateElement) {
+                dateElement.textContent = now.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Check if accessed via admin route and show admin preview banner
+        if (window.location.pathname.includes('/admin/access/')) {
+            const adminBanner = document.getElementById('admin-preview-banner');
+            if (adminBanner) {
+                adminBanner.style.display = 'block';
+                const mainContent = document.querySelector('.pt-16');
+                if (mainContent) {
+                    mainContent.classList.add('pt-24');
+                }
+            }
+        }
+
+        // Initialize navigation highlighting and submenu states based on current page
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('nav a');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active', 'pulse-glow');
+                }
+            });
+
+            // Auto-expand Animal Management submenu if on animal management pages
+            if (currentPath.includes('/pig-management') || currentPath.includes('/cow-management') || currentPath.includes('/chicken-management')) {
+                toggleSubmenu('animals');
+            }
+        });
+
+        // Smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Notification Functionality
+        let notificationBtn, notificationPopup, notificationBadge, notificationsList, closeNotifications;
+        
+        // Initialize notification elements when DOM is ready
+        function initNotifications() {
+            notificationBtn = document.getElementById('notification-btn');
+            notificationPopup = document.getElementById('notification-popup');
+            notificationBadge = document.getElementById('notification-badge');
+            notificationsList = document.getElementById('notifications-list');
+            closeNotifications = document.getElementById('close-notifications');
+            
+            if (!notificationBtn || !notificationPopup) {
+                console.error('Notification elements not found');
+                return;
+            }
+            
+            // Toggle notification popup
+            notificationBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                // Toggle popup visibility
+                const isHidden = notificationPopup.classList.contains('hidden');
+                
+                if (isHidden) {
+                    // Show popup
+                    notificationPopup.classList.remove('hidden');
+                    notificationPopup.style.display = 'flex';
+                    loadNotifications();
+                } else {
+                    // Hide popup
+                    notificationPopup.classList.add('hidden');
+                    notificationPopup.style.display = 'none';
+                }
+            });
+            
+            // Close button
+            if (closeNotifications) {
+                closeNotifications.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    notificationPopup.classList.add('hidden');
+                    notificationPopup.style.display = 'none';
+                });
+            }
+            
+            // Close popup when clicking outside
+            document.addEventListener('click', function(e) {
+                if (notificationPopup && !notificationPopup.classList.contains('hidden')) {
+                    if (!notificationBtn.contains(e.target) && !notificationPopup.contains(e.target)) {
+                        notificationPopup.classList.add('hidden');
+                        notificationPopup.style.display = 'none';
+                    }
+                }
+            });
+        }
+        
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initNotifications);
+        } else {
+            initNotifications();
+        }
+        
+        // Load notifications
+        async function loadNotifications() {
+            if (!notificationsList) {
+                notificationsList = document.getElementById('notifications-list');
+            }
+            
+            if (!notificationsList) {
+                console.error('Notifications list element not found');
+                return;
+            }
+            
+            try {
+                notificationsList.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-3 text-blue-500"></i>
+                        <p class="text-sm font-medium">Loading notifications...</p>
+                    </div>
+                `;
+                
+                const response = await fetch('/api/feed/notifications');
+                const data = await response.json();
+                
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    notificationsList.innerHTML = data.notifications.map(group => {
+                        let bgColor = '';
+                        let borderColor = '';
+                        let icon = '';
+                        let title = '';
+                        let description = '';
+                        let actionButton = '';
+                        let actionUrl = '';
+                        
+                        if (group.type === 'feeding') {
+                            bgColor = 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20';
+                            borderColor = 'border-green-200 dark:border-green-700';
+                            icon = '<i class="fas fa-utensils text-green-500"></i>';
+                            title = 'Feeding Notifications';
+                            description = `${group.count} feeding time${group.count > 1 ? 's' : ''} require attention`;
+                            actionUrl = '/admin/farm/feeding-management';
+                            actionButton = `<a href="${actionUrl}" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2">
+                                <i class="fas fa-arrow-right"></i>
+                                <span>View Feedings</span>
+                            </a>`;
+                        } else if (group.type === 'farrowing') {
+                            bgColor = 'from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20';
+                            borderColor = 'border-pink-200 dark:border-pink-700';
+                            icon = '<i class="fas fa-baby text-pink-500"></i>';
+                            title = 'Farrowing Notifications';
+                            description = `${group.count} sow${group.count > 1 ? 's' : ''} due to farrow soon`;
+                            actionUrl = '/admin/farm/breeding-records';
+                            actionButton = `<a href="${actionUrl}" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2">
+                                <i class="fas fa-eye"></i>
+                                <span>View Breeding Records</span>
+                            </a>`;
+                        } else if (group.type === 'weaning') {
+                            bgColor = 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20';
+                            borderColor = 'border-blue-200 dark:border-blue-700';
+                            icon = '<i class="fas fa-cut text-blue-500"></i>';
+                            title = 'Weaning Notifications';
+                            description = `${group.count} litter${group.count > 1 ? 's' : ''} ready for weaning`;
+                            actionUrl = '/admin/farm/completed-farrowings';
+                            actionButton = `<a href="${actionUrl}" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2">
+                                <i class="fas fa-edit"></i>
+                                <span>View Litters</span>
+                            </a>`;
+                        } else if (group.type === 'vaccination') {
+                            bgColor = 'from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20';
+                            borderColor = 'border-yellow-200 dark:border-yellow-700';
+                            icon = '<i class="fas fa-syringe text-yellow-500"></i>';
+                            title = 'Vaccination Notifications';
+                            description = `${group.count} animal${group.count > 1 ? 's' : ''} due for vaccination`;
+                            actionUrl = '/admin/farm/vaccination-tracking';
+                            actionButton = `<a href="${actionUrl}" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2">
+                                <i class="fas fa-syringe"></i>
+                                <span>View Vaccinations</span>
+                            </a>`;
+                        } else if (group.type === 'weight') {
+                            bgColor = 'from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20';
+                            borderColor = 'border-purple-200 dark:border-purple-700';
+                            icon = '<i class="fas fa-weight text-purple-500"></i>';
+                            title = 'Weight Notifications';
+                            description = `${group.count} animal${group.count > 1 ? 's' : ''} need weight tracking`;
+                            actionUrl = '/admin/farm/insert-weight';
+                            actionButton = `<a href="${actionUrl}" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-lg hover:from-purple-600 hover:to-violet-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2">
+                                <i class="fas fa-weight"></i>
+                                <span>Insert Weight</span>
+                            </a>`;
+                        }
+                        
+                        return `
+                            <div class="mb-3 p-4 bg-gradient-to-r ${bgColor} rounded-xl border ${borderColor} hover:shadow-lg transition-all duration-200">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex items-center space-x-2">
+                                        ${icon}
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white">${title}</span>
+                                    </div>
+                                    <span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full font-semibold">${group.count}</span>
+                                    ${group.highest_priority === 'critical' ? '<span class="text-xs bg-red-500 text-white px-2 py-1 rounded-full ml-2">URGENT</span>' : ''}
+                                </div>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">${description}</p>
+                                ${actionButton}
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    if (notificationBadge) {
+                        notificationBadge.classList.remove('hidden');
+                    }
+                } else {
+                    notificationsList.innerHTML = `
+                        <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-bell-slash text-3xl mb-3 text-gray-400"></i>
+                            <p class="text-sm font-medium">No feeding notifications</p>
+                            <p class="text-xs mt-1">All animals are up to date</p>
+                        </div>
+                    `;
+                    if (notificationBadge) {
+                        notificationBadge.classList.add('hidden');
+                    }
+                }
+                
+                // Update badge count
+                const countElement = document.getElementById('notification-count');
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    if (countElement) {
+                        countElement.textContent = data.total_count || data.notifications.length;
+                    }
+                    if (notificationBadge) {
+                        notificationBadge.classList.remove('hidden');
+                    }
+                } else {
+                    if (countElement) {
+                        countElement.textContent = '';
+                    }
+                    if (notificationBadge) {
+                        notificationBadge.classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                if (notificationsList) {
+                    notificationsList.innerHTML = `
+                        <div class="text-center py-4 text-red-500 dark:text-red-400">
+                            <i class="fas fa-exclamation-circle text-xl mb-2"></i>
+                            <p class="text-sm">Error loading notifications</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        // Process feeding (stock out and mark as fed)
+        async function processFeeding(feedId, farmId) {
+            try {
+                const response = await fetch('/api/feed/process-feeding', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        feed_id: feedId,
+                        farm_id: farmId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success message
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in';
+                    notification.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Feeding processed successfully!</span>
+                        </div>
+                    `;
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 3000);
+                    
+                    // Reload notifications
+                    loadNotifications();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to process feeding'));
+                }
+            } catch (error) {
+                console.error('Error processing feeding:', error);
+                alert('Error processing feeding. Please try again.');
+            }
+        }
+        
+        // Check for notifications every minute
+        setInterval(() => {
+            loadNotifications();
+        }, 60000);
+        
+        // Load notifications on page load
+        setTimeout(() => {
+            loadNotifications();
+        }, 2000);
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

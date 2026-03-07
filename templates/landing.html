@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Animal Farming - Smart Farming Made Simple</title>
+    <meta name="description" content="Transform your farm with AI-powered management. From livestock tracking to production analytics - everything you need in one comprehensive platform.">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- AOS Animation Library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <!-- Lightbox for images -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/css/lightbox.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/js/lightbox.min.js"></script>
+    
+    <style>
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #00A86B, #FF7A00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero-bg {
+            background: linear-gradient(rgba(0, 168, 107, 0.8), rgba(255, 122, 0, 0.6)),
+                        url('../static/images/dairy_farming.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }
+        
+        /* Mobile optimization for hero background */
+        @media (max-width: 768px) {
+            .hero-bg {
+                background-attachment: scroll;
+                background-size: cover;
+                background-position: center center;
+            }
+        }
+        
+        /* Tablet optimization */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .hero-bg {
+                background-attachment: scroll;
+            }
+        }
+        
+        .floating-icon {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+        }
+        
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Mobile menu animations */
+        #mobile-menu {
+            transition: all 0.3s ease-in-out;
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        
+        #mobile-menu.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        #mobile-menu-button i {
+            transition: transform 0.3s ease;
+        }
+        
+        #mobile-menu-button:hover i {
+            transform: scale(1.1);
+        }
+        
+        /* Responsive image optimizations */
+        @media (max-width: 640px) {
+            .card-hover img {
+                height: 200px;
+            }
+            
+            .testimonial img {
+                width: 48px;
+                height: 48px;
+            }
+        }
+        
+        @media (min-width: 641px) and (max-width: 768px) {
+            .card-hover img {
+                height: 220px;
+            }
+        }
+        
+        /* Image loading optimization */
+        img {
+            transition: opacity 0.3s ease;
+        }
+        
+        img[loading="lazy"] {
+            opacity: 0;
+        }
+        
+        img[loading="lazy"].loaded {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-orange-500 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-xl"></i>
+                        </div>
+                        <span class="text-2xl font-bold gradient-text">SMART ANIMAL FARM</span>
+                    </a>
+                </div>
+                
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="/" class="text-green-600 font-semibold">Home</a>
+                    <a href="/solutions" class="text-gray-700 hover:text-green-600 transition-colors">Solutions</a>
+                    <a href="/features" class="text-gray-700 hover:text-green-600 transition-colors">Features</a>
+                    <a href="/about" class="text-gray-700 hover:text-green-600 transition-colors">About</a>
+                    <a href="/contact" class="text-gray-700 hover:text-green-600 transition-colors">Contact</a>
+                </div>
+                
+                <div class="hidden lg:flex items-center space-x-4">
+                    <a href="/employee/login" class="text-gray-700 hover:text-green-600 transition-colors">Login</a>
+                    <a href="/employee/signup" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-full font-semibold hover:shadow-lg transition-all">Get Started</a>
+                </div>
+                
+                <button id="mobile-menu-button" class="lg:hidden text-gray-700 hover:text-green-600 transition-colors">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t border-gray-200">
+                <div class="px-4 py-6 space-y-4">
+                    <a href="/" class="block text-green-600 font-semibold py-2">Home</a>
+                    <a href="/solutions" class="block text-gray-700 hover:text-green-600 transition-colors py-2">Solutions</a>
+                    <a href="/features" class="block text-gray-700 hover:text-green-600 transition-colors py-2">Features</a>
+                    <a href="/about" class="block text-gray-700 hover:text-green-600 transition-colors py-2">About</a>
+                    <a href="/contact" class="block text-gray-700 hover:text-green-600 transition-colors py-2">Contact</a>
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <a href="/employee/login" class="block text-gray-700 hover:text-green-600 transition-colors py-2">Login</a>
+                        <a href="/employee/signup" class="block bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-full font-semibold text-center hover:shadow-lg transition-all">Get Started</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg min-h-screen flex items-center relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div data-aos="fade-right">
+                    <h1 class="text-5xl md:text-6xl font-bold text-white mb-6">
+                        Transform Your Farm with <span class="gradient-text">AI-Powered Management</span>
+                    </h1>
+                    <p class="text-xl text-white/90 mb-8 leading-relaxed">
+                        From livestock tracking to production analytics - everything you need in one comprehensive platform. 
+                        Join thousands of farmers who have revolutionized their operations with smart technology.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="/employee/signup" class="bg-white text-green-600 px-8 py-4 rounded-full font-semibold hover:shadow-lg transition-all text-center">
+                            Start Free Trial
+                        </a>
+                        <a href="#demo" class="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-600 transition-all text-center">
+                            Watch Demo Video
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="relative" data-aos="fade-left">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+                        <div class="bg-white rounded-2xl p-6 shadow-2xl">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-gray-900">Live Farm Dashboard</h3>
+                                <div class="flex space-x-2">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="text-sm text-gray-500 mb-1">Total Animals</div>
+                                    <div class="text-2xl font-bold text-green-600">1,247</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="text-sm text-gray-500 mb-1">Production Today</div>
+                                    <div class="text-2xl font-bold text-blue-600">2,340L</div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="text-sm text-gray-500 mb-2">Recent Activities</div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-600">Morning milking completed</span>
+                                        <span class="text-gray-500">2h ago</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-600">Health check scheduled</span>
+                                        <span class="text-gray-500">4h ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Floating Icons -->
+        <div class="absolute top-20 left-10 floating-icon">
+            <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                <i class="fas fa-wifi text-white text-2xl"></i>
+            </div>
+        </div>
+        <div class="absolute top-40 right-20 floating-icon" style="animation-delay: 2s;">
+            <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                <i class="fas fa-chart-line text-white text-2xl"></i>
+            </div>
+        </div>
+        <div class="absolute bottom-40 left-20 floating-icon" style="animation-delay: 4s;">
+            <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                <i class="fas fa-mobile-alt text-white text-2xl"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Features Showcase -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-6" data-aos="fade-up">
+                    Why Farmers Choose Our Platform
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+                    Real farmers, real results. See how our smart farming platform transforms operations 
+                    and increases productivity across different types of farms.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="card-hover bg-white rounded-2xl p-8 shadow-lg border border-gray-100" data-aos="fade-up" data-aos-delay="100">
+                    <div class="relative h-48 mb-6 rounded-xl overflow-hidden">
+                        <img src="../static/images/farm_1.png" 
+                             alt="Farmer using tablet in dairy farm" 
+                             class="w-full h-full object-cover"
+                             loading="lazy"
+                             decoding="async"
+                             width="400"
+                             height="300">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Real-Time Monitoring</h3>
+                    <p class="text-gray-600 mb-4">
+                        Monitor your entire farm from anywhere with live data updates, alerts, 
+                        and comprehensive dashboards accessible on any device.
+                    </p>
+                    <div class="flex items-center text-green-600 font-semibold">
+                        <i class="fas fa-arrow-right mr-2"></i>
+                        Learn More
+                    </div>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="card-hover bg-white rounded-2xl p-8 shadow-lg border border-gray-100" data-aos="fade-up" data-aos-delay="100">
+                    <div class="relative h-48 mb-6 rounded-xl overflow-hidden">
+                        <img src="../static/images/FARM_PICC3.png" 
+                             alt="Farmer using tablet in dairy farm" 
+                             class="w-full h-full object-cover"
+                             loading="lazy"
+                             decoding="async"
+                             width="400"
+                             height="300">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Smart Technology</h3>
+                    <p class="text-gray-600 mb-4">
+                        IoT sensors, AI analytics, and automated systems work together to optimize 
+                        your farm operations and reduce manual labor.
+                    </p>
+                    <div class="flex items-center text-green-600 font-semibold">
+                        <i class="fas fa-arrow-right mr-2"></i>
+                        Learn More
+                    </div>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="card-hover bg-white rounded-2xl p-8 shadow-lg border border-gray-100" data-aos="fade-up" data-aos-delay="100">
+                    <div class="relative h-48 mb-6 rounded-xl overflow-hidden">
+                        <img src="../static/images/farm_2.png" 
+                             alt="Farmer using tablet in dairy farm" 
+                             class="w-full h-full object-cover"
+                             loading="lazy"
+                             decoding="async"
+                             width="400"
+                             height="300">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Data-Driven Insights</h3>
+                    <p class="text-gray-600 mb-4">
+                        Advanced analytics and reporting help you make informed decisions, 
+                        improve productivity, and maximize profitability.
+                    </p>
+                    <div class="flex items-center text-green-600 font-semibold">
+                        <i class="fas fa-arrow-right mr-2"></i>
+                        Learn More
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video Demo Section -->
+    <section id="demo" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-6" data-aos="fade-up">
+                    See It In Action
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+                    Watch how our platform transforms farm management with real examples 
+                    from actual farmers using our system.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div data-aos="fade-right">
+                    <div class="video-container rounded-2xl overflow-hidden shadow-2xl">
+                        <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
+                
+                <div data-aos="fade-left">
+                    <h3 class="text-3xl font-bold text-gray-900 mb-6">Platform Walkthrough</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-play text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Complete System Demo</h4>
+                                <p class="text-gray-600">See every feature in action with real farm data</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-mobile-alt text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Mobile App Features</h4>
+                                <p class="text-gray-600">Experience the mobile app in real farm conditions</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-chart-bar text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Analytics Deep Dive</h4>
+                                <p class="text-gray-600">Explore advanced analytics and reporting capabilities</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Success Stories -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-6" data-aos="fade-up">
+                    Real Farmers, Real Results
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+                    Hear from farmers who have transformed their operations with our smart farming platform.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Testimonial 1 -->
+                <div class="card-hover bg-white rounded-2xl p-8 shadow-lg border border-gray-100" data-aos="fade-up" data-aos-delay="100">
+                    <div class="flex items-center mb-6">
+                        <img src="../static/images/!dairy_cow_1.jpg" 
+                             alt="John Kimani" 
+                             class="w-16 h-16 rounded-full object-cover mr-4"
+                             loading="lazy"
+                             decoding="async"
+                             width="64"
+                             height="64">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900">John Kimani</h4>
+                            <p class="text-gray-600">Dairy Farmer, Nakuru</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-4 italic">
+                        "Since implementing Jo Tech Solutions, our milk production has increased by 35% 
+                        and we've reduced feed costs by 20%. The real-time monitoring has been a game-changer."
+                    </p>
+                    <div class="flex text-yellow-400">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="card-hover bg-white rounded-2xl p-8 shadow-lg border border-gray-100" data-aos="fade-up" data-aos-delay="200">
+                    <div class="flex items-center mb-6">
+                        <img src="../static/images/!kienyeji_chicken.jpg" 
+                             alt="Sarah Wanjiku" 
+                             class="w-16 h-16 rounded-full object-cover mr-4"
+                             loading="lazy"
+                             decoding="async"
+                             width="64"
+                             height="64">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900">Sarah Wanjiku</h4>
+                            <p class="text-gray-600">Poultry Farmer, Kiambu</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-4 italic">
+                        "The health monitoring system has helped us prevent diseases before they spread. 
+                        Our flock health has improved dramatically, and egg production is at an all-time high."
+                    </p>
+                    <div class="flex text-yellow-400">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="card-hover bg-white rounded-2xl p-8 shadow-lg border border-gray-100" data-aos="fade-up" data-aos-delay="300">
+                    <div class="flex items-center mb-6">
+                        <img src="../static/images/!pig_house.jpg" 
+                             alt="Michael Otieno" 
+                             class="w-16 h-16 rounded-full object-cover mr-4"
+                             loading="lazy"
+                             decoding="async"
+                             width="64"
+                             height="64">
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-900">Michael Otieno</h4>
+                            <p class="text-gray-600">Pig Farmer, Kisumu</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-4 italic">
+                        "The breeding management system has revolutionized our pig farming. 
+                        We can track genetics, optimize breeding cycles, and improve our stock quality significantly."
+                    </p>
+                    <div class="flex text-yellow-400">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="py-20 bg-gradient-to-r from-green-600 to-orange-600">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-white mb-6" data-aos="fade-up">
+                    Our Impact in Numbers
+                </h2>
+                <p class="text-xl text-white/90 max-w-3xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+                    Join thousands of farmers who have already transformed their operations with our platform.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center" data-aos="fade-up" data-aos-delay="100">
+                    <div class="text-5xl font-bold text-white mb-2">2,500+</div>
+                    <div class="text-white/90">Active Farms</div>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="200">
+                    <div class="text-5xl font-bold text-white mb-2">50,000+</div>
+                    <div class="text-white/90">Animals Tracked</div>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="300">
+                    <div class="text-5xl font-bold text-white mb-2">98%</div>
+                    <div class="text-white/90">Customer Satisfaction</div>
+                </div>
+                <div class="text-center" data-aos="fade-up" data-aos-delay="400">
+                    <div class="text-5xl font-bold text-white mb-2">35%</div>
+                    <div class="text-white/90">Avg. Productivity Increase</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <h2 class="text-4xl font-bold text-gray-900 mb-6" data-aos="fade-up">
+                Ready to Transform Your Farm?
+            </h2>
+            <p class="text-xl text-gray-600 mb-8" data-aos="fade-up" data-aos-delay="100">
+                Start your free trial today and experience the power of smart farming technology. 
+                No credit card required, full access to all features.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="200">
+                <a href="/employee/signup" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-full font-semibold hover:shadow-lg transition-all">
+                    Start Free Trial
+                </a>
+                <a href="/contact" class="border-2 border-green-500 text-green-600 px-8 py-4 rounded-full font-semibold hover:bg-green-500 hover:text-white transition-all">
+                    Contact Sales
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-2xl font-bold mb-4">Smart Animal Farming</h3>
+                    <p class="text-gray-400 mb-4">Smart farming solutions for modern agriculture.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-facebook text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-twitter text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-linkedin text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Solutions</h4>
+                    <ul class="space-y-2">
+                        <li><a href="/solutions" class="text-gray-400 hover:text-white transition-colors">Cattle Management</a></li>
+                        <li><a href="/solutions" class="text-gray-400 hover:text-white transition-colors">Pig Management</a></li>
+                        <li><a href="/solutions" class="text-gray-400 hover:text-white transition-colors">Poultry Management</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2">
+                        <li><a href="/about" class="text-gray-400 hover:text-white transition-colors">About Us</a></li>
+                        <li><a href="/contact" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+                        <li><a href="/features" class="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Documentation</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">API</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 Smart Animal Farming. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Initialize AOS -->
+    <script>
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+        
+        // Image lazy loading optimization
+        function initLazyLoading() {
+            const images = document.querySelectorAll('img[loading="lazy"]');
+            
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.classList.add('loaded');
+                            observer.unobserve(img);
+                        }
+                    });
+                });
+                
+                images.forEach(img => imageObserver.observe(img));
+            } else {
+                // Fallback for older browsers
+                images.forEach(img => {
+                    img.classList.add('loaded');
+                });
+            }
+        }
+        
+        // Mobile menu functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize lazy loading
+            initLazyLoading();
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuIcon = mobileMenuButton.querySelector('i');
+            
+            mobileMenuButton.addEventListener('click', function() {
+                // Toggle mobile menu visibility
+                if (mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.remove('hidden');
+                    // Use setTimeout to ensure the element is visible before adding animation class
+                    setTimeout(() => {
+                        mobileMenu.classList.add('show');
+                    }, 10);
+                    menuIcon.classList.remove('fa-bars');
+                    menuIcon.classList.add('fa-times');
+                } else {
+                    mobileMenu.classList.remove('show');
+                    // Wait for animation to complete before hiding
+                    setTimeout(() => {
+                        mobileMenu.classList.add('hidden');
+                    }, 300);
+                    menuIcon.classList.remove('fa-times');
+                    menuIcon.classList.add('fa-bars');
+                }
+            });
+            
+            // Close mobile menu when clicking on a link
+            const mobileMenuLinks = mobileMenu.querySelectorAll('a');
+            mobileMenuLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    mobileMenu.classList.remove('show');
+                    setTimeout(() => {
+                        mobileMenu.classList.add('hidden');
+                    }, 300);
+                    menuIcon.classList.remove('fa-times');
+                    menuIcon.classList.add('fa-bars');
+                });
+            });
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!mobileMenuButton.contains(event.target) && !mobileMenu.contains(event.target)) {
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.remove('show');
+                        setTimeout(() => {
+                            mobileMenu.classList.add('hidden');
+                        }, 300);
+                        menuIcon.classList.remove('fa-times');
+                        menuIcon.classList.add('fa-bars');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
