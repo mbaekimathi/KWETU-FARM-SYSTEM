@@ -3425,6 +3425,50 @@ def manager_farm_feed_analytics():
     }
     return render_template('admin_farm_feed_analytics.html', user=user_data)
 
+@app.route('/manager/farm/stock-management')
+def manager_farm_stock_management():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_stock_management.html', user=user_data)
+
+@app.route('/manager/farm/animal-relocation')
+def manager_farm_animal_relocation():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_animal_relocation.html', user=user_data)
+
+@app.route('/manager/farm/animal-relocation/audit')
+def manager_farm_animal_relocation_audit():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_animal_relocation_audit.html', user=user_data)
+
+@app.route('/manager/farm/revenue-generation')
+def manager_farm_revenue_generation():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_revenue_generation.html', user=user_data)
+
 @app.route('/manager/farm/feed-stock-management')
 def manager_farm_feed_stock_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -7772,6 +7816,60 @@ def admin_farm_feed_analytics():
     
     return render_template('admin_farm_feed_analytics.html', user=user_data)
 
+@app.route('/admin/farm/stock-management')
+def admin_farm_stock_management():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    
+    return render_template('admin_farm_stock_management.html', user=user_data)
+
+@app.route('/admin/farm/animal-relocation')
+def admin_farm_animal_relocation():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_animal_relocation.html', user=user_data)
+
+@app.route('/admin/farm/animal-relocation/audit')
+def admin_farm_animal_relocation_audit():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_animal_relocation_audit.html', user=user_data)
+
+@app.route('/admin/farm/revenue-generation')
+def admin_farm_revenue_generation():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_revenue_generation.html', user=user_data)
+
 @app.route('/admin/farm/feed-stock-management')
 def admin_farm_feed_stock_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -11895,6 +11993,219 @@ def get_farm_litters(farm_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/farm/animal-counts/<int:farm_id>', methods=['GET'])
+def get_farm_animal_counts(farm_id):
+    """Get counts of pigs, cows, and chickens for a specific farm"""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Pigs: count by farm_id (pigs table has farm_id) - use alias for DictCursor
+        cursor.execute("""
+            SELECT COUNT(*) as cnt FROM pigs WHERE farm_id = %s AND status = 'active'
+        """, (farm_id,))
+        row = cursor.fetchone()
+        pigs_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        
+        # Cows: count if farm_id column exists, else 0
+        cows_count = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cows' AND COLUMN_NAME = 'farm_id'")
+            r = cursor.fetchone()
+            if r and r.get('cnt') and r['cnt'] > 0:
+                cursor.execute("SELECT COUNT(*) as cnt FROM cows WHERE farm_id = %s AND status = 'active'", (farm_id,))
+                r2 = cursor.fetchone()
+                cows_count = int(r2['cnt']) if r2 and r2.get('cnt') is not None else 0
+        except Exception:
+            pass
+        
+        # Chickens: count if farm_id column exists, else 0
+        chickens_count = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chickens' AND COLUMN_NAME = 'farm_id'")
+            r = cursor.fetchone()
+            if r and r.get('cnt') and r['cnt'] > 0:
+                cursor.execute("SELECT COALESCE(SUM(quantity), 0) as total FROM chickens WHERE farm_id = %s AND current_status = 'active'", (farm_id,))
+                r2 = cursor.fetchone()
+                chickens_count = int(r2['total']) if r2 and r2.get('total') is not None else 0
+        except Exception:
+            pass
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'pigs_count': pigs_count,
+            'cows_count': cows_count,
+            'chickens_count': chickens_count
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Animal Relocation APIs
+def _ensure_relocation_table(cursor):
+    """Create animal_relocations table if not exists."""
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS animal_relocations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            animal_type ENUM('pig', 'cow', 'chicken') NOT NULL,
+            animal_id INT NOT NULL,
+            from_farm_id INT NOT NULL,
+            to_farm_id INT NOT NULL,
+            reason TEXT NOT NULL,
+            weight_kg DECIMAL(10,2) NULL,
+            health_status VARCHAR(100) NULL,
+            created_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (from_farm_id) REFERENCES farms(id),
+            FOREIGN KEY (to_farm_id) REFERENCES farms(id),
+            FOREIGN KEY (created_by) REFERENCES employees(id),
+            INDEX idx_animal (animal_type, animal_id),
+            INDEX idx_created_at (created_at)
+        )
+    """)
+
+@app.route('/api/relocation/farms', methods=['GET'])
+def api_relocation_farms():
+    """List all active farms for relocation dropdowns."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, farm_name, farm_location FROM farms WHERE status = 'active' ORDER BY farm_name ASC
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        farms = [{'id': r['id'], 'farm_name': r['farm_name'], 'farm_location': r.get('farm_location') or ''} for r in rows]
+        return jsonify({'success': True, 'farms': farms})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/relocation/animals', methods=['GET'])
+def api_relocation_animals():
+    """List animals by type with current farm (for relocation selection)."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    animal_type = request.args.get('type', '').strip().lower()
+    if animal_type not in ('pig', 'cow', 'chicken'):
+        return jsonify({'success': False, 'message': 'Invalid animal type'}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if animal_type == 'pig':
+            cursor.execute("""
+                SELECT p.id, p.tag_id, p.farm_id as current_farm_id, f.farm_name as current_farm_name,
+                       p.pig_type, p.breed
+                FROM pigs p
+                LEFT JOIN farms f ON p.farm_id = f.id
+                WHERE p.status = 'active'
+                ORDER BY p.tag_id ASC
+            """)
+            animals = [dict(row) for row in cursor.fetchall()]
+        else:
+            animals = []
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'animals': animals})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/relocation/record', methods=['POST'])
+def api_relocation_record():
+    """Record a relocation (session user and timestamp set server-side for audit)."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    try:
+        data = request.get_json()
+        animal_type = (data.get('animal_type') or '').strip().lower()
+        animal_id = data.get('animal_id')
+        from_farm_id = data.get('from_farm_id')
+        to_farm_id = data.get('to_farm_id')
+        reason = (data.get('reason') or '').strip()
+        weight_kg = data.get('weight_kg')
+        health_status = (data.get('health_status') or '').strip() or None
+        if animal_type not in ('pig', 'cow', 'chicken') or not animal_id or not from_farm_id or not to_farm_id:
+            return jsonify({'success': False, 'message': 'Animal type, animal id, from farm, and to farm are required'}), 400
+        if from_farm_id == to_farm_id:
+            return jsonify({'success': False, 'message': 'From and to farm must be different'}), 400
+        if not reason:
+            return jsonify({'success': False, 'message': 'Reason for relocation is required'}), 400
+        if weight_kg is not None and weight_kg != '':
+            try:
+                weight_kg = float(weight_kg)
+            except (TypeError, ValueError):
+                weight_kg = None
+        else:
+            weight_kg = None
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        _ensure_relocation_table(cursor)
+        created_by = session['employee_id']
+        cursor.execute("""
+            INSERT INTO animal_relocations (animal_type, animal_id, from_farm_id, to_farm_id, reason, weight_kg, health_status, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (animal_type, int(animal_id), int(from_farm_id), int(to_farm_id), reason, weight_kg, health_status, created_by))
+        if animal_type == 'pig':
+            cursor.execute("UPDATE pigs SET farm_id = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s AND status = 'active'", (int(to_farm_id), int(animal_id)))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Relocation recorded successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/relocation/audit', methods=['GET'])
+def api_relocation_audit():
+    """List all relocation records for audit (with created_by name and created_at)."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        _ensure_relocation_table(cursor)
+        cursor.execute("""
+            SELECT r.id, r.animal_type, r.animal_id, r.from_farm_id, r.to_farm_id, r.reason, r.weight_kg, r.health_status,
+                   r.created_by, r.created_at,
+                   e.full_name as created_by_name,
+                   f1.farm_name as from_farm_name, f2.farm_name as to_farm_name
+            FROM animal_relocations r
+            LEFT JOIN employees e ON r.created_by = e.id
+            LEFT JOIN farms f1 ON r.from_farm_id = f1.id
+            LEFT JOIN farms f2 ON r.to_farm_id = f2.id
+            ORDER BY r.created_at DESC
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        records = []
+        for r in rows:
+            records.append({
+                'id': r['id'],
+                'animal_type': r['animal_type'],
+                'animal_id': r['animal_id'],
+                'from_farm_id': r['from_farm_id'],
+                'to_farm_id': r['to_farm_id'],
+                'from_farm_name': r.get('from_farm_name') or '',
+                'to_farm_name': r.get('to_farm_name') or '',
+                'reason': r.get('reason') or '',
+                'weight_kg': float(r['weight_kg']) if r.get('weight_kg') is not None else None,
+                'health_status': r.get('health_status'),
+                'created_by': r['created_by'],
+                'created_by_name': r.get('created_by_name') or 'Unknown',
+                'created_at': r['created_at'].strftime('%Y-%m-%d %H:%M:%S') if r.get('created_at') else None
+            })
+        return jsonify({'success': True, 'records': records})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Pig Management API Routes
 @app.route('/api/pig/register', methods=['POST'])

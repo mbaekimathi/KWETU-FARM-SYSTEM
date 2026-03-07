@@ -159,140 +159,78 @@
                 </div>
             </div>
 
-            <!-- Farm Information Card -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Farm Information</h3>
-                    <div class="flex items-center space-x-2">
-                        <span class="px-3 py-1 text-sm font-medium bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 rounded-full">
-                            Active
-                        </span>
+            <!-- Farm details dropdown (hide details by default) -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-8 overflow-hidden">
+                <button type="button" id="farm-details-toggle" class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Farm details</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Name, location, status and more</p>
+                        </div>
                     </div>
-                </div>
-                
-                <div id="farm-details" class="space-y-6">
-                    <!-- Loading state -->
-                    <div class="flex items-center justify-center p-8">
-                        <div class="text-center">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Loading farm details...</p>
+                    <svg id="farm-details-chevron" class="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div id="farm-details-content" class="border-t border-gray-200 dark:border-gray-700 hidden">
+                    <div class="p-6">
+                        <div id="farm-details" class="space-y-6">
+                            <!-- Loading state -->
+                            <div class="flex items-center justify-center p-8">
+                                <div class="text-center">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Loading farm details...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Farm Statistics -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl shadow-lg border border-blue-200 dark:border-blue-700/50 p-6 hover:shadow-xl transition-all duration-300">
+            <!-- Farm Statistics: Animals in this farm only -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-gradient-to-br from-pink-50 to-rose-100 dark:from-pink-900/20 dark:to-rose-800/20 rounded-xl shadow-lg border border-pink-200 dark:border-pink-700/50 p-6 hover:shadow-xl transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                </svg>
+                            <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">🐷</span>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-blue-700 dark:text-blue-300">Total Pigs</p>
-                                <p id="total-pigs" class="text-2xl font-bold text-blue-900 dark:text-blue-100">0</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                </svg>
+                                <p class="text-sm font-medium text-pink-700 dark:text-pink-300">Pigs</p>
+                                <p id="total-pigs" class="text-2xl font-bold text-pink-900 dark:text-pink-100">0</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl shadow-lg border border-green-200 dark:border-green-700/50 p-6 hover:shadow-xl transition-all duration-300">
+                <div class="bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-900/20 dark:to-amber-800/20 rounded-xl shadow-lg border border-orange-200 dark:border-orange-700/50 p-6 hover:shadow-xl transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                </svg>
+                            <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">🐄</span>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-green-700 dark:text-green-300">Available</p>
-                                <p id="available-pigs" class="text-2xl font-bold text-green-900 dark:text-green-100">0</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
+                                <p class="text-sm font-medium text-orange-700 dark:text-orange-300">Cows</p>
+                                <p id="total-cows" class="text-2xl font-bold text-orange-900 dark:text-orange-100">0</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 rounded-xl shadow-lg border border-pink-200 dark:border-pink-700/50 p-6 hover:shadow-xl transition-all duration-300">
+                <div class="bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/20 dark:to-amber-800/20 rounded-xl shadow-lg border border-yellow-200 dark:border-yellow-700/50 p-6 hover:shadow-xl transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                                </svg>
+                            <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">🐔</span>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-pink-700 dark:text-pink-300">Pregnant</p>
-                                <p id="pregnant-pigs" class="text-2xl font-bold text-pink-900 dark:text-pink-100">0</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-8 h-8 bg-pink-500/20 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl shadow-lg border border-purple-200 dark:border-purple-700/50 p-6 hover:shadow-xl transition-all duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-purple-700 dark:text-purple-300">Young Pigs</p>
-                                <p id="young-pigs" class="text-2xl font-bold text-purple-900 dark:text-purple-100">0</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl shadow-lg border border-indigo-200 dark:border-indigo-700/50 p-6 hover:shadow-xl transition-all duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-indigo-700 dark:text-indigo-300">Total Litters</p>
-                                <p id="total-litters" class="text-2xl font-bold text-indigo-900 dark:text-indigo-100">0</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                </svg>
+                                <p class="text-sm font-medium text-yellow-700 dark:text-yellow-300">Chickens</p>
+                                <p id="total-chickens" class="text-2xl font-bold text-yellow-900 dark:text-yellow-100">0</p>
                             </div>
                         </div>
                     </div>
@@ -520,6 +458,47 @@
         updateTime();
         setInterval(updateTime, 1000);
         
+        // Farm details dropdown toggle (hide details by default)
+        const farmDetailsToggle = document.getElementById('farm-details-toggle');
+        const farmDetailsContent = document.getElementById('farm-details-content');
+        const farmDetailsChevron = document.getElementById('farm-details-chevron');
+        if (farmDetailsToggle && farmDetailsContent) {
+            farmDetailsToggle.addEventListener('click', function() {
+                const isHidden = farmDetailsContent.classList.contains('hidden');
+                farmDetailsContent.classList.toggle('hidden', !isHidden);
+                if (farmDetailsChevron) farmDetailsChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+        }
+        
+        // Load animal counts for this farm (pigs, cows, chickens)
+        async function loadAnimalCounts() {
+            const setCount = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+            try {
+                const response = await fetch(`/api/farm/animal-counts/${farmId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    setCount('total-pigs', Number(data.pigs_count) || 0);
+                    setCount('total-cows', Number(data.cows_count) || 0);
+                    setCount('total-chickens', Number(data.chickens_count) || 0);
+                } else {
+                    setCount('total-pigs', '0');
+                    setCount('total-cows', '0');
+                    setCount('total-chickens', '0');
+                }
+            } catch (error) {
+                console.error('Error loading animal counts:', error);
+                setCount('total-pigs', '0');
+                setCount('total-cows', '0');
+                setCount('total-chickens', '0');
+            }
+        }
+        
         // Load farm details
         async function loadFarmDetails() {
             try {
@@ -626,19 +605,8 @@
         function displayFarmPigs(pigs) {
             const container = document.getElementById('pigs-container');
             
-            // Update the total pigs count in statistics
+            // Update the total pigs count in statistics (for this farm)
             document.getElementById('total-pigs').textContent = pigs.length;
-            
-            // Calculate additional statistics
-            const availablePigs = pigs.filter(pig => pig.breeding_status === 'available').length;
-            const pregnantPigs = pigs.filter(pig => pig.breeding_status === 'pregnant').length;
-            const servedPigs = pigs.filter(pig => pig.breeding_status === 'served').length;
-            const youngPigs = pigs.filter(pig => pig.breeding_status === 'young').length;
-            
-            // Update statistics with real data
-            document.getElementById('available-pigs').textContent = availablePigs;
-            document.getElementById('pregnant-pigs').textContent = pregnantPigs;
-            document.getElementById('young-pigs').textContent = youngPigs;
             
             if (pigs.length === 0) {
                 container.innerHTML = `
@@ -763,9 +731,6 @@
         // Display farm litters
         function displayFarmLitters(litters) {
             const container = document.getElementById('litters-container');
-            
-            // Update the total litters count in statistics
-            document.getElementById('total-litters').textContent = litters.length;
             
             if (litters.length === 0) {
                 container.innerHTML = `
@@ -927,9 +892,10 @@
             }
         }
         
-        // Load farm details, pigs, and litters on page load
+        // Load farm details, animal counts, pigs, and litters on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadFarmDetails();
+            loadAnimalCounts();
             loadFarmPigs();
             loadFarmLitters();
             setupPigSearch();

@@ -228,28 +228,28 @@
                     <span class="font-medium">Farm Management</span>
                 </a>
                 
-                <!-- Pig Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/pig-management{% else %}/admin/farm/pig-management{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <div class="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <span class="text-2xl">🐷</span>
+                <!-- Stock Management -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/stock-management{% else %}/admin/farm/stock-management{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
+                    <div class="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <span class="text-2xl">📦</span>
                     </div>
-                    <span class="font-medium">Pig Management</span>
+                    <span class="font-medium">Stock Management</span>
                 </a>
                 
-                <!-- Cow Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/cow-management{% else %}/admin/farm/cow-management{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <div class="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <span class="text-2xl">🐄</span>
+                <!-- Animal Relocation -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/animal-relocation{% else %}/admin/farm/animal-relocation{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
+                    <div class="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <span class="text-2xl">🚚</span>
                     </div>
-                    <span class="font-medium">Cow Management</span>
+                    <span class="font-medium">Animal Relocation</span>
                 </a>
-                
-                <!-- Chicken Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-management{% else %}/admin/farm/chicken-management{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <div class="w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <span class="text-2xl">🐔</span>
+
+                <!-- Farm Revenue Generation -->
+                <a href="{% if user.role == 'manager' %}/manager/farm/revenue-generation{% else %}/admin/farm/revenue-generation{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
+                    <div class="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <span class="text-2xl">💰</span>
                     </div>
-                    <span class="font-medium">Chicken Management</span>
+                    <span class="font-medium">Farm Revenue Generation</span>
                 </a>
             </nav>
             
