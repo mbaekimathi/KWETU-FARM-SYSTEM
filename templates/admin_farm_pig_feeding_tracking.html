@@ -89,7 +89,7 @@
                 </button>
             </div>
             <nav class="flex-1 p-4 space-y-2">
-                <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/feeding-management" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-900/20 dark:hover:to-red-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-orange-500">
+                <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/pig-feeding-management" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-900/20 dark:hover:to-red-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-orange-500">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
                         <i class="fas fa-utensils text-white text-sm"></i>
                     </div>
@@ -101,15 +101,15 @@
                     </div>
                     <span class="font-medium text-blue-700 dark:text-blue-300">Feeding Tracking</span>
                 </div>
-                <a href="/admin/farm/cow-feed-stock-management" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-blue-500">
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-feed-stock-management{% else %}/admin/farm/pig-feed-stock-management{% endif %}" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-blue-500">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
                     <span class="font-medium">Feed Stock Management</span>
                 </a>
-                <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/feed-analytics" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-purple-500">
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-feed-analytics{% else %}/admin/farm/pig-feed-analytics{% endif %}" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-purple-500">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></div>
                     <span class="font-medium">Feed Analytics</span>
                 </a>
-                <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/feed-settings" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-gray-500">
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-feed-settings{% else %}/admin/farm/pig-feed-settings{% endif %}" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-gray-500">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-gray-400 to-slate-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>
                     <span class="font-medium">Feed Settings</span>
                 </a>
@@ -129,7 +129,7 @@
                         <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-2">Pig Feeding Tracking</h1>
                         <p class="text-sm sm:text-base text-gray-600 dark:text-gray-300">Daily feeding summary and feeding records by date</p>
                     </div>
-                    <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/feeding-management" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/pig-feeding-management" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
                         <i class="fas fa-arrow-left mr-2"></i>Back to Feeding Management
                     </a>
                 </div>
@@ -189,12 +189,13 @@
                                 <thead class="bg-gray-100 dark:bg-gray-700 sticky top-0">
                                     <tr>
                                         <th class="px-4 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Animal</th>
+                                        <th class="px-4 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Suggested feed</th>
                                         <th class="px-4 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Feed</th>
-                                        <th class="px-4 py-2 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Amount (kg) <span class="font-normal text-gray-500">— leave empty to skip</span></th>
+                                        <th class="px-4 py-2 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Weight (kg) <span class="font-normal text-gray-500">— enter kg to record, leave empty to skip</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="record-pigs-body" class="divide-y divide-gray-100 dark:divide-gray-600">
-                                    <tr><td colspan="3" class="px-4 py-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading pigs...</td></tr>
+                                    <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading pigs...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -488,6 +489,18 @@
                 return out;
             }
 
+            function resolveFeedIdFromSetting(ft) {
+                if (ft == null || ft === '') return null;
+                var id = parseInt(ft, 10);
+                if (!isNaN(id) && recordFeedsList.some(function(f) { return Number(f.id) === id; })) return id;
+                var ftStr = String(ft).trim().toLowerCase();
+                var found = recordFeedsList.filter(function(f) {
+                    var name = (f.feed_name || '').toLowerCase();
+                    var type = (f.feed_type || '').toLowerCase();
+                    return name === ftStr || type === ftStr;
+                })[0];
+                return found ? Number(found.id) : null;
+            }
             function getDefaultFeedIdForAge(settings, ageDays) {
                 if (!settings || settings.length === 0) return null;
                 for (var i = 0; i < settings.length; i++) {
@@ -497,18 +510,12 @@
                     if (isNaN(start)) start = 0;
                     if (isNaN(end)) end = 99999;
                     if (ageDays != null && ageDays >= start && ageDays <= end) {
-                        var ft = s.feed_type;
-                        if (ft == null) return null;
-                        var id = parseInt(ft, 10);
-                        if (!isNaN(id) && recordFeedsList.some(function(f) { return f.id === id; })) return id;
+                        var fid = resolveFeedIdFromSetting(s.feed_type);
+                        if (fid) return fid;
                         return null;
                     }
                 }
-                var ft = settings[0].feed_type;
-                if (ft == null) return null;
-                var id = parseInt(ft, 10);
-                if (!isNaN(id) && recordFeedsList.some(function(f) { return f.id === id; })) return id;
-                return null;
+                return resolveFeedIdFromSetting(settings[0].feed_type);
             }
 
             function getAmountKgForAge(settings, ageDays) {
@@ -531,6 +538,18 @@
 
             var feedOptionsHtml = '';
 
+            function buildFeedOptionsWithSelected(selectedFeedId) {
+                return '<option value="">Select feed...</option>' + recordFeedsList.map(function(f) {
+                    var sel = selectedFeedId && f.id === selectedFeedId ? ' selected' : '';
+                    return '<option value="' + f.id + '"' + sel + '>' + (f.feed_name || 'Feed') + ' (stock: ' + (Number(f.current_stock_kg).toFixed(1)) + ' kg)</option>';
+                }).join('');
+            }
+
+            function getFeedNameById(id) {
+                var f = recordFeedsList.filter(function(x) { return x.id === id; })[0];
+                return f ? (f.feed_name || 'Feed') : '—';
+            }
+
             function applyDefaultsFromSettings() {
                 if (pigFeedSettings.length === 0) return;
                 var nextTime = getNextScheduledTime(pigFeedSettings);
@@ -545,7 +564,12 @@
                     var feedId = getDefaultFeedIdForAge(pigFeedSettings, isNaN(ageDays) ? null : ageDays);
                     if (feedId) sel.value = String(feedId);
                 });
-                /* Amount left empty – user enters only for animals fed; those with amount are marked completed */
+                document.querySelectorAll('.record-amount').forEach(function(inp) {
+                    var age = inp.getAttribute('data-age-days');
+                    var ageDays = age === '' || age === 'null' ? null : parseInt(age, 10);
+                    var suggestedKg = getAmountKgForAge(pigFeedSettings, isNaN(ageDays) ? null : ageDays);
+                    if (suggestedKg != null && suggestedKg > 0) inp.value = String(suggestedKg);
+                });
             }
 
             function loadPigsForRecord() {
@@ -555,19 +579,29 @@
                     var tbody = document.getElementById('record-pigs-body');
                     if (!tbody) return;
                     if (pigs.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">No active pigs. Register pigs first.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No active pigs. Register pigs first.</td></tr>';
                         return;
                     }
                     tbody.innerHTML = pigs.map(function(p) {
                         var ageDays = p.age_days != null ? p.age_days : '';
+                        var ageNum = ageDays === '' || ageDays === 'null' ? null : parseInt(ageDays, 10);
+                        var suggestedFeedId = getDefaultFeedIdForAge(pigFeedSettings, isNaN(ageNum) ? null : ageNum);
+                        var suggestedKg = getAmountKgForAge(pigFeedSettings, isNaN(ageNum) ? null : ageNum);
+                        var suggestedText = '—';
+                        if (suggestedFeedId) {
+                            suggestedText = getFeedNameById(suggestedFeedId);
+                            if (suggestedKg != null && suggestedKg > 0) suggestedText += ' · ' + Number(suggestedKg).toFixed(2) + ' kg';
+                        }
+                        var feedSelectHtml = buildFeedOptionsWithSelected(suggestedFeedId || null);
                         return '<tr><td class="px-4 py-2 font-medium text-gray-900 dark:text-white">' + (p.name || p.tag_id) + ' <span class="text-xs text-gray-500">(' + p.tag_id + ')</span></td>' +
-                            '<td class="px-4 py-2"><select class="record-feed-id w-full max-w-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" data-pig-id="' + p.id + '" data-tag-id="' + (p.tag_id || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '">' + feedOptionsHtml + '</select></td>' +
-                            '<td class="px-4 py-2 text-right"><input type="number" min="0" step="0.1" class="record-amount w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right text-sm" data-pig-id="' + p.id + '" data-tag-id="' + (p.tag_id || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '" placeholder="Enter to record"></td></tr>';
+                            '<td class="px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">' + suggestedText + '</td>' +
+                            '<td class="px-4 py-2"><select class="record-feed-id w-full max-w-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" data-pig-id="' + p.id + '" data-tag-id="' + (p.tag_id || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '">' + feedSelectHtml + '</select></td>' +
+                            '<td class="px-4 py-2 text-right"><input type="number" min="0" step="0.01" class="record-amount w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right text-sm" data-pig-id="' + p.id + '" data-tag-id="' + (p.tag_id || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '" placeholder="Enter kg"></td></tr>';
                     }).join('');
                     applyDefaultsFromSettings();
                 }).catch(function() {
                     var tbody = document.getElementById('record-pigs-body');
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-red-500">Error loading pigs.</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-red-500">Error loading pigs.</td></tr>';
                 });
             }
             function loadFeedsForRecord() {
@@ -582,19 +616,22 @@
             }
 
             function loadPigFeedSettings() {
-                fetch('/api/feed/settings/list?animal_type=pig').then(function(r) { return r.json(); }).then(function(data) {
+                return fetch('/api/feed/settings/list?animal_type=pig').then(function(r) { return r.json(); }).then(function(data) {
                     if (data.success && data.settings) {
                         pigFeedSettings = data.settings;
-                        applyDefaultsFromSettings();
                     }
-                }).catch(function() {});
+                    return data;
+                }).catch(function() { return {}; });
             }
 
-            loadPigFeedSettings();
             var dt = new Date();
             dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
             document.getElementById('record-feeding-datetime').value = dt.toISOString().slice(0, 16);
-            loadFeedsForRecord().then(function() { loadPigsForRecord(); });
+            loadPigFeedSettings().then(function() {
+                return loadFeedsForRecord();
+            }).then(function() {
+                loadPigsForRecord();
+            });
 
             document.getElementById('submit-record-feeding').addEventListener('click', function() {
                 var feedingDatetime = document.getElementById('record-feeding-datetime').value;

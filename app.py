@@ -2090,12 +2090,61 @@ def admin_dashboard():
         """)
         upcoming_activities = cursor.fetchall()
         
-        # Calculate totals
-        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0)
+        # Chickens count (if table exists)
+        chickens_total = 0
+        chickens_batches = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM chickens WHERE current_status = 'active'")
+            row = cursor.fetchone()
+            chickens_total = int(row['cnt']) if row and row.get('cnt') is not None else 0
+            cursor.execute("SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens WHERE current_status = 'active' AND batch_id IS NOT NULL")
+            row = cursor.fetchone()
+            chickens_batches = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        except Exception:
+            pass
+        
+        # Farms count
+        cursor.execute("SELECT COUNT(*) as cnt FROM farms WHERE status = 'active'")
+        row = cursor.fetchone()
+        farms_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        
+        # Today's milk production
+        cursor.execute("""
+            SELECT COALESCE(SUM(milk_quantity), 0) as today_milk
+            FROM milk_production
+            WHERE production_date = CURDATE()
+        """)
+        row = cursor.fetchone()
+        today_milk = float(row['today_milk']) if row and row.get('today_milk') is not None else 0
+        
+        # Today's feed stock transactions (if feed_stock exists)
+        today_stock_in = 0
+        today_stock_out = 0
+        try:
+            cursor.execute("""
+                SELECT 
+                    SUM(CASE WHEN transaction_type = 'stock_in' THEN 1 ELSE 0 END) as cnt_in,
+                    SUM(CASE WHEN transaction_type = 'stock_out' THEN 1 ELSE 0 END) as cnt_out
+                FROM feed_stock
+                WHERE DATE(transaction_date) = CURDATE()
+            """)
+            row = cursor.fetchone()
+            if row:
+                today_stock_in = int(row.get('cnt_in') or 0)
+                today_stock_out = int(row.get('cnt_out') or 0)
+        except Exception:
+            pass
+        
+        # Calculate totals (include chickens)
+        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0) + chickens_total
         total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)  # piglets + alive piglets from litters
         
-        # Prepare dashboard data
+        from datetime import datetime
+        today_str = datetime.now().strftime('%A, %B %d, %Y')
+        
+        # Prepare dashboard data (live as of today)
         dashboard_data = {
+            'today_date': today_str,
             'pigs': {
                 'total_pigs': pigs_data['total_pigs'] or 0,
                 'breeding_sows': pigs_data['breeding_sows'] or 0,
@@ -2110,6 +2159,16 @@ def admin_dashboard():
                 'cows_milked': milk_data['cows_milked'] or 0,
                 'avg_milk_per_cow': milk_data['avg_milk_per_cow'] or 0
             },
+            'chickens': {
+                'total_chickens': chickens_total,
+                'batches': chickens_batches
+            },
+            'farms_count': farms_count,
+            'today': {
+                'milk_liters': round(today_milk, 1),
+                'stock_in_count': today_stock_in,
+                'stock_out_count': today_stock_out
+            },
             'totals': {
                 'total_animals': total_animals,
                 'daily_production': milk_data['avg_daily_milk_production'] or 0,  # average daily milk production
@@ -2123,10 +2182,15 @@ def admin_dashboard():
         
     except Exception as e:
         print(f"Error fetching dashboard data: {str(e)}")
-        # Fallback data in case of error
+        from datetime import datetime
+        today_str = datetime.now().strftime('%A, %B %d, %Y')
         dashboard_data = {
+            'today_date': today_str,
             'pigs': {'total_pigs': 0, 'breeding_sows': 0, 'piglets': 0, 'litters': 0},
             'cows': {'total_cows': 0, 'female_cows': 0, 'male_cows': 0, 'avg_daily_milk_production': 0, 'cows_milked': 0, 'avg_milk_per_cow': 0},
+            'chickens': {'total_chickens': 0, 'batches': 0},
+            'farms_count': 0,
+            'today': {'milk_liters': 0, 'stock_in_count': 0, 'stock_out_count': 0},
             'totals': {'total_animals': 0, 'daily_production': 0, 'system_health': 0},
             'upcoming_activities': []
         }
@@ -2270,12 +2334,61 @@ def manager_dashboard():
         """)
         upcoming_activities = cursor.fetchall()
         
-        # Calculate totals
-        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0)
+        # Chickens count (if table exists)
+        chickens_total = 0
+        chickens_batches = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM chickens WHERE current_status = 'active'")
+            row = cursor.fetchone()
+            chickens_total = int(row['cnt']) if row and row.get('cnt') is not None else 0
+            cursor.execute("SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens WHERE current_status = 'active' AND batch_id IS NOT NULL")
+            row = cursor.fetchone()
+            chickens_batches = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        except Exception:
+            pass
+        
+        # Farms count
+        cursor.execute("SELECT COUNT(*) as cnt FROM farms WHERE status = 'active'")
+        row = cursor.fetchone()
+        farms_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        
+        # Today's milk production
+        cursor.execute("""
+            SELECT COALESCE(SUM(milk_quantity), 0) as today_milk
+            FROM milk_production
+            WHERE production_date = CURDATE()
+        """)
+        row = cursor.fetchone()
+        today_milk = float(row['today_milk']) if row and row.get('today_milk') is not None else 0
+        
+        # Today's feed stock transactions (if feed_stock exists)
+        today_stock_in = 0
+        today_stock_out = 0
+        try:
+            cursor.execute("""
+                SELECT 
+                    SUM(CASE WHEN transaction_type = 'stock_in' THEN 1 ELSE 0 END) as cnt_in,
+                    SUM(CASE WHEN transaction_type = 'stock_out' THEN 1 ELSE 0 END) as cnt_out
+                FROM feed_stock
+                WHERE DATE(transaction_date) = CURDATE()
+            """)
+            row = cursor.fetchone()
+            if row:
+                today_stock_in = int(row.get('cnt_in') or 0)
+                today_stock_out = int(row.get('cnt_out') or 0)
+        except Exception:
+            pass
+        
+        # Calculate totals (include chickens)
+        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0) + chickens_total
         total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)  # piglets + alive piglets from litters
         
-        # Prepare dashboard data
+        from datetime import datetime
+        today_str = datetime.now().strftime('%A, %B %d, %Y')
+        
+        # Prepare dashboard data (live as of today)
         dashboard_data = {
+            'today_date': today_str,
             'pigs': {
                 'total_pigs': pigs_data['total_pigs'] or 0,
                 'breeding_sows': pigs_data['breeding_sows'] or 0,
@@ -2290,6 +2403,16 @@ def manager_dashboard():
                 'cows_milked': milk_data['cows_milked'] or 0,
                 'avg_milk_per_cow': milk_data['avg_milk_per_cow'] or 0
             },
+            'chickens': {
+                'total_chickens': chickens_total,
+                'batches': chickens_batches
+            },
+            'farms_count': farms_count,
+            'today': {
+                'milk_liters': round(today_milk, 1),
+                'stock_in_count': today_stock_in,
+                'stock_out_count': today_stock_out
+            },
             'totals': {
                 'total_animals': total_animals,
                 'daily_production': milk_data['avg_daily_milk_production'] or 0,  # average daily milk production
@@ -2303,10 +2426,15 @@ def manager_dashboard():
         
     except Exception as e:
         print(f"Error fetching dashboard data: {str(e)}")
-        # Fallback data in case of error
+        from datetime import datetime
+        today_str = datetime.now().strftime('%A, %B %d, %Y')
         dashboard_data = {
+            'today_date': today_str,
             'pigs': {'total_pigs': 0, 'breeding_sows': 0, 'piglets': 0, 'litters': 0},
             'cows': {'total_cows': 0, 'female_cows': 0, 'male_cows': 0, 'avg_daily_milk_production': 0, 'cows_milked': 0, 'avg_milk_per_cow': 0},
+            'chickens': {'total_chickens': 0, 'batches': 0},
+            'farms_count': 0,
+            'today': {'milk_liters': 0, 'stock_in_count': 0, 'stock_out_count': 0},
             'totals': {'total_animals': 0, 'daily_production': 0, 'system_health': 0},
             'upcoming_activities': []
         }
@@ -3108,7 +3236,12 @@ def manager_cows_analytics():
 
 # Additional Manager Farm Routes
 @app.route('/manager/farm/feeding-management')
-def manager_farm_feeding_management():
+def manager_farm_feeding_management_redirect():
+    """Redirect legacy URL to pig-feeding-management."""
+    return redirect(url_for('manager_farm_pig_feeding_management'))
+
+@app.route('/manager/farm/pig-feeding-management')
+def manager_farm_pig_feeding_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
     
@@ -3404,7 +3537,11 @@ def manager_farm_slaughter():
     return render_template('admin_farm_slaughter.html', user=user_data)
 
 @app.route('/manager/farm/feed-settings')
-def manager_farm_feed_settings():
+def manager_farm_feed_settings_redirect():
+    return redirect(url_for('manager_farm_pig_feed_settings'))
+
+@app.route('/manager/farm/pig-feed-settings')
+def manager_farm_pig_feed_settings():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
     user_data = {
@@ -3415,7 +3552,11 @@ def manager_farm_feed_settings():
     return render_template('admin_farm_feed_settings.html', user=user_data)
 
 @app.route('/manager/farm/feed-analytics')
-def manager_farm_feed_analytics():
+def manager_farm_feed_analytics_redirect():
+    return redirect(url_for('manager_farm_pig_feed_analytics'))
+
+@app.route('/manager/farm/pig-feed-analytics')
+def manager_farm_pig_feed_analytics():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
     user_data = {
@@ -3470,7 +3611,11 @@ def manager_farm_revenue_generation():
     return render_template('admin_farm_revenue_generation.html', user=user_data)
 
 @app.route('/manager/farm/feed-stock-management')
-def manager_farm_feed_stock_management():
+def manager_farm_feed_stock_management_redirect():
+    return redirect(url_for('manager_farm_pig_feed_stock_management'))
+
+@app.route('/manager/farm/pig-feed-stock-management')
+def manager_farm_pig_feed_stock_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
     user_data = {
@@ -7769,11 +7914,15 @@ def admin_farm_slaughter_view_production():
     return render_template('admin_farm_slaughter_view_production.html', user=user_data)
 
 @app.route('/admin/farm/feeding-management')
-def admin_farm_feeding_management():
+def admin_farm_feeding_management_redirect():
+    """Redirect legacy URL to pig-feeding-management."""
+    return redirect(url_for('admin_farm_pig_feeding_management'))
+
+@app.route('/admin/farm/pig-feeding-management')
+def admin_farm_pig_feeding_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
     
-    # Get user data from session
     user_data = {
         'id': session['employee_id'],
         'name': session['employee_name'],
@@ -7785,11 +7934,13 @@ def admin_farm_feeding_management():
     return render_template('admin_farm_feeding_management.html', user=user_data)
 
 @app.route('/admin/farm/feed-settings')
-def admin_farm_feed_settings():
+def admin_farm_feed_settings_redirect():
+    return redirect(url_for('admin_farm_pig_feed_settings'))
+
+@app.route('/admin/farm/pig-feed-settings')
+def admin_farm_pig_feed_settings():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
-    
-    # Get user data from session
     user_data = {
         'id': session['employee_id'],
         'name': session['employee_name'],
@@ -7797,15 +7948,16 @@ def admin_farm_feed_settings():
         'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    
     return render_template('admin_farm_feed_settings.html', user=user_data)
 
 @app.route('/admin/farm/feed-analytics')
-def admin_farm_feed_analytics():
+def admin_farm_feed_analytics_redirect():
+    return redirect(url_for('admin_farm_pig_feed_analytics'))
+
+@app.route('/admin/farm/pig-feed-analytics')
+def admin_farm_pig_feed_analytics():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
-    
-    # Get user data from session
     user_data = {
         'id': session['employee_id'],
         'name': session['employee_name'],
@@ -7813,7 +7965,6 @@ def admin_farm_feed_analytics():
         'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    
     return render_template('admin_farm_feed_analytics.html', user=user_data)
 
 @app.route('/admin/farm/stock-management')
@@ -7871,11 +8022,13 @@ def admin_farm_revenue_generation():
     return render_template('admin_farm_revenue_generation.html', user=user_data)
 
 @app.route('/admin/farm/feed-stock-management')
-def admin_farm_feed_stock_management():
+def admin_farm_feed_stock_management_redirect():
+    return redirect(url_for('admin_farm_pig_feed_stock_management'))
+
+@app.route('/admin/farm/pig-feed-stock-management')
+def admin_farm_pig_feed_stock_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
-    
-    # Get user data from session
     user_data = {
         'id': session['employee_id'],
         'name': session['employee_name'],
@@ -7883,7 +8036,6 @@ def admin_farm_feed_stock_management():
         'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    
     return render_template('admin_farm_feed_stock_management.html', user=user_data)
 
 # Cow Feeding Management Routes
@@ -9136,7 +9288,7 @@ def get_feeds_list():
         """
         params = []
         if animal_type:
-            sql += " AND COALESCE(animal_type, 'pig') = %s"
+            sql += " AND animal_type = %s"
             params.append(animal_type)
         sql += " ORDER BY feed_name ASC"
         cursor.execute(sql, params or None)
@@ -9198,7 +9350,7 @@ def get_feeds_with_stock():
                 INDEX idx_transaction_date (transaction_date)
             )
         """)
-        # Get active feeds (optionally filtered by animal type)
+        # Get active feeds (optionally filtered by animal type – only feeds for that animal)
         feeds_sql = """
             SELECT id, feed_name, feed_type, unit_of_measure, notes, status, created_at,
                    COALESCE(animal_type, 'pig') as animal_type
@@ -9207,7 +9359,7 @@ def get_feeds_with_stock():
         """
         feeds_params = []
         if animal_type:
-            feeds_sql += " AND COALESCE(animal_type, 'pig') = %s"
+            feeds_sql += " AND animal_type = %s"
             feeds_params.append(animal_type)
         feeds_sql += " ORDER BY feed_name ASC"
         cursor.execute(feeds_sql, feeds_params or None)
@@ -9249,6 +9401,7 @@ def get_feeds_with_stock():
                 'unit_of_measure': row['unit_of_measure'],
                 'animal_type': row.get('animal_type') or 'pig',
                 'notes': row['notes'],
+                'status': row.get('status') or 'active',
                 'current_stock_kg': round(stock_by_feed.get(fid, 0), 2),
                 'created_at': row['created_at'].strftime('%Y-%m-%d') if row['created_at'] else None
             })
@@ -9421,7 +9574,7 @@ def feed_stock_transaction():
 
 @app.route('/api/feed/stock/transactions', methods=['GET'])
 def get_feed_stock_transactions():
-    """Get feed stock transactions"""
+    """Get feed stock transactions. Optional animal_type=pig|cow|chicken to show only that animal's feeds."""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
@@ -9433,12 +9586,15 @@ def get_feed_stock_transactions():
         end_date = request.args.get('end_date')
         farm_id = request.args.get('farm_id', type=int)
         transaction_type = request.args.get('transaction_type')  # 'stock_in' or 'stock_out' to filter
+        animal_type = (request.args.get('animal_type') or '').strip().lower()
+        if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
+            animal_type = None
         limit = min(limit, 500)
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Build WHERE clause for date and farm filtering
+        # Build WHERE clause for date, farm, and animal filtering
         where_clause = "WHERE 1=1"
         params = []
         
@@ -9459,6 +9615,10 @@ def get_feed_stock_transactions():
         if transaction_type in ('stock_in', 'stock_out'):
             where_clause += " AND fs.transaction_type = %s"
             params.append(transaction_type)
+        
+        if animal_type:
+            where_clause += " AND COALESCE(f.animal_type, 'pig') = %s"
+            params.append(animal_type)
         
         params.append(limit)
         
@@ -9527,7 +9687,7 @@ def get_feed_stock_transactions():
 
 @app.route('/api/feed/stock/stats', methods=['GET'])
 def get_feed_stock_stats():
-    """Get feed stock statistics"""
+    """Get feed stock statistics. Optional animal_type=pig|cow|chicken to filter by feed's animal."""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
@@ -9537,6 +9697,9 @@ def get_feed_stock_stats():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         farm_id = request.args.get('farm_id', type=int)
+        animal_type = (request.args.get('animal_type') or '').strip().lower()
+        if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
+            animal_type = None
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -9571,42 +9734,49 @@ def get_feed_stock_stats():
             # Column might already exist, ignore error
             pass
         
-        # Build WHERE clause for date and farm filtering
-        where_clause = ""
-        params = []
+        # Build WHERE clause for date, farm, and animal filtering (join feeds for animal_type)
+        where_base = "fs.transaction_type = %s"
+        where_extra = ""
+        params_base = []
+        params_extra = []
         
         if date:
-            where_clause = "AND DATE(transaction_date) = %s"
-            params.append(date)
+            where_extra += " AND DATE(fs.transaction_date) = %s"
+            params_extra.append(date)
         elif month:
-            where_clause = "AND DATE_FORMAT(transaction_date, '%Y-%m') = %s"
-            params.append(month)
+            where_extra += " AND DATE_FORMAT(fs.transaction_date, '%%Y-%%m') = %s"
+            params_extra.append(month)
         elif start_date and end_date:
-            where_clause = "AND DATE(transaction_date) BETWEEN %s AND %s"
-            params.extend([start_date, end_date])
+            where_extra += " AND DATE(fs.transaction_date) BETWEEN %s AND %s"
+            params_extra.extend([start_date, end_date])
         else:
-            # Default to today if no filter
-            where_clause = "AND DATE(transaction_date) = CURDATE()"
+            where_extra += " AND DATE(fs.transaction_date) = CURDATE()"
         
         if farm_id:
-            where_clause += " AND farm_id = %s"
-            params.append(farm_id)
+            where_extra += " AND fs.farm_id = %s"
+            params_extra.append(farm_id)
+        
+        if animal_type:
+            where_extra += " AND COALESCE(f.animal_type, 'pig') = %s"
+            params_extra.append(animal_type)
         
         # Get stock in
+        params_in = ['stock_in'] + params_extra
         cursor.execute(f"""
-            SELECT COUNT(*) as count FROM feed_stock 
-            WHERE transaction_type = 'stock_in' 
-            {where_clause}
-        """, params)
+            SELECT COUNT(*) as count FROM feed_stock fs
+            INNER JOIN feeds f ON fs.feed_id = f.id
+            WHERE {where_base} {where_extra}
+        """, params_in)
         result = cursor.fetchone()
         stock_in_today = result['count'] if result else 0
         
         # Get stock out
+        params_out = ['stock_out'] + params_extra
         cursor.execute(f"""
-            SELECT COUNT(*) as count FROM feed_stock 
-            WHERE transaction_type = 'stock_out' 
-            {where_clause}
-        """, params)
+            SELECT COUNT(*) as count FROM feed_stock fs
+            INNER JOIN feeds f ON fs.feed_id = f.id
+            WHERE {where_base} {where_extra}
+        """, params_out)
         result = cursor.fetchone()
         stock_out_today = result['count'] if result else 0
         
@@ -9775,7 +9945,7 @@ def get_last_feed_stock_transaction():
 
 @app.route('/api/feed/stock/analytics', methods=['GET'])
 def get_feed_stock_analytics():
-    """Get feed stock analytics data for charts"""
+    """Get feed stock analytics data for charts. Optional animal_type=pig|cow|chicken."""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
@@ -9784,6 +9954,9 @@ def get_feed_stock_analytics():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         days = request.args.get('days', 30, type=int)  # Default to last 30 days
+        animal_type = (request.args.get('animal_type') or '').strip().lower()
+        if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
+            animal_type = None
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -9804,9 +9977,23 @@ def get_feed_stock_analytics():
             date_filter += " AND fs.farm_id = %s"
             params.append(farm_id)
         
-        # Get all feeds
-        cursor.execute("SELECT id, feed_name, feed_type, unit_of_measure FROM feeds WHERE status = 'active'")
+        # Get feeds (optionally filtered by animal_type)
+        feeds_sql = "SELECT id, feed_name, feed_type, unit_of_measure FROM feeds WHERE status = 'active'"
+        feeds_params = []
+        if animal_type:
+            feeds_sql += " AND COALESCE(animal_type, 'pig') = %s"
+            feeds_params.append(animal_type)
+        cursor.execute(feeds_sql, feeds_params or None)
         feeds = {row['id']: row for row in cursor.fetchall()}
+        
+        # Restrict transactions to these feeds only (so animal_type filter is applied)
+        feed_ids = list(feeds.keys())
+        if animal_type and not feed_ids:
+            date_filter += " AND 1=0"  # no feeds for this animal
+        elif feed_ids:
+            placeholders = ','.join(['%s'] * len(feed_ids))
+            date_filter += f" AND fs.feed_id IN ({placeholders})"
+            params.extend(feed_ids)
         
         # Get stock transactions grouped by date and feed (including cost)
         query = f"""
@@ -11465,12 +11652,61 @@ def admin_access_manager():
         """)
         upcoming_activities = cursor.fetchall()
         
-        # Calculate totals
-        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0)
+        # Chickens count (if table exists)
+        chickens_total = 0
+        chickens_batches = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM chickens WHERE current_status = 'active'")
+            row = cursor.fetchone()
+            chickens_total = int(row['cnt']) if row and row.get('cnt') is not None else 0
+            cursor.execute("SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens WHERE current_status = 'active' AND batch_id IS NOT NULL")
+            row = cursor.fetchone()
+            chickens_batches = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        except Exception:
+            pass
+        
+        # Farms count
+        cursor.execute("SELECT COUNT(*) as cnt FROM farms WHERE status = 'active'")
+        row = cursor.fetchone()
+        farms_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
+        
+        # Today's milk production
+        cursor.execute("""
+            SELECT COALESCE(SUM(milk_quantity), 0) as today_milk
+            FROM milk_production
+            WHERE production_date = CURDATE()
+        """)
+        row = cursor.fetchone()
+        today_milk = float(row['today_milk']) if row and row.get('today_milk') is not None else 0
+        
+        # Today's feed stock transactions (if feed_stock exists)
+        today_stock_in = 0
+        today_stock_out = 0
+        try:
+            cursor.execute("""
+                SELECT 
+                    SUM(CASE WHEN transaction_type = 'stock_in' THEN 1 ELSE 0 END) as cnt_in,
+                    SUM(CASE WHEN transaction_type = 'stock_out' THEN 1 ELSE 0 END) as cnt_out
+                FROM feed_stock
+                WHERE DATE(transaction_date) = CURDATE()
+            """)
+            row = cursor.fetchone()
+            if row:
+                today_stock_in = int(row.get('cnt_in') or 0)
+                today_stock_out = int(row.get('cnt_out') or 0)
+        except Exception:
+            pass
+        
+        # Calculate totals (include chickens)
+        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0) + chickens_total
         total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)  # piglets + alive piglets from litters
         
-        # Prepare dashboard data
+        from datetime import datetime
+        today_str = datetime.now().strftime('%A, %B %d, %Y')
+        
+        # Prepare dashboard data (live as of today)
         dashboard_data = {
+            'today_date': today_str,
             'pigs': {
                 'total_pigs': pigs_data['total_pigs'] or 0,
                 'breeding_sows': pigs_data['breeding_sows'] or 0,
@@ -11485,6 +11721,16 @@ def admin_access_manager():
                 'cows_milked': milk_data['cows_milked'] or 0,
                 'avg_milk_per_cow': milk_data['avg_milk_per_cow'] or 0
             },
+            'chickens': {
+                'total_chickens': chickens_total,
+                'batches': chickens_batches
+            },
+            'farms_count': farms_count,
+            'today': {
+                'milk_liters': round(today_milk, 1),
+                'stock_in_count': today_stock_in,
+                'stock_out_count': today_stock_out
+            },
             'totals': {
                 'total_animals': total_animals,
                 'daily_production': milk_data['avg_daily_milk_production'] or 0,  # average daily milk production
@@ -11498,10 +11744,15 @@ def admin_access_manager():
         
     except Exception as e:
         print(f"Error fetching dashboard data: {str(e)}")
-        # Fallback data in case of error
+        from datetime import datetime
+        today_str = datetime.now().strftime('%A, %B %d, %Y')
         dashboard_data = {
+            'today_date': today_str,
             'pigs': {'total_pigs': 0, 'breeding_sows': 0, 'piglets': 0, 'litters': 0},
             'cows': {'total_cows': 0, 'female_cows': 0, 'male_cows': 0, 'avg_daily_milk_production': 0, 'cows_milked': 0, 'avg_milk_per_cow': 0},
+            'chickens': {'total_chickens': 0, 'batches': 0},
+            'farms_count': 0,
+            'today': {'milk_liters': 0, 'stock_in_count': 0, 'stock_out_count': 0},
             'totals': {'total_animals': 0, 'daily_production': 0, 'system_health': 0},
             'upcoming_activities': []
         }

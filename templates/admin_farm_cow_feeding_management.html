@@ -252,13 +252,14 @@
                                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Feed Name</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Type</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Unit</th>
-                                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Current Stock (kg)</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Stock</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Notes</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
                             <tbody id="feeds-stock-body" class="bg-white dark:bg-gray-800 divide-y-2 divide-gray-100 dark:divide-gray-700">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                                         <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
                                         Loading feeds and stock...
                                     </td>
@@ -574,16 +575,13 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Show success message
                     submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Registered!';
                     submitBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
                     submitBtn.classList.add('bg-green-600');
-                    
-                    // Close modal after a short delay
                     setTimeout(() => {
                         closeFeedRegistrationModal();
-                        // Reload page or update feed list
-                        window.location.reload();
+                        if (typeof loadFeedsAndStock === 'function') loadFeedsAndStock();
+                        else window.location.reload();
                     }, 1000);
                 } else {
                     throw new Error(data.message || 'Failed to register feed');
@@ -608,12 +606,12 @@
             const tbody = document.getElementById('feeds-stock-body');
             const statTotalFeeds = document.getElementById('stat-total-feeds');
             const statFeedInventory = document.getElementById('stat-feed-inventory');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>Loading feeds and stock...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>Loading feeds and stock...</td></tr>';
             fetch('/api/feed/list-with-stock?animal_type=cow')
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
                     if (!data.success || !data.feeds) {
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Failed to load feeds.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Failed to load feeds.</td></tr>';
                         return;
                     }
                     const feeds = data.feeds || [];
@@ -622,7 +620,7 @@
                         totalStockKg += Number(f.current_stock_kg) || 0;
                     });
                     if (feeds.length === 0) {
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-4xl mb-3 text-gray-400 block"></i>No feeds registered. Use Feed Registration to add feeds.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-4xl mb-3 text-gray-400 block"></i>No feeds registered. Use Feed Registration to add feeds.</td></tr>';
                     } else {
                         if (tbody) {
                             tbody.innerHTML = feeds.map(function(f) {
@@ -631,11 +629,15 @@
                                 const statusClass = lowStock ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
                                 const statusText = lowStock ? 'Low stock' : 'In stock';
                                 const typeLabel = (f.feed_type || '').replace(/_/g, ' ');
+                                const notes = (f.notes || '').toString();
+                                const notesShort = notes.substring(0, 40) + (notes.length > 40 ? '…' : '');
+                                const notesDisplay = notes ? notesShort : '—';
                                 return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">' +
                                     '<td class="px-6 py-4 font-medium text-gray-900 dark:text-white">' + (f.feed_name || '-') + '</td>' +
                                     '<td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 capitalize">' + typeLabel + '</td>' +
                                     '<td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">' + (f.unit_of_measure || '-') + '</td>' +
-                                    '<td class="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">' + stock.toFixed(2) + '</td>' +
+                                    '<td class="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">' + stock.toFixed(2) + ' kg</td>' +
+                                    '<td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate" title="' + (notes.replace(/"/g, '&quot;')) + '">' + notesDisplay + '</td>' +
                                     '<td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-medium ' + statusClass + '">' + statusText + '</span></td>' +
                                     '</tr>';
                             }).join('');
@@ -646,7 +648,7 @@
                 })
                 .catch(function(err) {
                     console.error('Error loading feeds with stock:', err);
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500 dark:text-red-400">Error loading feeds. Please try again.</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-500 dark:text-red-400">Error loading feeds. Please try again.</td></tr>';
                 });
         }
         if (document.getElementById('refresh-feeds-stock')) {

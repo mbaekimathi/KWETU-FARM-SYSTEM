@@ -189,12 +189,13 @@
                                 <thead class="bg-gray-100 dark:bg-gray-700 sticky top-0">
                                     <tr>
                                         <th class="px-4 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Animal</th>
+                                        <th class="px-4 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Suggested feed</th>
                                         <th class="px-4 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Feed</th>
-                                        <th class="px-4 py-2 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Amount (kg) <span class="font-normal text-gray-500">— leave empty to skip</span></th>
+                                        <th class="px-4 py-2 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Weight (kg) <span class="font-normal text-gray-500">— enter kg to record, leave empty to skip</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="record-cows-body" class="divide-y divide-gray-100 dark:divide-gray-600">
-                                    <tr><td colspan="3" class="px-4 py-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading cows...</td></tr>
+                                    <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading cows...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -488,6 +489,18 @@
                 return out;
             }
 
+            function resolveFeedIdFromSetting(ft) {
+                if (ft == null || ft === '') return null;
+                var id = parseInt(ft, 10);
+                if (!isNaN(id) && recordFeedsList.some(function(f) { return Number(f.id) === id; })) return id;
+                var ftStr = String(ft).trim().toLowerCase();
+                var found = recordFeedsList.filter(function(f) {
+                    var name = (f.feed_name || '').toLowerCase();
+                    var type = (f.feed_type || '').toLowerCase();
+                    return name === ftStr || type === ftStr;
+                })[0];
+                return found ? Number(found.id) : null;
+            }
             function getDefaultFeedIdForAge(settings, ageDays) {
                 if (!settings || settings.length === 0) return null;
                 for (var i = 0; i < settings.length; i++) {
@@ -497,18 +510,12 @@
                     if (isNaN(start)) start = 0;
                     if (isNaN(end)) end = 99999;
                     if (ageDays != null && ageDays >= start && ageDays <= end) {
-                        var ft = s.feed_type;
-                        if (ft == null) return null;
-                        var id = parseInt(ft, 10);
-                        if (!isNaN(id) && recordFeedsList.some(function(f) { return f.id === id; })) return id;
+                        var fid = resolveFeedIdFromSetting(s.feed_type);
+                        if (fid) return fid;
                         return null;
                     }
                 }
-                var ft = settings[0].feed_type;
-                if (ft == null) return null;
-                var id = parseInt(ft, 10);
-                if (!isNaN(id) && recordFeedsList.some(function(f) { return f.id === id; })) return id;
-                return null;
+                return resolveFeedIdFromSetting(settings[0].feed_type);
             }
 
             function getAmountKgForAge(settings, ageDays) {
@@ -531,6 +538,18 @@
 
             var feedOptionsHtml = '';
 
+            function buildFeedOptionsWithSelected(selectedFeedId) {
+                return '<option value="">Select feed...</option>' + recordFeedsList.map(function(f) {
+                    var sel = selectedFeedId && f.id === selectedFeedId ? ' selected' : '';
+                    return '<option value="' + f.id + '"' + sel + '>' + (f.feed_name || 'Feed') + ' (stock: ' + (Number(f.current_stock_kg).toFixed(1)) + ' kg)</option>';
+                }).join('');
+            }
+
+            function getFeedNameById(id) {
+                var f = recordFeedsList.filter(function(x) { return x.id === id; })[0];
+                return f ? (f.feed_name || 'Feed') : '—';
+            }
+
             function applyDefaultsFromSettings() {
                 if (cowFeedSettings.length === 0) return;
                 var nextTime = getNextScheduledTime(cowFeedSettings);
@@ -545,7 +564,12 @@
                     var feedId = getDefaultFeedIdForAge(cowFeedSettings, isNaN(ageDays) ? null : ageDays);
                     if (feedId) sel.value = String(feedId);
                 });
-                /* Amount left empty – user enters only for animals fed; those with amount are marked completed */
+                document.querySelectorAll('.record-amount').forEach(function(inp) {
+                    var age = inp.getAttribute('data-age-days');
+                    var ageDays = age === '' || age === 'null' ? null : parseInt(age, 10);
+                    var suggestedKg = getAmountKgForAge(cowFeedSettings, isNaN(ageDays) ? null : ageDays);
+                    if (suggestedKg != null && suggestedKg > 0) inp.value = String(suggestedKg);
+                });
             }
 
             function loadCowsForRecord() {
@@ -555,19 +579,29 @@
                     var tbody = document.getElementById('record-cows-body');
                     if (!tbody) return;
                     if (cows.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">No active cows. Register cows first.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No active cows. Register cows first.</td></tr>';
                         return;
                     }
                     tbody.innerHTML = cows.map(function(c) {
                         var ageDays = c.age_days != null ? c.age_days : '';
+                        var ageNum = ageDays === '' || ageDays === 'null' ? null : parseInt(ageDays, 10);
+                        var suggestedFeedId = getDefaultFeedIdForAge(cowFeedSettings, isNaN(ageNum) ? null : ageNum);
+                        var suggestedKg = getAmountKgForAge(cowFeedSettings, isNaN(ageNum) ? null : ageNum);
+                        var suggestedText = '—';
+                        if (suggestedFeedId) {
+                            suggestedText = getFeedNameById(suggestedFeedId);
+                            if (suggestedKg != null && suggestedKg > 0) suggestedText += ' · ' + Number(suggestedKg).toFixed(2) + ' kg';
+                        }
+                        var feedSelectHtml = buildFeedOptionsWithSelected(suggestedFeedId || null);
                         return '<tr><td class="px-4 py-2 font-medium text-gray-900 dark:text-white">' + (c.name || c.ear_tag) + ' <span class="text-xs text-gray-500">(' + c.ear_tag + ')</span></td>' +
-                            '<td class="px-4 py-2"><select class="record-feed-id w-full max-w-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" data-cow-id="' + c.id + '" data-ear-tag="' + (c.ear_tag || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '">' + feedOptionsHtml + '</select></td>' +
-                            '<td class="px-4 py-2 text-right"><input type="number" min="0" step="0.1" class="record-amount w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right text-sm" data-cow-id="' + c.id + '" data-ear-tag="' + (c.ear_tag || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '" placeholder="Enter to record"></td></tr>';
+                            '<td class="px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">' + suggestedText + '</td>' +
+                            '<td class="px-4 py-2"><select class="record-feed-id w-full max-w-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm" data-cow-id="' + c.id + '" data-ear-tag="' + (c.ear_tag || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '">' + feedSelectHtml + '</select></td>' +
+                            '<td class="px-4 py-2 text-right"><input type="number" min="0" step="0.01" class="record-amount w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-right text-sm" data-cow-id="' + c.id + '" data-ear-tag="' + (c.ear_tag || '').replace(/"/g, '&quot;') + '" data-age-days="' + ageDays + '" placeholder="Enter kg"></td></tr>';
                     }).join('');
                     applyDefaultsFromSettings();
                 }).catch(function() {
                     var tbody = document.getElementById('record-cows-body');
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-red-500">Error loading cows.</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-red-500">Error loading cows.</td></tr>';
                 });
             }
             function loadFeedsForRecord() {
@@ -582,19 +616,22 @@
             }
 
             function loadCowFeedSettings() {
-                fetch('/api/feed/settings/list?animal_type=cow').then(function(r) { return r.json(); }).then(function(data) {
+                return fetch('/api/feed/settings/list?animal_type=cow').then(function(r) { return r.json(); }).then(function(data) {
                     if (data.success && data.settings) {
                         cowFeedSettings = data.settings;
-                        applyDefaultsFromSettings();
                     }
-                }).catch(function() {});
+                    return data;
+                }).catch(function() { return {}; });
             }
 
-            loadCowFeedSettings();
             var dt = new Date();
             dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
             document.getElementById('record-feeding-datetime').value = dt.toISOString().slice(0, 16);
-            loadFeedsForRecord().then(function() { loadCowsForRecord(); });
+            loadCowFeedSettings().then(function() {
+                return loadFeedsForRecord();
+            }).then(function() {
+                loadCowsForRecord();
+            });
 
             document.getElementById('submit-record-feeding').addEventListener('click', function() {
                 var feedingDatetime = document.getElementById('record-feeding-datetime').value;

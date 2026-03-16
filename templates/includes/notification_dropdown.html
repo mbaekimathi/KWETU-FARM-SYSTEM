@@ -35,7 +35,7 @@
 <script>
 (function() {
     var notificationBtn, notificationPopup, notificationBadge, notificationsList, closeNotifications;
-    var feedingUrl = "{{ '/manager/farm/feeding-management' if user and user.role == 'manager' else '/admin/farm/feeding-management' }}";
+    var pigFeedingUrl = "{{ '/manager/farm/pig-feeding-management' if user and user.role == 'manager' else '/admin/farm/pig-feeding-management' }}";
     var cowFeedingUrl = "{{ '/manager/farm/cow-feeding-management' if user and user.role == 'manager' else '/admin/farm/cow-feeding-management' }}";
     var breedingUrl = "{{ '/manager/farm/breeding-records' if user and user.role == 'manager' else '/admin/farm/breeding-records' }}";
     var farrowingsUrl = "{{ '/manager/farm/completed-farrowings' if user and user.role == 'manager' else '/admin/farm/completed-farrowings' }}";
@@ -92,7 +92,7 @@
                         icon = '<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>';
                         title = 'Feeding Notifications';
                         description = group.count + ' feeding time' + (group.count > 1 ? 's' : '') + ' require attention';
-                        actionUrl = feedingUrl;
+                        actionUrl = pigFeedingUrl;
                         actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span>View Feedings</span></a>';
                     } else if (group.type === 'cow_feeding') {
                         bgColor = 'from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20';

@@ -812,7 +812,7 @@
                             icon = '<i class="fas fa-utensils text-green-500"></i>';
                             title = 'Feeding Notifications';
                             description = `${group.count} feeding time${group.count > 1 ? 's' : ''} require attention`;
-                            actionUrl = '/admin/farm/feeding-management';
+                            actionUrl = "{{ '/manager/farm/pig-feeding-management' if user and user.role == 'manager' else '/admin/farm/pig-feeding-management' }}";
                             actionButton = `<a href="${actionUrl}" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2">
                                 <i class="fas fa-arrow-right"></i>
                                 <span>View Feedings</span>

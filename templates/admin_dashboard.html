@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgriTech Dashboard - Smart Farm Management</title>
+    <title>Dashboard - PigFarm Pro | Kwetufarm</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
@@ -105,12 +105,17 @@
                         </svg>
                     </div>
                     <div class="hidden sm:block">
-                        <h1 class="text-xl font-bold text-gradient">AgriTech Pro</h1>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Smart Farm Management</p>
+                        <h1 class="text-xl font-bold text-gradient">PigFarm Pro</h1>
+                        <p class="text-xs text-slate-600 dark:text-slate-400">Kwetufarm · Live data</p>
                     </div>
                 </div>
             </div>
             
+            <!-- Live date & time -->
+            <div class="hidden md:flex flex-col items-end">
+                <span id="live-time" class="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums"></span>
+                <span id="live-date" class="text-xs text-slate-500 dark:text-slate-400">{{ dashboard_data.today_date }}</span>
+            </div>
             <!-- Right Section: Notifications, Theme Toggle, User Profile -->
             <div class="flex items-center space-x-3">
                 {% include 'includes/notification_dropdown.html' %}
@@ -275,8 +280,8 @@
             <!-- Sidebar Footer -->
             <div class="p-4 border-t border-slate-200/50 dark:border-slate-700/50">
                 <div class="text-center">
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">AgriTech Pro v2.0</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">© 2024 Smart Farm</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">PigFarm Pro</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Kwetufarm</p>
                 </div>
             </div>
         </div>
@@ -286,20 +291,45 @@
     <div class="pt-16 lg:pl-72 min-h-screen bg-slate-50 dark:bg-slate-900">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <!-- Dashboard Header -->
-            <div class="mb-8 animate-fade-in">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div class="mb-6 animate-fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">Smart Farm Dashboard</h1>
-                        <p class="text-slate-600 dark:text-slate-400">Monitor and manage your agricultural operations with real-time insights</p>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Farm Dashboard</h1>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Live data · {{ dashboard_data.today_date }}
+                            </span>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 mt-1">Monitor pigs, cows, chickens and daily operations</p>
                     </div>
-                    <div class="mt-4 sm:mt-0 flex space-x-3">
-                        <button class="px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 shadow-lg hover:shadow-xl border border-slate-200 dark:border-slate-700">
-                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Generate Report
+                    <div class="flex items-center gap-2">
+                        <a href="{% if user.role == 'manager' %}/manager/analytics{% else %}/admin/analytics{% endif %}" class="px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 shadow border border-slate-200 dark:border-slate-700 inline-flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                            Analytics
+                        </a>
+                        <button onclick="window.location.reload()" class="px-4 py-2 bg-agri-emerald-600 hover:bg-agri-emerald-700 text-white rounded-xl transition-all duration-200 shadow inline-flex items-center gap-2" title="Refresh data">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Refresh
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Today's activity (live) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                <div class="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50">
+                    <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Today's milk</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{{ "%.1f"|format(dashboard_data.today.milk_liters or 0) }} <span class="text-base font-normal text-slate-500">L</span></p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Recorded today</p>
+                </div>
+                <div class="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
+                    <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Feed stock in (today)</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{{ dashboard_data.today.stock_in_count or 0 }} <span class="text-base font-normal text-slate-500">transactions</span></p>
+                </div>
+                <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50">
+                    <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Feed stock out (today)</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{{ dashboard_data.today.stock_out_count or 0 }} <span class="text-base font-normal text-slate-500">transactions</span></p>
                 </div>
             </div>
 
@@ -410,8 +440,8 @@
                     <div class="p-6">
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center space-x-3">
-                                <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                                     </svg>
                                 </div>
@@ -420,30 +450,28 @@
                                     <p class="text-sm text-slate-600 dark:text-slate-400">Poultry operations</p>
                                 </div>
                             </div>
-                            <span class="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs font-medium rounded-full">Coming Soon</span>
+                            <span class="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-full">Active</span>
                         </div>
                         
                         <div class="space-y-3">
-                            <div class="flex justify-center items-center py-8">
-                                <div class="text-center">
-                                    <div class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg class="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                    </div>
-                                    <p class="text-sm text-slate-600 dark:text-slate-400">Chicken management system is under development</p>
-                                </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Total Chickens</span>
+                                <span class="text-lg font-semibold text-slate-900 dark:text-white">{{ dashboard_data.chickens.total_chickens }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Batches</span>
+                                <span class="text-lg font-semibold text-slate-900 dark:text-white">{{ dashboard_data.chickens.batches }}</span>
                             </div>
                         </div>
                         
                         <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                             <div class="flex space-x-2">
-                                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-management{% else %}/admin/farm/chicken-management{% endif %}" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-center py-2 px-3 rounded-lg text-sm font-medium transition-colors">
+                                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-management{% else %}/admin/farm/chicken-management{% endif %}" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-center py-2 px-3 rounded-lg text-sm font-medium transition-colors">
                                     Chicken Management
                                 </a>
-                                <button disabled class="flex-1 bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400 text-center py-2 px-3 rounded-lg text-sm font-medium cursor-not-allowed">
-                                    In Development
-                                </button>
+                                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-feeding-management{% else %}/admin/farm/chicken-feeding-management{% endif %}" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-center py-2 px-3 rounded-lg text-sm font-medium transition-colors">
+                                    Feeding
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -457,6 +485,7 @@
                         <div>
                             <p class="text-sm text-slate-600 dark:text-slate-400">Total Animals</p>
                             <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboard_data.totals.total_animals }}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Pigs + Cows + Chickens</p>
                         </div>
                         <div class="w-12 h-12 bg-agri-emerald-100 dark:bg-agri-emerald-900/30 rounded-xl flex items-center justify-center">
                             <svg class="w-6 h-6 text-agri-emerald-600 dark:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -469,13 +498,12 @@
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-slate-600 dark:text-slate-400">Milk Production</p>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ "%.1f"|format(dashboard_data.totals.daily_production or 0) }}</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">liters (7d)</p>
+                            <p class="text-sm text-slate-600 dark:text-slate-400">Active Farms</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboard_data.farms_count }}</p>
                         </div>
-                        <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        <div class="w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                             </svg>
                         </div>
                     </div>
@@ -484,12 +512,12 @@
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-slate-600 dark:text-slate-400">Active Pigs</p>
-                            <p class="text-2xl font-bold text-pink-600 dark:text-pink-400">{{ dashboard_data.pigs.total_pigs }}</p>
+                            <p class="text-sm text-slate-600 dark:text-slate-400">Avg milk (30d)</p>
+                            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ "%.1f"|format(dashboard_data.totals.daily_production or 0) }} <span class="text-base font-normal">L</span></p>
                         </div>
-                        <div class="w-12 h-12 bg-pink-100 dark:bg-pink-900/30 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
                             </svg>
                         </div>
                     </div>
@@ -513,44 +541,43 @@
             <!-- Department Notifications -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
                 <div class="p-6 border-b border-slate-200 dark:border-slate-700">
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Department Notifications</h3>
-                    <p class="text-sm text-slate-600 dark:text-slate-400">Notifications from breeding, health, and medical departments</p>
+                    <button type="button" id="department-notifications-trigger" class="text-left w-full group cursor-pointer rounded-lg -m-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset" aria-label="Open notifications">
+                        <h3 class="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Department Notifications</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Notifications from breeding, health, and medical departments — click to view</p>
+                    </button>
                 </div>
                 <div class="p-6">
                     {% if dashboard_data.upcoming_activities %}
                         <div class="space-y-4">
                             {% for notification in dashboard_data.upcoming_activities %}
                             <div class="flex items-center space-x-4">
-                                {% if notification[1] == 'Pigs' %}
-                                    <!-- Pink bell for pigs -->
+                                {% if notification.animal_type == 'Pigs' %}
                                     <div class="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center">
                                         <svg class="w-5 h-5 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z"></path>
                                         </svg>
                                     </div>
-                                {% elif notification[1] == 'Cows' %}
-                                    <!-- Orange bell for cows -->
+                                {% elif notification.animal_type == 'Cows' %}
                                     <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
                                         <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z"></path>
                                         </svg>
                                     </div>
-                                {% elif notification[1] == 'Chickens' %}
-                                    <!-- Blue bell for chickens -->
-                                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {% elif notification.animal_type == 'Chickens' %}
+                                    <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z"></path>
                                         </svg>
                                     </div>
                                 {% endif %}
                                 <div class="flex-1">
                                     <div class="flex items-center justify-between">
-                                        <p class="text-sm font-medium text-slate-900 dark:text-white">{{ notification[0] }} - {{ notification[1] }}</p>
+                                        <p class="text-sm font-medium text-slate-900 dark:text-white">{{ notification.department }} · {{ notification.animal_type }}</p>
                                         <span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-full">
-                                            {{ notification[2] }} notifications
+                                            {{ notification.notification_count }} notifications
                                         </span>
                                     </div>
-                                    <p class="text-xs text-slate-600 dark:text-slate-400">{{ notification[3] }}</p>
+                                    <p class="text-xs text-slate-600 dark:text-slate-400">{{ notification.description }}</p>
                                 </div>
                             </div>
                             {% endfor %}
@@ -581,8 +608,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-slate-900 dark:text-white">AgriTech Pro</p>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Smart Farm Management System</p>
+                        <p class="text-sm font-semibold text-slate-900 dark:text-white">PigFarm Pro</p>
+                        <p class="text-xs text-slate-600 dark:text-slate-400">Kwetufarm · Smart Farm Management</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-6">
@@ -592,7 +619,7 @@
                 </div>
             </div>
             <div class="mt-6 pt-6 border-t border-slate-200/50 dark:border-slate-700/50 text-center">
-                <p class="text-xs text-slate-500 dark:text-slate-400">© 2024 AgriTech Pro. All rights reserved. Built with modern technology for smart agriculture.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">© 2025 PigFarm Pro · Kwetufarm. Live data as of today.</p>
             </div>
         </div>
     </footer>
@@ -731,7 +758,28 @@
         });
 
         // Enhanced Animations and Interactions
+        // Live clock in header
+        function updateLiveTime() {
+            const el = document.getElementById('live-time');
+            if (!el) return;
+            const now = new Date();
+            el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        }
+        updateLiveTime();
+        setInterval(updateLiveTime, 1000);
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Department Notifications card: click to open header notification popup
+            const deptNotificationsTrigger = document.getElementById('department-notifications-trigger');
+            if (deptNotificationsTrigger) {
+                deptNotificationsTrigger.addEventListener('click', function() {
+                    const notificationBtn = document.getElementById('notification-btn');
+                    if (notificationBtn) {
+                        notificationBtn.click();
+                    }
+                });
+            }
+
             // Staggered animation for dashboard cards
             const cards = document.querySelectorAll('.card-hover');
             cards.forEach((card, index) => {

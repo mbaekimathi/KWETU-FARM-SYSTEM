@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feeding Management - Pig Farm Management System</title>
+    <title>Pig Feeding Management - Pig Farm Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -56,7 +56,7 @@
                     <span class="text-gray-400 dark:text-gray-500">/</span>
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Farm Management</span>
                     <span class="text-gray-400 dark:text-gray-500">/</span>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Feeding Management</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Pig Feeding Management</span>
                 </div>
             </div>
             
@@ -158,7 +158,7 @@
                     <span class="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Feeding Tracking</span>
                 </a>
                 
-                <a href="{% if user.role == 'manager' %}/manager/farm/feed-{% else %}/admin/farm/feed-{% endif %}stock-management" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-blue-500 hover:shadow-sm">
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-feed-{% else %}/admin/farm/pig-feed-{% endif %}stock-management" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-blue-500 hover:shadow-sm">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-sm">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
@@ -167,7 +167,7 @@
                     <span class="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Feed Stock Management</span>
                 </a>
                 
-                <a href="{% if user.role == 'manager' %}/manager/farm/feed-{% else %}/admin/farm/feed-{% endif %}analytics" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-purple-500 hover:shadow-sm">
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-feed-{% else %}/admin/farm/pig-feed-{% endif %}analytics" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-purple-500 hover:shadow-sm">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-sm">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
@@ -176,7 +176,7 @@
                     <span class="font-medium group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Feed Analytics</span>
                 </a>
                 
-                <a href="{% if user.role == 'manager' %}/manager/farm/feed-{% else %}/admin/farm/feed-{% endif %}settings" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-50 hover:to-slate-50 dark:hover:from-gray-700/20 dark:hover:to-slate-700/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-gray-500 hover:shadow-sm">
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-feed-{% else %}/admin/farm/pig-feed-{% endif %}settings" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-50 hover:to-slate-50 dark:hover:from-gray-700/20 dark:hover:to-slate-700/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-gray-500 hover:shadow-sm">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-gray-400 to-slate-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-sm">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -203,7 +203,7 @@
             <div class="mb-6 sm:mb-8">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-2">Feeding Management</h1>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-2">Pig Feeding Management</h1>
                         <p class="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage feeding schedules, feed inventory, and nutritional requirements</p>
                     </div>
                     <div class="flex items-center space-x-3">
@@ -274,56 +274,62 @@
                 </div>
             </div>
 
-            <!-- Feeding Records Table -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="px-6 py-5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b-2 border-gray-200 dark:border-gray-700">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <!-- Registered Feeds (by animal) - main content -->
+            <div class="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b-2 border-gray-200 dark:border-gray-700">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-list text-white"></i>
+                            <div class="w-12 h-12 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                <i class="fas fa-warehouse text-white text-lg sm:text-base"></i>
                             </div>
-                            <div>
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Feeding Records</h2>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Manage and track feeding activities</p>
+                            <div class="min-w-0">
+                                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Registered Feeds</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">View and manage all feeds by animal type</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-2 w-full sm:w-auto">
-                            <input type="text" id="search-feeding" placeholder="Search records..." class="flex-1 sm:flex-none px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
-                            <button id="filter-feeding" class="px-5 py-2.5 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
-                                <i class="fas fa-filter mr-2"></i>Filter
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Show feeds for:</label>
+                            <select id="registered-feeds-animal" class="flex-1 min-w-0 sm:flex-none sm:min-w-[140px] px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <option value="pig">Pigs</option>
+                                <option value="cow">Cows</option>
+                                <option value="chicken">Chickens</option>
+                            </select>
+                            <button type="button" onclick="loadRegisteredFeeds()" class="px-4 py-2.5 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors font-medium text-sm whitespace-nowrap">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
                             </button>
                         </div>
                     </div>
                 </div>
-                <div class="p-6">
-                    
-                    <div class="overflow-x-auto rounded-xl">
-                        <table class="min-w-full divide-y-2 divide-gray-200 dark:divide-gray-700">
+                <div class="p-4 sm:p-6 lg:p-8 min-h-[280px]">
+                    <div id="registered-feeds-loading" class="hidden py-12 sm:py-16 text-center text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-3xl mb-3 text-orange-500"></i>
+                        <p class="text-sm font-medium">Loading feeds…</p>
+                    </div>
+                    <div id="registered-feeds-empty" class="hidden py-12 sm:py-16 text-center text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                        <i class="fas fa-inbox text-4xl mb-4 text-gray-400 dark:text-gray-500"></i>
+                        <p class="text-base font-medium text-gray-700 dark:text-gray-300">No feeds registered for this animal yet.</p>
+                        <p class="text-sm mt-2">Use <strong>Feed Registration</strong> in the sidebar to add feeds.</p>
+                    </div>
+                    <div id="registered-feeds-table-wrap" class="overflow-x-auto rounded-xl hidden -mx-2 sm:mx-0">
+                        <table class="min-w-full divide-y-2 divide-gray-200 dark:divide-gray-700 text-sm sm:text-base">
                             <thead class="bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800">
                                 <tr>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Pig ID</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Feed Type</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Amount (kg)</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Feeding Time</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Feed Name</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Animal</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Feed Type</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Unit</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Stock</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">Notes</th>
+                                    <th class="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="feeding-records-body" class="bg-white dark:bg-gray-800 divide-y-2 divide-gray-100 dark:divide-gray-700">
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
-                                    <td colspan="6" class="px-6 py-8 text-center">
-                                        <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                                            <i class="fas fa-inbox text-4xl mb-3 text-gray-400"></i>
-                                            <p class="text-lg font-medium">No feeding records found</p>
-                                            <p class="text-sm mt-1">Start by adding a feeding record</p>
-                                        </div>
-                                    </td>
-                                </tr>
+                            <tbody id="registered-feeds-body" class="bg-white dark:bg-gray-800 divide-y-2 divide-gray-100 dark:divide-gray-700">
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -582,11 +588,13 @@
                     submitBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
                     submitBtn.classList.add('bg-green-600');
                     
-                    // Close modal after a short delay
                     setTimeout(() => {
                         closeFeedRegistrationModal();
-                        // Reload page or update feed list
-                        window.location.reload();
+                        if (typeof loadRegisteredFeeds === 'function') {
+                            loadRegisteredFeeds();
+                        } else {
+                            window.location.reload();
+                        }
                     }, 1000);
                 } else {
                     throw new Error(data.message || 'Failed to register feed');
@@ -606,15 +614,57 @@
             }
         });
 
-        document.getElementById('search-feeding').addEventListener('input', function() {
-            // TODO: Implement search functionality
-            console.log('Searching for:', this.value);
-        });
+        // Registered Feeds: load and display by animal
+        async function loadRegisteredFeeds() {
+            const animal = (document.getElementById('registered-feeds-animal').value || 'pig').toLowerCase();
+            const loadingEl = document.getElementById('registered-feeds-loading');
+            const emptyEl = document.getElementById('registered-feeds-empty');
+            const tableWrap = document.getElementById('registered-feeds-table-wrap');
+            const tbody = document.getElementById('registered-feeds-body');
 
-        document.getElementById('filter-feeding').addEventListener('click', function() {
-            // TODO: Implement filter functionality
-            alert('Filter functionality coming soon...');
-        });
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            tableWrap.classList.add('hidden');
+            tbody.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/feed/list-with-stock?animal_type=' + encodeURIComponent(animal));
+                const data = await res.json();
+                loadingEl.classList.add('hidden');
+
+                if (!data.success || !data.feeds || !data.feeds.length) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                tableWrap.classList.remove('hidden');
+                const animalLabel = animal.charAt(0).toUpperCase() + animal.slice(1);
+                tbody.innerHTML = data.feeds.map(f => {
+                    const feedType = (f.feed_type || '—').replace(/_/g, ' ');
+                    const notes = (f.notes || '—').toString().substring(0, 40);
+                    const notesFull = (f.notes || '').toString();
+                    const status = (f.status || 'active');
+                    const stockKg = f.current_stock_kg != null ? Number(f.current_stock_kg) : 0;
+                    const stockText = stockKg.toFixed(2) + ' kg';
+                    return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">' +
+                        '<td class="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium text-gray-900 dark:text-white">' + (f.feed_name || '—') + '</td>' +
+                        '<td class="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600 dark:text-gray-400">' + (f.animal_type ? (f.animal_type.charAt(0).toUpperCase() + f.animal_type.slice(1)) : animalLabel) + '</td>' +
+                        '<td class="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600 dark:text-gray-400">' + feedType + '</td>' +
+                        '<td class="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600 dark:text-gray-400">' + (f.unit_of_measure || '—') + '</td>' +
+                        '<td class="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium text-gray-900 dark:text-white">' + stockText + '</td>' +
+                        '<td class="hidden md:table-cell px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate" title="' + (notesFull.replace(/"/g, '&quot;')) + '">' + (notes === '—' ? '—' : notes + (notesFull.length > 40 ? '…' : '')) + '</td>' +
+                        '<td class="px-3 sm:px-6 py-3 sm:py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ' + (status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300') + '">' + status + '</span></td>' +
+                        '</tr>';
+                }).join('');
+            } catch (e) {
+                loadingEl.classList.add('hidden');
+                emptyEl.classList.remove('hidden');
+                emptyEl.innerHTML = '<i class="fas fa-exclamation-triangle text-3xl mb-2 text-amber-500"></i><p>Failed to load feeds. Try again.</p>';
+            }
+        }
+
+        document.getElementById('registered-feeds-animal').addEventListener('change', loadRegisteredFeeds);
+        loadRegisteredFeeds();
     </script>
 </body>
 </html>

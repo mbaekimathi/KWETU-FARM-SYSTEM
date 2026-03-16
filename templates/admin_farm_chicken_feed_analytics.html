@@ -1120,14 +1120,13 @@
                 contentDiv.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-sm">Loading...</p></div>';
                 
                 // Build URLs with filters
-                let statsUrl = '/api/feed/stock/stats';
-                let transUrl = '/api/feed/stock/transactions?limit=50';
+                let statsUrl = '/api/feed/stock/stats?animal_type=chicken';
+                let transUrl = '/api/feed/stock/transactions?limit=50&animal_type=chicken';
                 
                 const query = getDateFilterQuery();
                 if (query) {
-                    // Remove leading & and add ?
                     const cleanQuery = query.startsWith('&') ? query.substring(1) : query;
-                    statsUrl += `?${cleanQuery}`;
+                    statsUrl += `&${cleanQuery}`;
                     transUrl += `&${cleanQuery}`;
                 }
                 
@@ -1471,7 +1470,7 @@
                 contentDiv.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-green-500 mb-2"></i><p class="text-sm">Loading stock analytics...</p></div>';
                 
                 // Build analytics URL with filters
-                let analyticsUrl = '/api/feed/stock/analytics?days=30';
+                let analyticsUrl = '/api/feed/stock/analytics?days=30&animal_type=chicken';
                 if (farmFilter) {
                     analyticsUrl += `&farm_id=${farmFilter}`;
                 }

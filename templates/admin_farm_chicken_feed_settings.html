@@ -647,7 +647,7 @@
         // Edit setting
         async function editSetting(settingId) {
             try {
-                const response = await fetch(`/api/feed/settings/list`);
+                const response = await fetch(`/api/feed/settings/list?animal_type=chicken`);
                 const data = await response.json();
                 
                 if (data.success) {
