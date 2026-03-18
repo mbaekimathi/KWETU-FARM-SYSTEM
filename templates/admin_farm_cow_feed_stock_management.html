@@ -553,7 +553,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Feed Type</label>
-                        <select name="feed_type" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <select id="feed_type_select" name="feed_type" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
                             <option value="">Select feed type</option>
                             <option value="starter">Starter Feed</option>
                             <option value="grower">Grower Feed</option>
@@ -561,7 +561,13 @@
                             <option value="sow">Sow Feed</option>
                             <option value="boar">Boar Feed</option>
                             <option value="supplement">Supplement</option>
+                            <option value="__custom__">Add new feed type…</option>
                         </select>
+                        <div id="custom-feed-type-wrap" class="hidden mt-2">
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">New feed type</label>
+                            <input id="custom-feed-type-input" type="text" placeholder="e.g. mineral_mix" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Tip: Spaces will be saved as underscores.</p>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit of Measure</label>
@@ -1353,9 +1359,36 @@
             document.getElementById('feed-registration-form').reset();
         }
 
+        // Feed type: allow adding custom types
+        (function initCustomFeedType() {
+            var select = document.getElementById('feed_type_select');
+            var wrap = document.getElementById('custom-feed-type-wrap');
+            var input = document.getElementById('custom-feed-type-input');
+            if (!select || !wrap || !input) return;
+            function sync() {
+                var isCustom = select.value === '__custom__';
+                wrap.classList.toggle('hidden', !isCustom);
+                if (isCustom) input.focus();
+                if (!isCustom) input.value = '';
+            }
+            select.addEventListener('change', sync);
+            sync();
+        })();
+
         async function submitFeedRegistration() {
             const form = document.getElementById('feed-registration-form');
             const formData = new FormData(form);
+
+            // Custom feed type support
+            const feedTypeSelected = (formData.get('feed_type') || '').toString();
+            if (feedTypeSelected === '__custom__') {
+                const customVal = (document.getElementById('custom-feed-type-input')?.value || '').toString().trim();
+                if (!customVal) {
+                    alert('Please enter the new feed type.');
+                    return;
+                }
+                formData.set('feed_type', customVal);
+            }
             
             const feedData = {
                 feed_name: formData.get('feed_name'),

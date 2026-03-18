@@ -718,7 +718,7 @@ def create_database_and_tables():
             CREATE TABLE IF NOT EXISTS feeds (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 feed_name VARCHAR(255) NOT NULL,
-                feed_type ENUM('starter', 'grower', 'finisher', 'sow', 'boar', 'supplement') NOT NULL,
+                feed_type VARCHAR(100) NOT NULL,
                 unit_of_measure ENUM('kg', 'g', 'ton', 'bag', 'liter', 'ml') NOT NULL,
                 notes TEXT,
                 status ENUM('active', 'inactive') DEFAULT 'active',
@@ -744,6 +744,13 @@ def create_database_and_tables():
         except Exception as e:
             if 'Duplicate column' not in str(e):
                 print(f"Note: feeds.animal_type may already exist: {e}")
+
+        # Allow custom feed types (migrate old ENUM to VARCHAR if needed)
+        try:
+            cursor.execute("ALTER TABLE feeds MODIFY COLUMN feed_type VARCHAR(100) NOT NULL")
+        except Exception as e:
+            # If already VARCHAR, ignore
+            pass
 
         # Create feed_stock table to track stock in/out
         cursor.execute("""
@@ -9210,17 +9217,12 @@ def register_feed():
         if animal_type not in ('pig', 'cow', 'chicken'):
             return jsonify({'success': False, 'message': 'Animal type is required. Select Pig, Cow, or Chicken.'})
         
-        # Validate feed_type enum (support pig, cow, and chicken feed types)
-        valid_feed_types = [
-            # Pig feed types
-            'starter', 'grower', 'finisher', 'sow', 'boar', 'supplement',
-            # Cow feed types
-            'calf', 'dairy', 'beef', 'dry_cow', 'lactating', 'hay', 'silage',
-            # Chicken feed types
-            'starter_chick', 'grower_chick', 'layer_feed', 'broiler_feed', 'kienyeji_feed', 'mash', 'pellets', 'crumbles'
-        ]
-        if feed_type not in valid_feed_types:
-            return jsonify({'success': False, 'message': 'Invalid feed type'})
+        # Normalize feed_type so users can add custom types
+        feed_type = feed_type.lower().strip().replace(' ', '_')
+        if not feed_type:
+            return jsonify({'success': False, 'message': 'Feed type is required'})
+        if len(feed_type) > 100:
+            return jsonify({'success': False, 'message': 'Feed type is too long (max 100 characters)'})
         
         # Validate unit_of_measure enum
         valid_units = ['kg', 'g', 'ton', 'bag', 'liter', 'ml']
@@ -9265,6 +9267,111 @@ def register_feed():
     except Exception as e:
         print(f"Error registering feed: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to register feed: {str(e)}'}), 500
+
+
+@app.route('/api/feed/update', methods=['POST', 'PUT'])
+def update_feed():
+    """Update an existing feed (feed_id required)."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    try:
+        data = request.get_json()
+        feed_id = data.get('feed_id') or data.get('id')
+        if not feed_id:
+            return jsonify({'success': False, 'message': 'Feed ID is required'})
+        try:
+            feed_id = int(feed_id)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid feed ID'})
+        feed_name = (data.get('feed_name') or '').strip()
+        feed_type = (data.get('feed_type') or '').strip()
+        unit_of_measure = (data.get('unit_of_measure') or '').strip()
+        animal_type = (data.get('animal_type') or '').strip().lower()
+        notes = (data.get('notes') or '').strip()
+        if not feed_name:
+            return jsonify({'success': False, 'message': 'Feed name is required'})
+        if not feed_type:
+            return jsonify({'success': False, 'message': 'Feed type is required'})
+        if not unit_of_measure:
+            return jsonify({'success': False, 'message': 'Unit of measure is required'})
+        if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
+            animal_type = None
+        feed_type = feed_type.lower().strip().replace(' ', '_')
+        if not feed_type:
+            return jsonify({'success': False, 'message': 'Feed type is required'})
+        if len(feed_type) > 100:
+            return jsonify({'success': False, 'message': 'Feed type is too long (max 100 characters)'})
+        valid_units = ['kg', 'g', 'ton', 'bag', 'liter', 'ml']
+        if unit_of_measure not in valid_units:
+            return jsonify({'success': False, 'message': 'Invalid unit of measure'})
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, feed_name, animal_type FROM feeds WHERE id = %s AND status = 'active'", (feed_id,))
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Feed not found or inactive'})
+        at = animal_type or (row.get('animal_type') or 'pig')
+        cursor.execute(
+            "SELECT id FROM feeds WHERE feed_name = %s AND status = 'active' AND id != %s AND COALESCE(animal_type, 'pig') = %s",
+            (feed_name, feed_id, at)
+        )
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': f'A feed with this name already exists for {at.title()}.'})
+        cursor.execute("""
+            UPDATE feeds SET feed_name = %s, feed_type = %s, unit_of_measure = %s, notes = %s
+            WHERE id = %s AND status = 'active'
+        """, (feed_name, feed_type, unit_of_measure, notes if notes else None, feed_id))
+        if animal_type:
+            try:
+                cursor.execute("UPDATE feeds SET animal_type = %s WHERE id = %s AND status = 'active'", (animal_type, feed_id))
+            except Exception:
+                pass
+        log_activity(session['employee_id'], 'FEED_UPDATE', f'Feed "{feed_name}" (id={feed_id}) updated')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Feed updated successfully'})
+    except Exception as e:
+        print(f"Error updating feed: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/feed/delete', methods=['POST', 'DELETE'])
+def delete_feed():
+    """Soft-delete a feed (set status = 'inactive')."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    try:
+        data = request.get_json() or {}
+        feed_id = data.get('feed_id') or data.get('id')
+        if not feed_id:
+            return jsonify({'success': False, 'message': 'Feed ID is required'})
+        try:
+            feed_id = int(feed_id)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid feed ID'})
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, feed_name FROM feeds WHERE id = %s AND status = 'active'", (feed_id,))
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Feed not found or already inactive'})
+        cursor.execute("UPDATE feeds SET status = 'inactive' WHERE id = %s", (feed_id,))
+        log_activity(session['employee_id'], 'FEED_DELETE', f'Feed "{row["feed_name"]}" (id={feed_id}) deactivated')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Feed deleted successfully'})
+    except Exception as e:
+        print(f"Error deleting feed: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @app.route('/api/feed/list', methods=['GET'])
 def get_feeds_list():

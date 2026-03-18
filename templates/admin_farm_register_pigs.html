@@ -255,9 +255,9 @@
     <!-- Pig Registration Modal -->
     <div id="pigRegistrationModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 transition-all duration-300">
         <div class="flex items-start sm:items-center justify-center min-h-screen p-1 sm:p-4 overflow-y-auto">
-            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-3xl shadow-2xl w-full max-w-4xl mx-1 sm:mx-4 my-2 sm:my-4 max-h-[98vh] sm:max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300">
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-3xl shadow-2xl w-full max-w-4xl mx-1 sm:mx-4 my-2 sm:my-6 max-h-[96vh] sm:max-h-[90vh] overflow-hidden flex flex-col transform scale-95 opacity-0 transition-all duration-300">
                 <!-- Modal Header -->
-                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
                             <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -275,7 +275,7 @@
                 </div>
 
                 <!-- Modal Body -->
-                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
+                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 overflow-y-auto flex-1">
                     <form id="pigRegistrationForm" class="space-y-4 sm:space-y-6">
                         <!-- Farm Selection -->
                         <div>
@@ -308,12 +308,12 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Generated Tag ID
                             </label>
-                            <div class="flex items-center space-x-3">
-                                <input type="text" id="tagIdDisplay" readonly placeholder="Select pig type to generate tag ID" class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-lg font-bold">
-                                <button type="button" onclick="generateNewTagId()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">
-                                    <i class="fas fa-sync-alt mr-2"></i>Regenerate
-                                </button>
-                            </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                            <input type="text" id="tagIdDisplay" readonly placeholder="Select pig type to generate tag ID" class="w-full sm:flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-base sm:text-lg font-bold">
+                            <button type="button" onclick="generateNewTagId()" class="w-full sm:w-auto px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">
+                                <i class="fas fa-sync-alt mr-2"></i>Regenerate
+                            </button>
+                        </div>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 Format: P001 (Grown), S001 (Piglet), L001 (Litter), B001 (Batch)
                             </p>
@@ -324,14 +324,14 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Pig Source <span class="text-red-500">*</span>
                             </label>
-                            <div class="flex space-x-4">
-                                <label class="flex items-center">
-                                    <input type="radio" name="pig_source" value="born" class="mr-2" checked>
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">Born on Farm</span>
+                            <div class="grid grid-cols-1 xs:grid-cols-2 gap-3">
+                                <label class="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 bg-white/70 dark:bg-gray-800/50">
+                                    <input type="radio" name="pig_source" value="born" class="shrink-0" checked>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Born on Farm</span>
                                 </label>
-                                <label class="flex items-center">
-                                    <input type="radio" name="pig_source" value="purchased" class="mr-2">
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">Purchased</span>
+                                <label class="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 bg-white/70 dark:bg-gray-800/50">
+                                    <input type="radio" name="pig_source" value="purchased" class="shrink-0">
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Purchased</span>
                                 </label>
                             </div>
                         </div>
@@ -392,14 +392,14 @@
                     </form>
                 </div>
 
-                <!-- Modal Footer -->
-                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-xl sm:rounded-b-3xl">
-                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 lg:space-x-6">
-                        <button onclick="closePigRegistrationModal()" class="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md text-sm sm:text-base font-semibold">
+                <!-- Modal Footer (sticky on mobile) -->
+                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 backdrop-blur-sm flex-shrink-0 sticky bottom-0">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <button type="button" onclick="closePigRegistrationModal()" class="w-full sm:w-auto sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md text-sm sm:text-base font-semibold">
                             <i class="fas fa-times mr-2"></i>
                             Cancel
                         </button>
-                        <button onclick="submitPigRegistration()" class="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-200 hover:shadow-lg hover:scale-105 text-sm sm:text-base font-semibold">
+                        <button type="button" onclick="submitPigRegistration()" class="w-full sm:w-auto sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-200 hover:shadow-lg sm:hover:scale-105 text-sm sm:text-base font-semibold">
                             <i class="fas fa-save mr-2"></i>
                             Register Pig
                         </button>

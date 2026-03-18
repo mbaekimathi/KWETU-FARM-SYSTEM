@@ -255,11 +255,12 @@
                                     <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Stock</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Notes</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="feeds-stock-body" class="bg-white dark:bg-gray-800 divide-y-2 divide-gray-100 dark:divide-gray-700">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                                         <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
                                         Loading feeds and stock...
                                     </td>
@@ -355,8 +356,8 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Feed Registration</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Register new feed type</p>
+                        <h3 id="feed-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">Feed Registration</h3>
+                        <p id="feed-modal-subtitle" class="text-xs text-gray-600 dark:text-gray-400">Register new feed type</p>
                     </div>
                 </div>
                 <button onclick="closeFeedRegistrationModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors">
@@ -369,6 +370,7 @@
             <!-- Modal Content -->
             <div class="flex-1 overflow-y-auto p-6">
                 <form id="feed-registration-form" class="space-y-4">
+                    <input type="hidden" name="feed_id" id="feed-edit-id" value="">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Feed Name</label>
                         <input type="text" name="feed_name" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
@@ -387,7 +389,7 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Feed Type</label>
-                        <select name="feed_type" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <select id="feed-type-select" name="feed_type" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
                             <option value="">Select feed type</option>
                             <option value="calf">Calf Feed</option>
                             <option value="dairy">Dairy Feed</option>
@@ -397,7 +399,13 @@
                             <option value="supplement">Supplement</option>
                             <option value="hay">Hay</option>
                             <option value="silage">Silage</option>
+                            <option value="__custom__">Add new feed type…</option>
                         </select>
+                        <div id="custom-feed-type-wrap" class="hidden mt-2">
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">New feed type</label>
+                            <input id="custom-feed-type-input" type="text" placeholder="e.g. mineral_mix" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Tip: Spaces will be saved as underscores.</p>
+                        </div>
                     </div>
                     
                     <div>
@@ -422,10 +430,10 @@
             
             <!-- Modal Footer -->
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-3">
-                <button onclick="closeFeedRegistrationModal()" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                <button type="button" onclick="closeFeedRegistrationModal()" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     Cancel
                 </button>
-                <button onclick="submitFeedRegistration()" class="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors">
+                <button type="button" id="feed-modal-submit-btn" onclick="submitFeedRegistration()" class="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors">
                     Register Feed
                 </button>
             </div>
@@ -528,21 +536,61 @@
 
         // Feed Registration Modal Functions
         function openFeedRegistrationModal() {
-            const modal = document.getElementById('feed-registration-modal');
-            modal.classList.remove('hidden');
+            document.getElementById('feed-edit-id').value = '';
+            document.getElementById('feed-modal-title').textContent = 'Feed Registration';
+            document.getElementById('feed-modal-subtitle').textContent = 'Register new feed type';
+            document.getElementById('feed-modal-submit-btn').textContent = 'Register Feed';
+            document.getElementById('feed-registration-modal').classList.remove('hidden');
+        }
+
+        function openEditFeedModal(feed) {
+            if (!feed || !feed.id) return;
+            document.getElementById('feed-edit-id').value = feed.id;
+            document.querySelector('#feed-registration-form [name="feed_name"]').value = feed.feed_name || '';
+            document.querySelector('#feed-registration-form [name="animal_type"]').value = feed.animal_type || 'cow';
+            document.querySelector('#feed-registration-form [name="feed_type"]').value = feed.feed_type || '';
+            document.querySelector('#feed-registration-form [name="unit_of_measure"]').value = feed.unit_of_measure || 'kg';
+            document.querySelector('#feed-registration-form [name="notes"]').value = feed.notes || '';
+            document.getElementById('feed-modal-title').textContent = 'Edit Feed';
+            document.getElementById('feed-modal-subtitle').textContent = 'Update feed details';
+            document.getElementById('feed-modal-submit-btn').textContent = 'Update Feed';
+            document.getElementById('feed-registration-modal').classList.remove('hidden');
         }
 
         function closeFeedRegistrationModal() {
-            const modal = document.getElementById('feed-registration-modal');
-            modal.classList.add('hidden');
+            document.getElementById('feed-registration-modal').classList.add('hidden');
             document.getElementById('feed-registration-form').reset();
+            document.getElementById('feed-edit-id').value = '';
+            document.getElementById('feed-modal-title').textContent = 'Feed Registration';
+            document.getElementById('feed-modal-subtitle').textContent = 'Register new feed type';
+            document.getElementById('feed-modal-submit-btn').textContent = 'Register Feed';
+        }
+
+        async function deleteFeed(feedId, feedName) {
+            if (!confirm('Delete feed “‘ + (feedName || '') + '”? This will deactivate the feed.')) return;
+            try {
+                const res = await fetch('/api/feed/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ feed_id: feedId }) });
+                const data = await res.json();
+                if (data.success && typeof loadFeedsAndStock === 'function') loadFeedsAndStock();
+                else if (!data.success) alert(data.message || 'Failed to delete feed');
+            } catch (e) { alert('Error deleting feed. Please try again.'); }
         }
 
         async function submitFeedRegistration() {
             const form = document.getElementById('feed-registration-form');
             const formData = new FormData(form);
-            
-            // Get form values
+            const feedId = formData.get('feed_id') || document.getElementById('feed-edit-id').value;
+            const isEdit = !!feedId;
+            // Custom feed type support
+            const feedTypeSelected = (formData.get('feed_type') || '').toString();
+            if (feedTypeSelected === '__custom__') {
+                const customVal = (document.getElementById('custom-feed-type-input')?.value || '').toString().trim();
+                if (!customVal) {
+                    alert('Please enter the new feed type.');
+                    return;
+                }
+                formData.set('feed_type', customVal);
+            }
             const feedData = {
                 feed_name: formData.get('feed_name'),
                 animal_type: formData.get('animal_type'),
@@ -550,49 +598,51 @@
                 unit_of_measure: formData.get('unit_of_measure'),
                 notes: formData.get('notes') || ''
             };
-            
-            // Validate required fields
             if (!feedData.feed_name || !feedData.animal_type || !feedData.feed_type || !feedData.unit_of_measure) {
                 alert('Please fill in all required fields including Animal.');
                 return;
             }
-            
-            // Get submit button and show loading state
-            const submitBtn = document.querySelector('button[onclick="submitFeedRegistration()"]');
+            const submitBtn = document.getElementById('feed-modal-submit-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Registering...';
-            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>' + (isEdit ? 'Updating...' : 'Registering...');
             try {
-                const response = await fetch('/api/feed/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(feedData)
-                });
-                
+                const url = isEdit ? '/api/feed/update' : '/api/feed/register';
+                const body = isEdit ? Object.assign({}, feedData, { feed_id: parseInt(feedId, 10) }) : feedData;
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                 const data = await response.json();
-                
                 if (data.success) {
-                    submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Registered!';
+                    submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>' + (isEdit ? 'Updated!' : 'Registered!');
                     submitBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
                     submitBtn.classList.add('bg-green-600');
-                    setTimeout(() => {
+                    setTimeout(function() {
                         closeFeedRegistrationModal();
                         if (typeof loadFeedsAndStock === 'function') loadFeedsAndStock();
                         else window.location.reload();
                     }, 1000);
-                } else {
-                    throw new Error(data.message || 'Failed to register feed');
-                }
+                } else throw new Error(data.message || (isEdit ? 'Failed to update feed' : 'Failed to register feed'));
             } catch (error) {
-                console.error('Error registering feed:', error);
-                alert(error.message || 'Failed to register feed. Please try again.');
+                alert(error.message || 'Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }
         }
+
+        // Feed type: allow adding custom types
+        (function initCustomFeedType() {
+            var select = document.getElementById('feed-type-select');
+            var wrap = document.getElementById('custom-feed-type-wrap');
+            var input = document.getElementById('custom-feed-type-input');
+            if (!select || !wrap || !input) return;
+            function sync() {
+                var isCustom = select.value === '__custom__';
+                wrap.classList.toggle('hidden', !isCustom);
+                if (isCustom) input.focus();
+                if (!isCustom) input.value = '';
+            }
+            select.addEventListener('change', sync);
+            sync();
+        })();
 
         // Close modal when clicking outside
         document.getElementById('feed-registration-modal').addEventListener('click', function(e) {
@@ -606,12 +656,12 @@
             const tbody = document.getElementById('feeds-stock-body');
             const statTotalFeeds = document.getElementById('stat-total-feeds');
             const statFeedInventory = document.getElementById('stat-feed-inventory');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>Loading feeds and stock...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>Loading feeds and stock...</td></tr>';
             fetch('/api/feed/list-with-stock?animal_type=cow')
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
                     if (!data.success || !data.feeds) {
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Failed to load feeds.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Failed to load feeds.</td></tr>';
                         return;
                     }
                     const feeds = data.feeds || [];
@@ -620,9 +670,11 @@
                         totalStockKg += Number(f.current_stock_kg) || 0;
                     });
                     if (feeds.length === 0) {
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-4xl mb-3 text-gray-400 block"></i>No feeds registered. Use Feed Registration to add feeds.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-4xl mb-3 text-gray-400 block"></i>No feeds registered. Use Feed Registration to add feeds.</td></tr>';
                     } else {
                         if (tbody) {
+                            const feedJson = function(f) { return JSON.stringify(f).replace(/"/g, '&quot;'); };
+                            const feedNameEsc = function(f) { return (f.feed_name || '').replace(/"/g, '&quot;'); };
                             tbody.innerHTML = feeds.map(function(f) {
                                 const stock = Number(f.current_stock_kg) || 0;
                                 const lowStock = stock < 50;
@@ -632,15 +684,26 @@
                                 const notes = (f.notes || '').toString();
                                 const notesShort = notes.substring(0, 40) + (notes.length > 40 ? '…' : '');
                                 const notesDisplay = notes ? notesShort : '—';
-                                return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">' +
+                                return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50" data-feed="' + feedJson(f) + '">' +
                                     '<td class="px-6 py-4 font-medium text-gray-900 dark:text-white">' + (f.feed_name || '-') + '</td>' +
                                     '<td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 capitalize">' + typeLabel + '</td>' +
                                     '<td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">' + (f.unit_of_measure || '-') + '</td>' +
                                     '<td class="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">' + stock.toFixed(2) + ' kg</td>' +
                                     '<td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs truncate" title="' + (notes.replace(/"/g, '&quot;')) + '">' + notesDisplay + '</td>' +
                                     '<td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-medium ' + statusClass + '">' + statusText + '</span></td>' +
-                                    '</tr>';
+                                    '<td class="px-6 py-4"><div class="flex gap-2">' +
+                                    '<button type="button" class="edit-feed-btn px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">Edit</button>' +
+                                    '<button type="button" class="delete-feed-btn px-2 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" data-id="' + f.id + '" data-name="' + feedNameEsc(f) + '">Delete</button></div></td></tr>';
                             }).join('');
+                            tbody.querySelectorAll('.edit-feed-btn').forEach(function(btn) {
+                                btn.addEventListener('click', function() {
+                                    var tr = this.closest('tr');
+                                    try { openEditFeedModal(JSON.parse((tr.getAttribute('data-feed') || '').replace(/&quot;/g, '"'))); } catch (e) { console.error(e); }
+                                });
+                            });
+                            tbody.querySelectorAll('.delete-feed-btn').forEach(function(btn) {
+                                btn.addEventListener('click', function() { deleteFeed(parseInt(this.dataset.id, 10), (this.dataset.name || '').replace(/&quot;/g, '"')); });
+                            });
                         }
                     }
                     if (statTotalFeeds) statTotalFeeds.textContent = feeds.length;
@@ -648,7 +711,7 @@
                 })
                 .catch(function(err) {
                     console.error('Error loading feeds with stock:', err);
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-500 dark:text-red-400">Error loading feeds. Please try again.</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-red-500 dark:text-red-400">Error loading feeds. Please try again.</td></tr>';
                 });
         }
         if (document.getElementById('refresh-feeds-stock')) {
