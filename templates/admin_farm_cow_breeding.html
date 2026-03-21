@@ -194,7 +194,7 @@
                         <thead class="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Dam</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Sire</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Sire / A.I.</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Breeding Date</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Expected Calving</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Days Left</th>
@@ -291,15 +291,44 @@
                         </select>
                     </div>
 
-                    <!-- Select Sire -->
+                    <!-- Breeding method -->
                     <div>
+                        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Breeding method <span class="text-red-500">*</span>
+                        </span>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <input type="radio" name="breeding_method" value="natural" id="breedingMethodNatural" checked
+                                       class="text-rose-600 focus:ring-rose-500">
+                                <span class="text-sm text-gray-800 dark:text-gray-200">Natural mating (select sire)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <input type="radio" name="breeding_method" value="ai" id="breedingMethodAi"
+                                       class="text-rose-600 focus:ring-rose-500">
+                                <span class="text-sm text-gray-800 dark:text-gray-200">Artificial insemination (A.I.)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Select Sire -->
+                    <div id="sireFieldWrap">
                         <label for="selectedSire" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Select Sire (Male) <span class="text-red-500">*</span>
                         </label>
-                        <select id="selectedSire" name="sire_id" required
+                        <select id="selectedSire" name="sire_id"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 dark:bg-gray-700 dark:text-white">
                             <option value="">Select a sire...</option>
                         </select>
+                    </div>
+
+                    <!-- A.I. semen breed -->
+                    <div id="aiBreedFieldWrap" class="hidden">
+                        <label for="aiBreedInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            A.I. breed (semen) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="aiBreedInput" name="ai_breed" placeholder="e.g. Holstein, Jersey, Fleckvieh..."
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 dark:bg-gray-700 dark:text-white">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter the breed of the bull or semen used for insemination.</p>
                     </div>
 
                     <!-- Expected Calving Date (Read-only) -->
@@ -521,6 +550,35 @@
         let currentBreedingId = null;
         let currentCalvingData = null;
 
+        function escapeJsStr(s) {
+            if (s == null || s === undefined) return '';
+            return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '').replace(/\n/g, ' ');
+        }
+
+        function escapeHtml(s) {
+            if (s == null || s === undefined) return '';
+            const d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        }
+
+        function updateBreedingMethodUI() {
+            const ai = document.getElementById('breedingMethodAi').checked;
+            document.getElementById('sireFieldWrap').classList.toggle('hidden', ai);
+            document.getElementById('aiBreedFieldWrap').classList.toggle('hidden', !ai);
+            const sire = document.getElementById('selectedSire');
+            const aiInput = document.getElementById('aiBreedInput');
+            if (ai) {
+                sire.removeAttribute('required');
+                sire.value = '';
+                aiInput.setAttribute('required', 'required');
+            } else {
+                sire.setAttribute('required', 'required');
+                aiInput.removeAttribute('required');
+                aiInput.value = '';
+            }
+        }
+
         // Load breeding records
         function loadBreedingRecords() {
             fetch('/api/cow-breeding/list')
@@ -602,15 +660,19 @@
                         </div>
                     </td>
 
-                    <!-- Sire Column -->
+                    <!-- Sire / A.I. Column -->
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
-                            <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-male text-blue-600 dark:text-blue-400 text-sm"></i>
+                            <div class="w-8 h-8 ${record.breeding_method === 'ai' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-blue-100 dark:bg-blue-900/30'} rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas ${record.breeding_method === 'ai' ? 'fa-syringe text-violet-600 dark:text-violet-400' : 'fa-male text-blue-600 dark:text-blue-400'} text-sm"></i>
                             </div>
                             <div>
-                                <div class="text-sm font-medium text-gray-900 dark:text-white">${record.sire.ear_tag}</div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
+                                    <span>${record.sire.ear_tag}</span>
+                                    ${record.breeding_method === 'ai' ? '<span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">A.I.</span>' : ''}
+                                </div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">${record.sire.name || 'Unnamed'}</div>
+                                ${record.breeding_method === 'ai' && record.ai_breed ? `<div class="text-xs text-violet-600 dark:text-violet-400 mt-0.5">Semen breed: ${escapeHtml(record.ai_breed)}</div>` : ''}
                             </div>
                         </div>
                     </td>
@@ -669,7 +731,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center space-x-2">
                             ${canCalve(record) ? `
-                                <button onclick="openCalvingModal(${record.id}, '${record.dam.ear_tag}', '${record.sire.ear_tag}', '${record.dam.breed}', '${record.sire.breed}')" 
+                                <button onclick="openCalvingModal(${record.id}, '${escapeJsStr(record.dam.ear_tag)}', '${escapeJsStr(record.sire.ear_tag)}', '${escapeJsStr(record.dam.breed)}', '${escapeJsStr(record.sire.breed)}')" 
                                         class="${getCalvingButtonClass(record)}" 
                                         title="${getCalvingButtonTitle(record)}">
                                     <i class="fas fa-baby text-sm"></i>
@@ -777,7 +839,7 @@
                             </div>
                             <div class="flex items-center">
                                 <i class="fas fa-male text-blue-500 mr-1"></i>
-                                <span>${calf.sire_ear_tag}</span>
+                                <span>${calf.sire_ear_tag || 'A.I.'}</span>
                             </div>
                         </div>
                     </td>
@@ -1044,7 +1106,7 @@
 
                 return `
                     <div class="${alertClass} text-white rounded-xl p-4 border-l-4 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" 
-                         onclick="openCalvingModal(${record.id}, '${record.dam.ear_tag}', '${record.sire.ear_tag}', '${record.dam.breed}', '${record.sire.breed}')">
+                         onclick="openCalvingModal(${record.id}, '${escapeJsStr(record.dam.ear_tag)}', '${escapeJsStr(record.sire.ear_tag)}', '${escapeJsStr(record.dam.breed)}', '${escapeJsStr(record.sire.breed)}')">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
@@ -1084,14 +1146,18 @@
         function openBreedingModal() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('breedingDate').value = today;
+            document.getElementById('breedingMethodNatural').checked = true;
             populateDams();
             populateSires();
+            updateBreedingMethodUI();
             document.getElementById('breedingModal').classList.remove('hidden');
         }
 
         function closeBreedingModal() {
             document.getElementById('breedingModal').classList.add('hidden');
             document.getElementById('breedingForm').reset();
+            document.getElementById('breedingMethodNatural').checked = true;
+            updateBreedingMethodUI();
         }
 
         function populateDams() {
@@ -1150,13 +1216,35 @@
         document.getElementById('breedingForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            const method = document.querySelector('input[name="breeding_method"]:checked').value;
+            if (method === 'natural') {
+                if (!document.getElementById('selectedSire').value) {
+                    showNotification('Please select a sire (male) for natural mating.', 'error');
+                    return;
+                }
+            } else {
+                const ab = (document.getElementById('aiBreedInput').value || '').trim();
+                if (!ab) {
+                    showNotification('Please enter the breed used for artificial insemination.', 'error');
+                    return;
+                }
+            }
+            
             const submitBtn = document.getElementById('submitBreeding');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Registering...';
             submitBtn.disabled = true;
             
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
+            const data = {
+                dam_id: document.getElementById('selectedDam').value,
+                breeding_date: document.getElementById('breedingDate').value,
+                breeding_method: method
+            };
+            if (method === 'natural') {
+                data.sire_id = document.getElementById('selectedSire').value;
+            } else {
+                data.ai_breed = (document.getElementById('aiBreedInput').value || '').trim();
+            }
             
             fetch('/api/cow-breeding/register', {
                 method: 'POST',
@@ -1365,6 +1453,9 @@
 
         // Load data on page load
         document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('breedingMethodNatural').addEventListener('change', updateBreedingMethodUI);
+            document.getElementById('breedingMethodAi').addEventListener('change', updateBreedingMethodUI);
+            updateBreedingMethodUI();
             loadBreedingRecords();
             loadCalvesRecords();
         });

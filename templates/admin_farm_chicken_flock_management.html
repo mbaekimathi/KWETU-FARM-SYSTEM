@@ -478,6 +478,7 @@
                                             <th scope="col" class="px-6 py-3">Coop</th>
                                             <th scope="col" class="px-6 py-3">Quantity</th>
                                             <th scope="col" class="px-6 py-3">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -508,6 +509,29 @@
                                                 <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs font-medium rounded-full">
                                                     {{ chicken.current_status.title() }}
                                                 </span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex justify-end gap-2">
+                                                    <button
+                                                        class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                                                        data-chicken-id="{{ chicken.chicken_id }}"
+                                                        data-batch-name="{{ chicken.batch_name|e }}"
+                                                        data-breed-name="{{ chicken.breed_name|e }}"
+                                                        data-gender="{{ chicken.gender }}"
+                                                        data-hatch-date="{{ chicken.hatch_date.strftime('%Y-%m-%d') if chicken.hatch_date else '' }}"
+                                                        data-source="{{ chicken.source|e }}"
+                                                        data-coop-number="{{ chicken.coop_number }}"
+                                                        data-quantity="{{ chicken.quantity }}"
+                                                        data-current-status="{{ chicken.current_status }}"
+                                                        onclick="editChicken(this)">
+                                                        <i class="fas fa-pen mr-1"></i>Edit
+                                                    </button>
+                                                    <button
+                                                        class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium"
+                                                        onclick="deleteChicken('{{ chicken.chicken_id }}')">
+                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -553,6 +577,7 @@
                                             <th scope="col" class="px-6 py-3">Coop</th>
                                             <th scope="col" class="px-6 py-3">Quantity</th>
                                             <th scope="col" class="px-6 py-3">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -583,6 +608,29 @@
                                                 <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs font-medium rounded-full">
                                                     {{ chicken.current_status.title() }}
                                                 </span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex justify-end gap-2">
+                                                    <button
+                                                        class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                                                        data-chicken-id="{{ chicken.chicken_id }}"
+                                                        data-batch-name="{{ chicken.batch_name|e }}"
+                                                        data-breed-name="{{ chicken.breed_name|e }}"
+                                                        data-gender="{{ chicken.gender }}"
+                                                        data-hatch-date="{{ chicken.hatch_date.strftime('%Y-%m-%d') if chicken.hatch_date else '' }}"
+                                                        data-source="{{ chicken.source|e }}"
+                                                        data-coop-number="{{ chicken.coop_number }}"
+                                                        data-quantity="{{ chicken.quantity }}"
+                                                        data-current-status="{{ chicken.current_status }}"
+                                                        onclick="editChicken(this)">
+                                                        <i class="fas fa-pen mr-1"></i>Edit
+                                                    </button>
+                                                    <button
+                                                        class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium"
+                                                        onclick="deleteChicken('{{ chicken.chicken_id }}')">
+                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -628,6 +676,7 @@
                                             <th scope="col" class="px-6 py-3">Coop</th>
                                             <th scope="col" class="px-6 py-3">Quantity</th>
                                             <th scope="col" class="px-6 py-3">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -658,6 +707,29 @@
                                                 <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs font-medium rounded-full">
                                                     {{ chicken.current_status.title() }}
                                                 </span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex justify-end gap-2">
+                                                    <button
+                                                        class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                                                        data-chicken-id="{{ chicken.chicken_id }}"
+                                                        data-batch-name="{{ chicken.batch_name|e }}"
+                                                        data-breed-name="{{ chicken.breed_name|e }}"
+                                                        data-gender="{{ chicken.gender }}"
+                                                        data-hatch-date="{{ chicken.hatch_date.strftime('%Y-%m-%d') if chicken.hatch_date else '' }}"
+                                                        data-source="{{ chicken.source|e }}"
+                                                        data-coop-number="{{ chicken.coop_number }}"
+                                                        data-quantity="{{ chicken.quantity }}"
+                                                        data-current-status="{{ chicken.current_status }}"
+                                                        onclick="editChicken(this)">
+                                                        <i class="fas fa-pen mr-1"></i>Edit
+                                                    </button>
+                                                    <button
+                                                        class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium"
+                                                        onclick="deleteChicken('{{ chicken.chicken_id }}')">
+                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -703,6 +775,86 @@
             </div>
         </div>
     </footer>
+
+    <!-- Edit Chicken Modal -->
+    <div id="edit-chicken-modal" class="fixed inset-0 z-[60] hidden">
+        <div id="edit-chicken-backdrop" class="absolute inset-0 bg-black/50"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Edit Chicken Details</h3>
+                    <button id="close-edit-modal" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <form id="edit-chicken-form" class="p-6 space-y-4">
+                    <input type="hidden" id="edit-chicken-id" />
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="edit-batch-name" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Batch Name</label>
+                            <input id="edit-batch-name" type="text" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label for="edit-breed-name" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Breed Name</label>
+                            <input id="edit-breed-name" type="text" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label for="edit-gender" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Gender</label>
+                            <select id="edit-gender" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="mixed">Mixed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="edit-hatch-date" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hatch Date</label>
+                            <input id="edit-hatch-date" type="date" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Age updates automatically from this date.</p>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Age (days)</span>
+                            <div id="edit-age-days-display" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white font-semibold tabular-nums">
+                                —
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Calculated from hatch date (not editable).</p>
+                        </div>
+                        <div>
+                            <label for="edit-source" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Source</label>
+                            <input id="edit-source" type="text" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label for="edit-coop-number" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Coop Number</label>
+                            <input id="edit-coop-number" type="number" min="1" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label for="edit-quantity" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Quantity</label>
+                            <input id="edit-quantity" type="number" min="1" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="edit-current-status" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                            <select id="edit-current-status" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                                <option value="active">Active</option>
+                                <option value="sold">Sold</option>
+                                <option value="dead">Dead</option>
+                                <option value="culled">Culled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button type="button" id="cancel-edit-modal" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-900 dark:text-white">
+                            Cancel
+                        </button>
+                        <button type="submit" id="save-edit-btn" class="px-4 py-2 rounded-lg bg-chicken-yellow-600 hover:bg-chicken-yellow-700 text-white">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Modern Theme Toggle with Smooth Transitions
@@ -870,6 +1022,126 @@
                 });
             });
         });
+
+        const editChickenModal = document.getElementById('edit-chicken-modal');
+        const editChickenForm = document.getElementById('edit-chicken-form');
+        const closeEditModalBtn = document.getElementById('close-edit-modal');
+        const cancelEditModalBtn = document.getElementById('cancel-edit-modal');
+        const editChickenBackdrop = document.getElementById('edit-chicken-backdrop');
+
+        function openEditModal() {
+            editChickenModal.classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            editChickenModal.classList.add('hidden');
+        }
+
+        closeEditModalBtn.addEventListener('click', closeEditModal);
+        cancelEditModalBtn.addEventListener('click', closeEditModal);
+        editChickenBackdrop.addEventListener('click', closeEditModal);
+
+        function computeAgeDaysFromHatchDate(hatchDateStr) {
+            if (!hatchDateStr) return null;
+            const parts = hatchDateStr.split('-').map(Number);
+            if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+            const hatch = new Date(parts[0], parts[1] - 1, parts[2]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            hatch.setHours(0, 0, 0, 0);
+            const diffMs = today - hatch;
+            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            return days < 0 ? 0 : days;
+        }
+
+        function refreshEditAgeDisplay() {
+            const hatchVal = document.getElementById('edit-hatch-date').value;
+            const el = document.getElementById('edit-age-days-display');
+            const days = computeAgeDaysFromHatchDate(hatchVal);
+            if (days === null) {
+                el.textContent = '—';
+                return;
+            }
+            el.textContent = String(days);
+        }
+
+        document.getElementById('edit-hatch-date').addEventListener('change', refreshEditAgeDisplay);
+        document.getElementById('edit-hatch-date').addEventListener('input', refreshEditAgeDisplay);
+
+        async function editChicken(button) {
+            const data = button.dataset;
+            document.getElementById('edit-chicken-id').value = data.chickenId || '';
+            document.getElementById('edit-batch-name').value = data.batchName || '';
+            document.getElementById('edit-breed-name').value = data.breedName || '';
+            document.getElementById('edit-gender').value = data.gender || 'mixed';
+            document.getElementById('edit-hatch-date').value = data.hatchDate || '';
+            document.getElementById('edit-source').value = data.source || '';
+            document.getElementById('edit-coop-number').value = data.coopNumber || 1;
+            document.getElementById('edit-quantity').value = data.quantity || 1;
+            document.getElementById('edit-current-status').value = data.currentStatus || 'active';
+            refreshEditAgeDisplay();
+            openEditModal();
+        }
+
+        editChickenForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const chickenId = document.getElementById('edit-chicken-id').value;
+            const saveBtn = document.getElementById('save-edit-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch(`/admin/farm/chicken-flock-update/${encodeURIComponent(chickenId)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        batch_name: document.getElementById('edit-batch-name').value,
+                        breed_name: document.getElementById('edit-breed-name').value,
+                        gender: document.getElementById('edit-gender').value,
+                        hatch_date: document.getElementById('edit-hatch-date').value,
+                        source: document.getElementById('edit-source').value,
+                        coop_number: document.getElementById('edit-coop-number').value,
+                        quantity: document.getElementById('edit-quantity').value,
+                        current_status: document.getElementById('edit-current-status').value
+                    })
+                });
+
+                const result = await response.json();
+                alert(result.message || (result.success ? 'Chicken updated successfully' : 'Failed to update chicken'));
+
+                if (response.ok && result.success) {
+                    closeEditModal();
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error updating chicken:', error);
+                alert('Failed to update chicken. Please try again.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        });
+
+        async function deleteChicken(chickenId) {
+            const confirmed = confirm(`Delete chicken ${chickenId}? This action cannot be undone.`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/admin/farm/chicken-flock-delete/${encodeURIComponent(chickenId)}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                alert(result.message || (result.success ? 'Chicken deleted successfully' : 'Failed to delete chicken'));
+
+                if (response.ok && result.success) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error deleting chicken:', error);
+                alert('Failed to delete chicken. Please try again.');
+            }
+        }
     </script>
 </body>
 </html>

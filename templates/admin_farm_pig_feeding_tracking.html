@@ -95,6 +95,12 @@
                     </div>
                     <span class="font-medium">Feeding Management</span>
                 </a>
+                <a href="{% if user.role == 'manager' %}/manager{% else %}/admin{% endif %}/farm/pig-feeding-management" class="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 dark:hover:from-amber-900/20 dark:hover:to-orange-900/20 rounded-lg transition-all duration-200 group border-l-4 border-transparent hover:border-amber-500">
+                    <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                        <i class="fas fa-plus text-white text-sm"></i>
+                    </div>
+                    <span class="font-medium">Feed Registration</span>
+                </a>
                 <div class="flex items-center px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border-l-4 border-blue-500">
                     <div class="w-8 h-8 mr-3 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
                         <i class="fas fa-chart-line text-white text-sm"></i>

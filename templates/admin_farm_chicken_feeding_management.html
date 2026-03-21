@@ -692,6 +692,16 @@
             sync();
         })();
 
+        // Safer CAPS: show uppercase, normalize on blur (avoids blocking typing/IME)
+        (function initUppercaseInputs() {
+            var nodes = document.querySelectorAll('#feed-registration-form input[type="text"], #feed-registration-form textarea, #custom-feed-type-input');
+            if (!nodes || !nodes.length) return;
+            nodes.forEach(function(node) {
+                node.style.textTransform = 'uppercase';
+                node.addEventListener('blur', function() { node.value = node.value.toUpperCase(); });
+            });
+        })();
+
         // Close modal when clicking outside
         document.getElementById('feed-registration-modal').addEventListener('click', function(e) {
             if (e.target === this) {

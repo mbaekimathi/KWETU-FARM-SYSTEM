@@ -280,6 +280,30 @@ def _migration_001_sync_columns(cursor):
         pass
 
 
+def _migration_002_cow_breeding_ai(cursor):
+    """Allow artificial insemination: nullable sire on breeding/calf, method + AI breed on cow_breeding."""
+    if not db_migrations.ensure_table_exists(cursor, 'cow_breeding'):
+        return
+    ec = db_migrations.ensure_column
+    ec(cursor, 'cow_breeding', 'breeding_method', "ENUM('natural', 'ai') NOT NULL DEFAULT 'natural'", after_column='sire_id')
+    ec(cursor, 'cow_breeding', 'ai_breed', 'VARCHAR(255) NULL', after_column='breeding_method')
+    cursor.execute("""
+        SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cow_breeding' AND COLUMN_NAME = 'sire_id'
+    """)
+    row = cursor.fetchone()
+    if row and row.get('IS_NULLABLE') == 'NO':
+        cursor.execute("ALTER TABLE cow_breeding MODIFY COLUMN sire_id INT NULL")
+    if db_migrations.ensure_table_exists(cursor, 'calves'):
+        cursor.execute("""
+            SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'calves' AND COLUMN_NAME = 'sire_id'
+        """)
+        row = cursor.fetchone()
+        if row and row.get('IS_NULLABLE') == 'NO':
+            cursor.execute("ALTER TABLE calves MODIFY COLUMN sire_id INT NULL")
+
+
 def create_database_and_tables():
     """Create database and tables if they don't exist. Syncs columns and runs migrations (local + hosted)."""
     try:
@@ -1126,7 +1150,9 @@ def create_database_and_tables():
             CREATE TABLE IF NOT EXISTS cow_breeding (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 dam_id INT NOT NULL,
-                sire_id INT NOT NULL,
+                sire_id INT NULL,
+                breeding_method ENUM('natural', 'ai') NOT NULL DEFAULT 'natural',
+                ai_breed VARCHAR(255) NULL,
                 breeding_date DATE NOT NULL,
                 expected_calving_date DATE NOT NULL,
                 pregnancy_status ENUM('served', 'conceived', 'lactating', 'available') DEFAULT 'served',
@@ -1172,7 +1198,7 @@ def create_database_and_tables():
                     gender ENUM('male', 'female') NOT NULL,
                     birth_date DATE NOT NULL,
                     dam_id INT NOT NULL,
-                    sire_id INT NOT NULL,
+                    sire_id INT NULL,
                     status ENUM('active', 'sold', 'deceased') DEFAULT 'active',
                     recorded_by INT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1562,6 +1588,7 @@ def create_database_and_tables():
         # To add a new migration: append ('002_description', _migration_002_fn) and define the function above.
         MIGRATIONS = [
             ('001_sync_columns', _migration_001_sync_columns),
+            ('002_cow_breeding_ai', _migration_002_cow_breeding_ai),
         ]
         db_migrations.run_migrations(conn, MIGRATIONS)
         
@@ -3097,7 +3124,7 @@ def admin_farm_chicken_management():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
 
-    # Fetch chicken counts by type
+    # Fetch chicken counts, analytics, and notifications
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -3112,13 +3139,111 @@ def admin_farm_chicken_management():
         for result in results:
             if result['chicken_type'] in counts:
                 counts[result['chicken_type']] = result['total_count'] or 0
+
+        # Analytics summary
+        cursor.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN current_status = 'active' THEN quantity ELSE 0 END), 0) AS total_active,
+                COALESCE(COUNT(CASE WHEN current_status = 'active' THEN 1 END), 0) AS active_flocks,
+                COALESCE(AVG(CASE WHEN current_status = 'active' THEN age_days END), 0) AS avg_age_days,
+                COALESCE(COUNT(DISTINCT CASE WHEN current_status = 'active' THEN coop_number END), 0) AS coops_in_use
+            FROM chickens
+        """)
+        analytics_row = cursor.fetchone() or {}
+
+        analytics = {
+            'total_active': int(analytics_row.get('total_active') or 0),
+            'active_flocks': int(analytics_row.get('active_flocks') or 0),
+            'avg_age_days': round(float(analytics_row.get('avg_age_days') or 0), 1),
+            'coops_in_use': int(analytics_row.get('coops_in_use') or 0)
+        }
+
+        # Notifications from actual flock records
+        cursor.execute("""
+            SELECT
+                chicken_id,
+                batch_name,
+                chicken_type,
+                current_status,
+                quantity,
+                age_days,
+                registration_date
+            FROM chickens
+            WHERE current_status IN ('dead', 'culled', 'sold')
+               OR (current_status = 'active' AND quantity <= 20)
+            ORDER BY
+                CASE
+                    WHEN current_status = 'dead' THEN 1
+                    WHEN current_status = 'culled' THEN 2
+                    WHEN current_status = 'active' AND quantity <= 20 THEN 3
+                    WHEN current_status = 'sold' THEN 4
+                    ELSE 5
+                END,
+                registration_date DESC
+            LIMIT 8
+        """)
+        notification_rows = cursor.fetchall() or []
+
+        notifications = []
+        for row in notification_rows:
+            status = row.get('current_status')
+            quantity = int(row.get('quantity') or 0)
+            chicken_id = row.get('chicken_id') or 'N/A'
+            batch_name = row.get('batch_name') or 'UNKNOWN'
+            chicken_type = (row.get('chicken_type') or 'unknown').title()
+
+            if status == 'dead':
+                level = 'critical'
+                title = f"Mortality: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) has {quantity} birds marked dead."
+            elif status == 'culled':
+                level = 'warning'
+                title = f"Culled Flock: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) has {quantity} birds marked culled."
+            elif status == 'sold':
+                level = 'success'
+                title = f"Sold Flock: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) has {quantity} birds marked sold."
+            else:
+                level = 'info'
+                title = f"Low Quantity: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) is active with low quantity ({quantity})."
+
+            notifications.append({
+                'level': level,
+                'title': title,
+                'message': message
+            })
+
+        if not notifications:
+            notifications.append({
+                'level': 'success',
+                'title': 'All Clear',
+                'message': 'No urgent chicken notifications right now.'
+            })
+
+        notification_count = len([n for n in notifications if n['level'] in ['critical', 'warning', 'info']])
         cursor.close()
         conn.close()
     except Exception as e:
         print(f"Error fetching chicken counts: {str(e)}")
         counts = {'kienyeji': 0, 'broiler': 0, 'layer': 0}
+        analytics = {'total_active': 0, 'active_flocks': 0, 'avg_age_days': 0, 'coops_in_use': 0}
+        notifications = [{
+            'level': 'warning',
+            'title': 'Data Unavailable',
+            'message': 'Unable to load analytics and notifications right now.'
+        }]
+        notification_count = 1
 
-    return render_template('admin_farm_chicken_management.html', user=user_data, counts=counts)
+    return render_template(
+        'admin_farm_chicken_management.html',
+        user=user_data,
+        counts=counts,
+        analytics=analytics,
+        notifications=notifications,
+        notification_count=notification_count
+    )
 
 # Manager Farm Management Routes (duplicate removed - see comprehensive routes below)
 
@@ -3168,7 +3293,7 @@ def manager_farm_chicken_management():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     
-    # Fetch chicken counts by type
+    # Fetch chicken counts, analytics, and notifications
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -3195,19 +3320,112 @@ def manager_farm_chicken_management():
         for result in results:
             if result['chicken_type'] in counts:
                 counts[result['chicken_type']] = result['total_count'] or 0
+
+        # Analytics summary
+        cursor.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN current_status = 'active' THEN quantity ELSE 0 END), 0) AS total_active,
+                COALESCE(COUNT(CASE WHEN current_status = 'active' THEN 1 END), 0) AS active_flocks,
+                COALESCE(AVG(CASE WHEN current_status = 'active' THEN age_days END), 0) AS avg_age_days,
+                COALESCE(COUNT(DISTINCT CASE WHEN current_status = 'active' THEN coop_number END), 0) AS coops_in_use
+            FROM chickens
+        """)
+        analytics_row = cursor.fetchone() or {}
+        analytics = {
+            'total_active': int(analytics_row.get('total_active') or 0),
+            'active_flocks': int(analytics_row.get('active_flocks') or 0),
+            'avg_age_days': round(float(analytics_row.get('avg_age_days') or 0), 1),
+            'coops_in_use': int(analytics_row.get('coops_in_use') or 0)
+        }
+
+        # Notifications from actual flock records
+        cursor.execute("""
+            SELECT
+                chicken_id,
+                batch_name,
+                chicken_type,
+                current_status,
+                quantity,
+                age_days,
+                registration_date
+            FROM chickens
+            WHERE current_status IN ('dead', 'culled', 'sold')
+               OR (current_status = 'active' AND quantity <= 20)
+            ORDER BY
+                CASE
+                    WHEN current_status = 'dead' THEN 1
+                    WHEN current_status = 'culled' THEN 2
+                    WHEN current_status = 'active' AND quantity <= 20 THEN 3
+                    WHEN current_status = 'sold' THEN 4
+                    ELSE 5
+                END,
+                registration_date DESC
+            LIMIT 8
+        """)
+        notification_rows = cursor.fetchall() or []
+
+        notifications = []
+        for row in notification_rows:
+            status = row.get('current_status')
+            quantity = int(row.get('quantity') or 0)
+            chicken_id = row.get('chicken_id') or 'N/A'
+            batch_name = row.get('batch_name') or 'UNKNOWN'
+            chicken_type = (row.get('chicken_type') or 'unknown').title()
+
+            if status == 'dead':
+                level = 'critical'
+                title = f"Mortality: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) has {quantity} birds marked dead."
+            elif status == 'culled':
+                level = 'warning'
+                title = f"Culled Flock: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) has {quantity} birds marked culled."
+            elif status == 'sold':
+                level = 'success'
+                title = f"Sold Flock: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) has {quantity} birds marked sold."
+            else:
+                level = 'info'
+                title = f"Low Quantity: {chicken_id}"
+                message = f"{batch_name} ({chicken_type}) is active with low quantity ({quantity})."
+
+            notifications.append({
+                'level': level,
+                'title': title,
+                'message': message
+            })
+
+        if not notifications:
+            notifications.append({
+                'level': 'success',
+                'title': 'All Clear',
+                'message': 'No urgent chicken notifications right now.'
+            })
+
+        notification_count = len([n for n in notifications if n['level'] in ['critical', 'warning', 'info']])
         
         cursor.close()
         conn.close()
         
     except Exception as e:
         print(f"Error fetching chicken counts: {str(e)}")
-        counts = {
-            'kienyeji': 0,
-            'broiler': 0,
-            'layer': 0
-        }
+        counts = {'kienyeji': 0, 'broiler': 0, 'layer': 0}
+        analytics = {'total_active': 0, 'active_flocks': 0, 'avg_age_days': 0, 'coops_in_use': 0}
+        notifications = [{
+            'level': 'warning',
+            'title': 'Data Unavailable',
+            'message': 'Unable to load analytics and notifications right now.'
+        }]
+        notification_count = 1
     
-    return render_template('admin_farm_chicken_management.html', user=user_data, counts=counts)
+    return render_template(
+        'admin_farm_chicken_management.html',
+        user=user_data,
+        counts=counts,
+        analytics=analytics,
+        notifications=notifications,
+        notification_count=notification_count
+    )
 
 @app.route('/manager/pigs-analytics')
 def manager_pigs_analytics():
@@ -3260,7 +3478,7 @@ def manager_farm_pig_feeding_management():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     
-    return render_template('admin_farm_feeding_management.html', user=user_data)
+    return render_template('admin_farm_feeding_management.html', user=user_data, feeding_animal='pig')
 
 @app.route('/manager/farm/breeding-records')
 def manager_farm_breeding_records():
@@ -3641,7 +3859,7 @@ def manager_farm_cow_feeding_management():
         'role': session['employee_role'], 'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    return render_template('admin_farm_cow_feeding_management.html', user=user_data)
+    return render_template('admin_farm_feeding_management.html', user=user_data, feeding_animal='cow')
 
 
 @app.route('/manager/farm/cow-feeding-tracking')
@@ -3720,7 +3938,7 @@ def manager_farm_chicken_feeding_management():
         'role': session['employee_role'], 'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    return render_template('admin_farm_chicken_feeding_management.html', user=user_data)
+    return render_template('admin_farm_feeding_management.html', user=user_data, feeding_animal='chicken')
 
 @app.route('/manager/farm/chicken-feed-settings')
 def manager_farm_chicken_feed_settings():
@@ -5161,6 +5379,132 @@ def admin_farm_chicken_flock_management():
                          chickens_by_type=chickens_by_type,
                          stats=stats_dict)
 
+@app.route('/admin/farm/chicken-flock-update/<string:chicken_id>', methods=['POST'])
+def admin_farm_chicken_flock_update(chicken_id):
+    """Update a chicken flock record."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    try:
+        data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+        data = data or {}
+
+        batch_name = (data.get('batch_name') or '').strip().upper()
+        breed_name = (data.get('breed_name') or '').strip().upper()
+        gender = (data.get('gender') or '').strip().lower()
+        hatch_date = (data.get('hatch_date') or '').strip()
+        source = (data.get('source') or '').strip().upper()
+        current_status = (data.get('current_status') or 'active').strip().lower()
+
+        try:
+            coop_number = int(data.get('coop_number'))
+            quantity = int(data.get('quantity'))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Coop number and quantity must be valid numbers'}), 400
+
+        allowed_genders = {'male', 'female', 'mixed'}
+        allowed_statuses = {'active', 'sold', 'dead', 'culled'}
+
+        if not all([batch_name, breed_name, gender, hatch_date, source]):
+            return jsonify({'success': False, 'message': 'Batch name, breed, gender, hatch date and source are required'}), 400
+
+        if gender not in allowed_genders:
+            return jsonify({'success': False, 'message': 'Invalid gender value'}), 400
+
+        if current_status not in allowed_statuses:
+            return jsonify({'success': False, 'message': 'Invalid status value'}), 400
+
+        # Age (days) is always derived from hatch date vs today — not user-editable
+        try:
+            hatch_d = datetime.strptime(hatch_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid hatch date format (use YYYY-MM-DD)'}), 400
+        age_days = (datetime.now().date() - hatch_d).days
+        if age_days < 0:
+            age_days = 0
+
+        if coop_number < 1 or quantity < 1:
+            return jsonify({'success': False, 'message': 'Coop and quantity must be > 0'}), 400
+
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                UPDATE chickens
+                SET batch_name = %s,
+                    breed_name = %s,
+                    gender = %s,
+                    hatch_date = %s,
+                    age_days = %s,
+                    source = %s,
+                    coop_number = %s,
+                    quantity = %s,
+                    current_status = %s
+                WHERE chicken_id = %s
+            """, (
+                batch_name,
+                breed_name,
+                gender,
+                hatch_date,
+                age_days,
+                source,
+                coop_number,
+                quantity,
+                current_status,
+                chicken_id
+            ))
+
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'message': 'Chicken not found'}), 404
+
+            conn.commit()
+            return jsonify({'success': True, 'message': f'Chicken {chicken_id} updated successfully'})
+        except Exception as db_error:
+            if conn:
+                conn.rollback()
+            print(f"Error updating chicken flock: {str(db_error)}")
+            return jsonify({'success': False, 'message': f'Database error: {str(db_error)}'}), 500
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+    except Exception as e:
+        print(f"Error processing chicken flock update: {str(e)}")
+        return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
+
+@app.route('/admin/farm/chicken-flock-delete/<string:chicken_id>', methods=['DELETE'])
+def admin_farm_chicken_flock_delete(chicken_id):
+    """Delete a chicken flock record."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM chickens WHERE chicken_id = %s", (chicken_id,))
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'Chicken not found'}), 404
+
+        conn.commit()
+        return jsonify({'success': True, 'message': f'Chicken {chicken_id} deleted successfully'})
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error deleting chicken flock: {str(e)}")
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 @app.route('/admin/farm/chicken-settings')
 def admin_farm_chicken_settings():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -6481,7 +6825,11 @@ def admin_farm_chicken_production_update(production_id):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
+        # Accept both JSON (fetch) and form-encoded submissions (native form post)
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         
         conn = None
         cursor = None
@@ -6914,7 +7262,11 @@ def admin_farm_chicken_production_register():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
+        # Accept both JSON fetch and normal form posts
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         
         # Validate required fields
         required_fields = ['production_type', 'chicken_category', 'chicken_id_search']
@@ -7938,7 +8290,7 @@ def admin_farm_pig_feeding_management():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     
-    return render_template('admin_farm_feeding_management.html', user=user_data)
+    return render_template('admin_farm_feeding_management.html', user=user_data, feeding_animal='pig')
 
 @app.route('/admin/farm/feed-settings')
 def admin_farm_feed_settings_redirect():
@@ -8060,7 +8412,7 @@ def admin_farm_cow_feeding_management():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     
-    return render_template('admin_farm_cow_feeding_management.html', user=user_data)
+    return render_template('admin_farm_feeding_management.html', user=user_data, feeding_animal='cow')
 
 
 @app.route('/admin/farm/cow-feeding-tracking')
@@ -8375,7 +8727,11 @@ def record_cow_feeding():
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     try:
-        data = request.get_json()
+        # Accept both JSON fetch and normal form posts
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         entries = data.get('entries', [])  # list of {cow_id, feed_id, amount_kg} (feed_id per cow)
         feeding_datetime = data.get('feeding_datetime')
         notes = data.get('notes', '')
@@ -8713,7 +9069,11 @@ def record_pig_feeding():
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     try:
-        data = request.get_json()
+        # Accept both JSON fetch and normal form posts
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         entries = data.get('entries', [])
         feeding_datetime = data.get('feeding_datetime')
         notes = data.get('notes', '')
@@ -8993,7 +9353,11 @@ def record_chicken_feeding():
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     try:
-        data = request.get_json()
+        # Accept both JSON fetch and normal form posts
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         entries = data.get('entries', [])
         feeding_datetime = data.get('feeding_datetime')
         notes = data.get('notes', '')
@@ -9139,7 +9503,7 @@ def admin_farm_chicken_feeding_management():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     
-    return render_template('admin_farm_chicken_feeding_management.html', user=user_data)
+    return render_template('admin_farm_feeding_management.html', user=user_data, feeding_animal='chicken')
 
 @app.route('/admin/farm/chicken-feed-settings')
 def admin_farm_chicken_feed_settings():
@@ -9196,7 +9560,11 @@ def register_feed():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
+        # Accept both JSON (fetch) and form-encoded submissions (native form post)
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         
         # Validate required fields
         feed_name = data.get('feed_name', '').strip()
@@ -9275,7 +9643,11 @@ def update_feed():
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     try:
-        data = request.get_json()
+        # Accept both JSON (fetch) and form-encoded submissions (native form post)
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         feed_id = data.get('feed_id') or data.get('id')
         if not feed_id:
             return jsonify({'success': False, 'message': 'Feed ID is required'})
@@ -9342,11 +9714,15 @@ def update_feed():
 
 @app.route('/api/feed/delete', methods=['POST', 'DELETE'])
 def delete_feed():
-    """Soft-delete a feed (set status = 'inactive')."""
+    """Hard-delete a feed and related records."""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     try:
-        data = request.get_json() or {}
+        # Accept both JSON and form-encoded payloads
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict() or {}
         feed_id = data.get('feed_id') or data.get('id')
         if not feed_id:
             return jsonify({'success': False, 'message': 'Feed ID is required'})
@@ -9356,18 +9732,25 @@ def delete_feed():
             return jsonify({'success': False, 'message': 'Invalid feed ID'})
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, feed_name FROM feeds WHERE id = %s AND status = 'active'", (feed_id,))
+        cursor.execute("SELECT id, feed_name, status FROM feeds WHERE id = %s", (feed_id,))
         row = cursor.fetchone()
         if not row:
             cursor.close()
             conn.close()
-            return jsonify({'success': False, 'message': 'Feed not found or already inactive'})
-        cursor.execute("UPDATE feeds SET status = 'inactive' WHERE id = %s", (feed_id,))
-        log_activity(session['employee_id'], 'FEED_DELETE', f'Feed "{row["feed_name"]}" (id={feed_id}) deactivated')
+            return jsonify({'success': False, 'message': 'Feed not found'})
+
+        # Remove dependent rows first to satisfy FK constraints, then delete from feeds.
+        cursor.execute("DELETE FROM pig_feeding_records WHERE feed_id = %s", (feed_id,))
+        cursor.execute("DELETE FROM cow_feeding_records WHERE feed_id = %s", (feed_id,))
+        cursor.execute("DELETE FROM chicken_feeding_records WHERE feed_id = %s", (feed_id,))
+        cursor.execute("DELETE FROM feed_stock WHERE feed_id = %s", (feed_id,))
+        cursor.execute("DELETE FROM feeds WHERE id = %s", (feed_id,))
+
+        log_activity(session['employee_id'], 'FEED_DELETE', f'Feed "{row["feed_name"]}" (id={feed_id}) permanently deleted')
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'success': True, 'message': 'Feed deleted successfully'})
+        return jsonify({'success': True, 'message': 'Feed deleted permanently'})
     except Exception as e:
         print(f"Error deleting feed: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -9375,12 +9758,13 @@ def delete_feed():
 
 @app.route('/api/feed/list', methods=['GET'])
 def get_feeds_list():
-    """Get list of all active feeds. Optional: animal_type=pig|cow|chicken to filter by animal."""
+    """Get list of feeds. Optional: animal_type=pig|cow|chicken, include_inactive=1."""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
         animal_type = request.args.get('animal_type', '').strip().lower()
+        include_inactive = request.args.get('include_inactive', '').strip().lower() in ('1', 'true', 'yes')
         if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
             animal_type = None
         
@@ -9391,9 +9775,11 @@ def get_feeds_list():
             SELECT id, feed_name, feed_type, unit_of_measure, notes, status, created_at,
                    COALESCE(animal_type, 'pig') as animal_type
             FROM feeds
-            WHERE status = 'active'
+            WHERE 1=1
         """
         params = []
+        if not include_inactive:
+            sql += " AND status = 'active'"
         if animal_type:
             sql += " AND animal_type = %s"
             params.append(animal_type)
@@ -9426,13 +9812,14 @@ def get_feeds_list():
 
 @app.route('/api/feed/list-with-stock', methods=['GET'])
 def get_feeds_with_stock():
-    """Get list of active feeds with current stock (in kg). Optional: animal_type=pig|cow|chicken to show only feeds for that animal."""
+    """Get feeds with current stock (in kg). Optional: animal_type=pig|cow|chicken; include_inactive=1 for all registered feeds."""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     try:
         animal_type = request.args.get('animal_type', '').strip().lower()
         if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
             animal_type = None
+        include_inactive = request.args.get('include_inactive', '').strip().lower() in ('1', 'true', 'yes')
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -9457,21 +9844,23 @@ def get_feeds_with_stock():
                 INDEX idx_transaction_date (transaction_date)
             )
         """)
-        # Get active feeds (optionally filtered by animal type – only feeds for that animal)
+        # Registered feeds (active only, or all if include_inactive)
         feeds_sql = """
             SELECT id, feed_name, feed_type, unit_of_measure, notes, status, created_at,
                    COALESCE(animal_type, 'pig') as animal_type
             FROM feeds
-            WHERE status = 'active'
+            WHERE 1=1
         """
         feeds_params = []
+        if not include_inactive:
+            feeds_sql += " AND status = 'active'"
         if animal_type:
             feeds_sql += " AND animal_type = %s"
             feeds_params.append(animal_type)
         feeds_sql += " ORDER BY feed_name ASC"
         cursor.execute(feeds_sql, feeds_params or None)
         feeds_rows = cursor.fetchall()
-        # Get current stock per feed (sum stock_in - sum stock_out, normalized to kg)
+        # Current stock per feed (kg) — all transactions, any feed (inactive feeds may still have stock history)
         cursor.execute("""
             SELECT
                 fs.feed_id,
@@ -9484,7 +9873,6 @@ def get_feeds_with_stock():
                     ELSE fs.quantity
                 END) as quantity_kg
             FROM feed_stock fs
-            INNER JOIN feeds f ON f.id = fs.feed_id AND f.status = 'active'
             GROUP BY fs.feed_id, fs.transaction_type
         """)
         stock_rows = cursor.fetchall()
@@ -9519,6 +9907,31 @@ def get_feeds_with_stock():
         print(f"Error fetching feeds with stock: {str(e)}")
         import traceback
         traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/feed/types', methods=['GET'])
+def get_feed_types():
+    """Get distinct feed types for autocomplete. Optional: animal_type=pig|cow|chicken."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    try:
+        animal_type = request.args.get('animal_type', '').strip().lower()
+        if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
+            animal_type = None
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        sql = "SELECT DISTINCT feed_type FROM feeds WHERE status = 'active'"
+        params = []
+        if animal_type:
+            sql += " AND animal_type = %s"
+            params.append(animal_type)
+        sql += " ORDER BY feed_type ASC"
+        cursor.execute(sql, params or None)
+        types = [row['feed_type'] for row in cursor.fetchall() if row.get('feed_type')]
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'types': types})
+    except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/farm/list', methods=['GET'])
@@ -12317,7 +12730,7 @@ def get_farm_pigs(farm_id):
 
 @app.route('/api/farm/litters/<int:farm_id>', methods=['GET'])
 def get_farm_litters(farm_id):
-    """Get all litters for a specific farm"""
+    """Get all litters for a specific farm (no filter on litter status)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -12325,7 +12738,7 @@ def get_farm_litters(farm_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get all litters for the specific farm with sow information
+        # All litters for this farm (any litter status: unweaned, weaned, sold, deceased, etc.)
         cursor.execute("""
             SELECT l.id, l.litter_id, l.farrowing_record_id, l.sow_id, l.boar_id,
                    l.total_piglets, l.alive_piglets, l.still_births,
@@ -12336,7 +12749,7 @@ def get_farm_litters(farm_id):
             FROM litters l
             LEFT JOIN pigs p ON l.sow_id = p.id
             LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE p.farm_id = %s AND l.status IN ('unweaned', 'weaned')
+            WHERE p.farm_id = %s
             ORDER BY l.created_at DESC
         """, (farm_id,))
         litters = cursor.fetchall()
@@ -12724,7 +13137,10 @@ def get_pig_registration_stats():
 
 @app.route('/api/pig/list', methods=['GET'])
 def get_pigs_list():
-    """Get all pigs for display"""
+    """Get all pigs for display.
+
+    No filters on lifecycle status, breeding_status, or purpose — every row in `pigs` is returned.
+    """
     if 'employee_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -12732,13 +13148,12 @@ def get_pigs_list():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get all pigs with farm and registration information
+        # All pigs: no WHERE on status, breeding_status, or purpose
         cursor.execute("""
             SELECT p.*, f.farm_name, e.full_name as registered_by_name 
             FROM pigs p 
             LEFT JOIN farms f ON p.farm_id = f.id 
             LEFT JOIN employees e ON p.registered_by = e.id 
-            WHERE p.status = 'active'
             ORDER BY p.created_at DESC
         """)
         pigs = cursor.fetchall()
@@ -13265,7 +13680,10 @@ def get_pig_audit_trail(pig_id):
 
 @app.route('/api/pigs/sows', methods=['GET'])
 def get_sows():
-    """Get all sows (female pigs) for breeding"""
+    """Get all female pigs for sow selection (litters, etc.).
+
+    Does not filter by breeding_status, lifecycle status, or purpose — any female pig is listed.
+    """
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -13273,14 +13691,11 @@ def get_sows():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get all sows (female pigs with breeding purpose)
         cursor.execute("""
             SELECT p.id, p.tag_id, p.breed, p.farm_id, f.farm_name
             FROM pigs p
             LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE p.gender = 'female' 
-            AND p.purpose = 'breeding'
-            AND p.status = 'active'
+            WHERE p.gender = 'female'
             ORDER BY p.tag_id
         """)
         
@@ -14666,7 +15081,7 @@ def register_farrowing(breeding_id):
             farrowing_date, total_piglets, alive_piglets, still_births, avg_weight, session['employee_id']
         ))
         
-        print(f"📝 Created litter record: {litter_id}")
+        print(f"Created litter record: {litter_id}")
         
         # Update sow's breeding status to farrowed
         print(f"Updating sow {breeding_record['sow_id']} breeding status to 'farrowed'")
@@ -14682,11 +15097,11 @@ def register_farrowing(breeding_id):
         # Verify the updates
         cursor.execute("SELECT status FROM breeding_records WHERE id = %s", (breeding_id,))
         updated_breeding = cursor.fetchone()
-        print(f"✅ Breeding record status after update: {updated_breeding['status']}")
+        print(f"Breeding record status after update: {updated_breeding['status']}")
         
         cursor.execute("SELECT breeding_status FROM pigs WHERE id = %s", (breeding_record['sow_id'],))
         updated_pig = cursor.fetchone()
-        print(f"✅ Pig breeding status after update: {updated_pig['breeding_status']}")
+        print(f"Pig breeding status after update: {updated_pig['breeding_status']}")
         
         conn.commit()
         cursor.close()
@@ -17758,11 +18173,23 @@ def register_cow_breeding():
     try:
         data = request.get_json()
         
-        # Validate required fields
-        required_fields = ['dam_id', 'sire_id', 'breeding_date']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'message': f'{field.replace("_", " ").title()} is required'})
+        method = (data.get('breeding_method') or 'natural').strip().lower()
+        if method not in ('natural', 'ai'):
+            method = 'natural'
+        
+        if not data.get('dam_id') or not data.get('breeding_date'):
+            return jsonify({'success': False, 'message': 'Dam and breeding date are required'})
+        
+        sire_id = None
+        ai_breed = None
+        if method == 'ai':
+            ai_breed = (data.get('ai_breed') or '').strip()
+            if not ai_breed:
+                return jsonify({'success': False, 'message': 'A.I. breed is required for artificial insemination'})
+        else:
+            if not data.get('sire_id'):
+                return jsonify({'success': False, 'message': 'Sire is required for natural breeding'})
+            sire_id = data['sire_id']
         
         # Calculate expected calving date (279 days after breeding)
         from datetime import datetime, timedelta
@@ -17785,15 +18212,19 @@ def register_cow_breeding():
         
         # Register breeding
         cursor.execute("""
-            INSERT INTO cow_breeding (dam_id, sire_id, breeding_date, expected_calving_date, recorded_by)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (data['dam_id'], data['sire_id'], data['breeding_date'], expected_calving_date, session['employee_id']))
+            INSERT INTO cow_breeding (dam_id, sire_id, breeding_method, ai_breed, breeding_date, expected_calving_date, recorded_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (data['dam_id'], sire_id, method, ai_breed, data['breeding_date'], expected_calving_date, session['employee_id']))
         
         breeding_id = cursor.lastrowid
         
         # Log activity
-        log_activity(session['employee_id'], 'COW_BREEDING', 
-                   f'Breeding registered: Dam {data["dam_id"]} x Sire {data["sire_id"]}')
+        if method == 'ai':
+            log_activity(session['employee_id'], 'COW_BREEDING',
+                        f'Breeding registered (A.I.): Dam {data["dam_id"]}, breed {ai_breed}')
+        else:
+            log_activity(session['employee_id'], 'COW_BREEDING',
+                        f'Breeding registered: Dam {data["dam_id"]} x Sire {sire_id}')
         
         conn.commit()
         cursor.close()
@@ -17832,6 +18263,8 @@ def get_breeding_list():
                 cb.cancellation_reason,
                 cb.cancellation_date,
                 cb.created_at,
+                cb.breeding_method,
+                cb.ai_breed,
                 dam.ear_tag as dam_ear_tag,
                 dam.name as dam_name,
                 dam.breed as dam_breed,
@@ -17841,7 +18274,7 @@ def get_breeding_list():
                 e.full_name as recorded_by_name
             FROM cow_breeding cb
             JOIN cows dam ON cb.dam_id = dam.id
-            JOIN cows sire ON cb.sire_id = sire.id
+            LEFT JOIN cows sire ON cb.sire_id = sire.id
             LEFT JOIN employees e ON cb.recorded_by = e.id
             WHERE cb.pregnancy_status != 'available'
             ORDER BY cb.breeding_date DESC
@@ -17860,6 +18293,19 @@ def get_breeding_list():
                 birth_date = record['birth_date']
                 lactation_days = (today - birth_date).days
             
+            bm = record.get('breeding_method') or 'natural'
+            if bm == 'ai':
+                sire_payload = {
+                    'ear_tag': 'A.I.',
+                    'name': 'Artificial insemination',
+                    'breed': record.get('ai_breed') or '—'
+                }
+            else:
+                sire_payload = {
+                    'ear_tag': record['sire_ear_tag'] or '—',
+                    'name': record['sire_name'] or 'Unnamed',
+                    'breed': record['sire_breed'] or '—'
+                }
             processed_record = {
                 'id': record['id'],
                 'breeding_date': str(record['breeding_date']),
@@ -17871,16 +18317,14 @@ def get_breeding_list():
                 'cancellation_date': str(record['cancellation_date']) if record['cancellation_date'] else None,
                 'created_at': str(record['created_at']),
                 'lactation_days': lactation_days,
+                'breeding_method': bm,
+                'ai_breed': record.get('ai_breed'),
                 'dam': {
                     'ear_tag': record['dam_ear_tag'],
                     'name': record['dam_name'],
                     'breed': record['dam_breed']
                 },
-                'sire': {
-                    'ear_tag': record['sire_ear_tag'],
-                    'name': record['sire_name'],
-                    'breed': record['sire_breed']
-                },
+                'sire': sire_payload,
                 'recorded_by': record['recorded_by_name']
             }
             processed_records.append(processed_record)
@@ -18035,7 +18479,7 @@ def register_calving():
             SELECT cb.*, dam.ear_tag as dam_ear_tag, sire.ear_tag as sire_ear_tag
             FROM cow_breeding cb
             JOIN cows dam ON cb.dam_id = dam.id
-            JOIN cows sire ON cb.sire_id = sire.id
+            LEFT JOIN cows sire ON cb.sire_id = sire.id
             WHERE cb.id = %s
         """, (data['breeding_id'],))
         
@@ -18073,7 +18517,7 @@ def register_calving():
                 data['calf_gender'],
                 data['birth_date'],
                 breeding['dam_id'],
-                breeding['sire_id'],
+                breeding.get('sire_id'),
                 session['employee_id']
             ))
             
@@ -18131,6 +18575,8 @@ def get_ready_to_calve():
                 cb.breeding_date,
                 cb.expected_calving_date,
                 cb.pregnancy_status,
+                cb.breeding_method,
+                cb.ai_breed,
                 dam.id as dam_id,
                 dam.ear_tag as dam_ear_tag,
                 dam.name as dam_name,
@@ -18140,7 +18586,7 @@ def get_ready_to_calve():
                 sire.breed as sire_breed
             FROM cow_breeding cb
             JOIN cows dam ON cb.dam_id = dam.id
-            JOIN cows sire ON cb.sire_id = sire.id
+            LEFT JOIN cows sire ON cb.sire_id = sire.id
             WHERE cb.pregnancy_status IN ('served', 'conceived')
             AND cb.conception_cancelled = FALSE
             AND cb.birth_date IS NULL
@@ -18161,6 +18607,8 @@ def get_ready_to_calve():
                 'breeding_date': str(record['breeding_date']),
                 'expected_calving_date': str(record['expected_calving_date']),
                 'pregnancy_status': record['pregnancy_status'],
+                'breeding_method': record.get('breeding_method') or 'natural',
+                'ai_breed': record.get('ai_breed'),
                 'dam': {
                     'id': record['dam_id'],
                     'ear_tag': record['dam_ear_tag'],
@@ -18168,9 +18616,9 @@ def get_ready_to_calve():
                     'breed': record['dam_breed']
                 },
                 'sire': {
-                    'ear_tag': record['sire_ear_tag'],
-                    'name': record['sire_name'],
-                    'breed': record['sire_breed']
+                    'ear_tag': 'A.I.' if record.get('breeding_method') == 'ai' else (record.get('sire_ear_tag') or '—'),
+                    'name': 'Artificial insemination' if record.get('breeding_method') == 'ai' else (record.get('sire_name') or 'Unnamed'),
+                    'breed': (record.get('ai_breed') or '—') if record.get('breeding_method') == 'ai' else (record.get('sire_breed') or '—')
                 }
             } for record in ready_cows]
         })
@@ -18442,7 +18890,7 @@ def get_weaned_litters():
 
 @app.route('/api/litter/all', methods=['GET'])
 def get_all_litters():
-    """Get all litters (both unweaned and weaned)"""
+    """Return every litter row (any status; no filter on sow breeding_status or pig status)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -18450,7 +18898,7 @@ def get_all_litters():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get all litters with sow information
+        # No WHERE on l.status or pig columns — full litter list for management UIs
         cursor.execute("""
             SELECT l.*, 
                    p.tag_id as sow_tag_id, p.breed as sow_breed,
@@ -19562,7 +20010,7 @@ def get_vaccination_animals():
         """)
         pigs = cursor.fetchall()
         
-        # Get all litters - using basic columns first
+        # All litters (any status)
         cursor.execute("""
             SELECT l.id, l.litter_id, l.farrowing_record_id, l.sow_id, l.boar_id,
                    l.total_piglets, l.alive_piglets, l.still_births,
@@ -19573,7 +20021,6 @@ def get_vaccination_animals():
             FROM litters l
             LEFT JOIN pigs p ON l.sow_id = p.id
             LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE l.status IN ('unweaned', 'weaned')
             ORDER BY l.created_at DESC
         """)
         litters = cursor.fetchall()

@@ -224,27 +224,15 @@
             </div>
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl shadow-lg border-2 border-blue-200 dark:border-blue-700/50 p-5 hover:shadow-xl transition-all duration-300 hover:scale-105">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Total Feeds</p>
+                            <p class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Registered feeds</p>
                             <p class="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-blue-100" id="total-feeds">0</p>
                         </div>
                         <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                             <i class="fas fa-boxes text-white text-xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-800/30 rounded-xl shadow-lg border-2 border-green-200 dark:border-green-700/50 p-5 hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-green-600 dark:text-green-400 mb-1">Total Farms</p>
-                            <p class="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-100" id="total-farms">0</p>
-                        </div>
-                        <div class="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-warehouse text-white text-xl"></i>
                         </div>
                     </div>
                 </div>
@@ -436,79 +424,52 @@
                 </div>
             </div>
 
-            <!-- Registered Feeds and Farms -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <!-- Registered Feeds -->
+            <!-- Registered Feeds + current stock (list) -->
+            <div class="mb-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-800/30 border-b-2 border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                                     <i class="fas fa-seedling text-white"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-xl font-bold text-gray-900 dark:text-white">Registered Feeds</h3>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">All available feed types</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">All pig feeds with total current stock (sum across farms, shown in kg)</p>
                                 </div>
                             </div>
-                            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-sm font-semibold" id="feeds-count">0</span>
+                            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-sm font-semibold self-start sm:self-auto" id="feeds-count">0</span>
                         </div>
                     </div>
-                    <div class="p-6">
-                        <div id="feeds-list" class="space-y-3 max-h-96 overflow-y-auto">
-                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <div class="p-0 overflow-x-auto">
+                        <div id="feeds-list" class="min-w-full">
+                            <div class="text-center py-12 text-gray-500 dark:text-gray-400 px-6">
                                 <i class="fas fa-spinner fa-spin text-2xl mb-2 text-blue-500"></i>
                                 <p>Loading feeds...</p>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Registered Farms -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div class="px-6 py-5 bg-gradient-to-r from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-800/30 border-b-2 border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-warehouse text-white"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Registered Farms</h3>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">All available farms</p>
-                                </div>
-                            </div>
-                            <span class="px-3 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full text-sm font-semibold" id="farms-count">0</span>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div id="farms-list" class="space-y-3 max-h-96 overflow-y-auto">
-                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <i class="fas fa-spinner fa-spin text-2xl mb-2 text-green-500"></i>
-                                <p>Loading farms...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            <!-- Recent Transactions with Audit Trail -->
+            <!-- Stock In / Stock Out — list tables -->
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div class="px-6 py-5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b-2 border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div class="flex items-center space-x-3">
                             <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-history text-white"></i>
+                                <i class="fas fa-arrow-right-arrow-left text-white"></i>
                             </div>
                             <div>
-                                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Recent Transactions & Audit Trail</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Latest stock movements with user and timestamp tracking</p>
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Stock In &amp; Stock Out</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Recent movements in two lists — green = stock in, red = stock out</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="p-6">
-                    <div id="transactions-list" class="space-y-4">
-                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                <div class="p-0 sm:p-6">
+                    <div id="transactions-list" class="space-y-8">
+                        <div class="text-center py-12 text-gray-500 dark:text-gray-400 px-6">
                             <i class="fas fa-spinner fa-spin text-3xl mb-3 text-blue-500"></i>
                             <p class="text-lg font-medium">Loading transactions...</p>
                         </div>
@@ -685,19 +646,21 @@
             }
         });
 
-        // Load feeds and farms
+        // Load feeds (with stock table), active feeds for dropdowns, and farms for stock in/out
         async function loadFeedsAndFarms() {
             try {
-                const [feedsResponse, farmsResponse] = await Promise.all([
+                const [stockResponse, feedsResponse, farmsResponse] = await Promise.all([
+                    fetch('/api/feed/list-with-stock?animal_type=pig&include_inactive=1'),
                     fetch('/api/feed/list?animal_type=pig'),
                     fetch('/api/farm/list')
                 ]);
                 
+                const stockData = await stockResponse.json();
                 const feedsData = await feedsResponse.json();
                 const farmsData = await farmsResponse.json();
                 
-                if (feedsData.success && farmsData.success) {
-                    // Populate feed dropdowns
+                if (stockData.success && feedsData.success && farmsData.success) {
+                    // Populate feed dropdowns (active pig feeds only)
                     const stockInFeed = document.getElementById('stock-in-feed');
                     const stockOutFeed = document.getElementById('stock-out-feed');
                     
@@ -739,17 +702,10 @@
                         stockOutFarm.appendChild(option2);
                     });
                     
-                    // Update statistics
-                    document.getElementById('total-feeds').textContent = feedsData.feeds.length;
-                    document.getElementById('total-farms').textContent = farmsData.farms.length;
-                    document.getElementById('feeds-count').textContent = feedsData.feeds.length;
-                    document.getElementById('farms-count').textContent = farmsData.farms.length;
-                    
-                    // Display feeds list
-                    displayFeedsList(feedsData.feeds);
-                    
-                    // Display farms list
-                    displayFarmsList(farmsData.farms);
+                    // Stats + full feeds table (all registered pig feeds + current stock kg)
+                    document.getElementById('total-feeds').textContent = stockData.feeds.length;
+                    document.getElementById('feeds-count').textContent = stockData.feeds.length;
+                    displayFeedsList(stockData.feeds);
                     
                     // Set default date to today
                     const today = new Date().toISOString().split('T')[0];
@@ -1014,98 +970,68 @@
             }
         }
 
-        // Display feeds list
+        // Registered feeds as a table: name, type, unit, current stock (kg), status
         function displayFeedsList(feeds) {
             const feedsList = document.getElementById('feeds-list');
+            const unitLabels = {
+                'kg': 'kg',
+                'g': 'g',
+                'ton': 'ton',
+                'bag': 'bag',
+                'liter': 'L',
+                'ml': 'mL'
+            };
             
             if (!feeds || feeds.length === 0) {
                 feedsList.innerHTML = `
-                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <div class="text-center py-12 px-6 text-gray-500 dark:text-gray-400">
                         <i class="fas fa-seedling text-4xl mb-3 text-gray-400"></i>
-                        <p class="text-lg font-medium">No feeds registered</p>
-                        <p class="text-sm mt-1">Register a feed to get started</p>
+                        <p class="text-lg font-medium">No pig feeds registered</p>
+                        <p class="text-sm mt-1">Use Feed Registration to add a feed type</p>
                     </div>
                 `;
                 return;
             }
             
-            feedsList.innerHTML = feeds.map(feed => {
-                const feedTypeColors = {
-                    'starter': 'from-yellow-500 to-orange-500',
-                    'grower': 'from-green-500 to-emerald-500',
-                    'finisher': 'from-blue-500 to-indigo-500',
-                    'sow': 'from-pink-500 to-rose-500',
-                    'boar': 'from-purple-500 to-violet-500',
-                    'supplement': 'from-gray-500 to-slate-500'
-                };
-                
-                const colorClass = feedTypeColors[feed.feed_type] || 'from-gray-500 to-slate-500';
-                const unitLabels = {
-                    'kg': 'Kilogram',
-                    'g': 'Gram',
-                    'ton': 'Ton',
-                    'bag': 'Bag',
-                    'liter': 'Liter',
-                    'ml': 'Milliliter'
-                };
-                
+            const rows = feeds.map((feed, idx) => {
+                const kg = feed.current_stock_kg != null ? Number(feed.current_stock_kg) : 0;
+                const stockClass = kg <= 0
+                    ? 'text-red-600 dark:text-red-400 font-semibold'
+                    : 'text-green-700 dark:text-green-400 font-semibold';
+                const active = (feed.status || 'active') === 'active';
+                const statusHtml = active
+                    ? '<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">Active</span>'
+                    : '<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">Inactive</span>';
+                const u = feed.unit_of_measure || 'kg';
                 return `
-                    <div class="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-600/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
-                        <div class="flex items-center space-x-4 flex-1">
-                            <div class="w-12 h-12 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-seedling text-white"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <h4 class="font-bold text-gray-900 dark:text-white truncate">${feed.feed_name}</h4>
-                                <div class="flex items-center space-x-3 mt-1">
-                                    <span class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full font-medium capitalize">${feed.feed_type}</span>
-                                    <span class="text-xs text-gray-600 dark:text-gray-400">${unitLabels[feed.unit_of_measure] || feed.unit_of_measure}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-500 dark:text-gray-400">${feed.created_at ? new Date(feed.created_at).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                    </div>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">${idx + 1}</td>
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${feed.feed_name || '—'}</td>
+                        <td class="px-4 py-3 text-gray-700 dark:text-gray-300 capitalize">${feed.feed_type || '—'}</td>
+                        <td class="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">${unitLabels[u] || u}</td>
+                        <td class="px-4 py-3 text-right ${stockClass} whitespace-nowrap">${kg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</td>
+                        <td class="px-4 py-3">${statusHtml}</td>
+                    </tr>
                 `;
             }).join('');
-        }
-
-        // Display farms list
-        function displayFarmsList(farms) {
-            const farmsList = document.getElementById('farms-list');
             
-            if (!farms || farms.length === 0) {
-                farmsList.innerHTML = `
-                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                        <i class="fas fa-warehouse text-4xl mb-3 text-gray-400"></i>
-                        <p class="text-lg font-medium">No farms registered</p>
-                        <p class="text-sm mt-1">Register a farm to get started</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            farmsList.innerHTML = farms.map(farm => {
-                return `
-                    <div class="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-600/50 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
-                        <div class="flex items-center space-x-4 flex-1">
-                            <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-warehouse text-white"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <h4 class="font-bold text-gray-900 dark:text-white truncate">${farm.farm_name}</h4>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 truncate mt-1">
-                                    <i class="fas fa-map-marker-alt mr-1"></i>${farm.farm_location}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full font-medium capitalize">${farm.status}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            feedsList.innerHTML = `
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-800/90 sticky top-0 z-10">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">#</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Feed name</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Default unit</th>
+                            <th scope="col" class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Current stock</th>
+                            <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                        ${rows}
+                    </tbody>
+                </table>
+            `;
         }
 
         // Stock In Form Submission
@@ -1241,90 +1167,123 @@
             }
         });
 
-        // Load recent transactions
+        function escapeHtml(str) {
+            if (str == null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatMoneyKes(n) {
+            if (n == null || n === '' || isNaN(Number(n))) return '—';
+            return 'KES ' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Load recent transactions — two list tables: Stock In / Stock Out (pig feeds)
         async function loadRecentTransactions() {
             try {
-                const response = await fetch('/api/feed/stock/transactions?limit=10&animal_type=pig');
+                const response = await fetch('/api/feed/stock/transactions?limit=40&animal_type=pig');
                 const data = await response.json();
                 
                 const transactionsList = document.getElementById('transactions-list');
                 
-                if (data.success && data.transactions.length > 0) {
-                    transactionsList.innerHTML = data.transactions.map(transaction => {
-                        const isStockIn = transaction.transaction_type === 'stock_in';
-                        const bgColor = isStockIn ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20';
-                        const borderColor = isStockIn ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800';
-                        const icon = isStockIn ? 'fa-arrow-down text-green-600 dark:text-green-400' : 'fa-arrow-up text-red-600 dark:text-red-400';
-                        const typeText = isStockIn ? 'Stock In' : 'Stock Out';
-                        
-                        const auditDate = transaction.created_at ? new Date(transaction.created_at) : null;
-                        const formattedDate = auditDate ? auditDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
-                        const formattedTime = auditDate ? auditDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                        
-                        return `
-                            <div class="flex items-start justify-between p-5 rounded-xl border-2 ${bgColor} ${borderColor} hover:shadow-lg transition-all duration-200">
-                                <div class="flex items-start space-x-4 flex-1">
-                                    <div class="w-12 h-12 rounded-xl ${isStockIn ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center shadow-lg flex-shrink-0">
-                                        <i class="fas ${icon} text-white"></i>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center space-x-2 mb-2">
-                                            <h4 class="font-bold text-gray-900 dark:text-white text-lg">${transaction.feed_name}</h4>
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${isStockIn ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'}">${typeText}</span>
-                                        </div>
-                                        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                            <i class="fas fa-warehouse mr-1"></i>${transaction.farm_name} - ${transaction.farm_location}
-                                        </div>
-                                        <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                            <span class="flex items-center">
-                                                <i class="fas fa-weight mr-1"></i>
-                                                <strong>${transaction.quantity}</strong> ${transaction.unit_of_measure}
-                                            </span>
-                                            <span class="flex items-center">
-                                                <i class="fas fa-calendar mr-1"></i>
-                                                ${transaction.transaction_date}
-                                            </span>
-                                            ${transaction.supplier ? `<span class="flex items-center">
-                                                <i class="fas fa-building mr-1"></i>
-                                                <strong>${transaction.supplier}</strong>
-                                            </span>` : ''}
-                                        </div>
-                                        <!-- Audit Information -->
-                                        <div class="mt-3 pt-3 border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
-                                            <div class="flex items-center space-x-1 mb-2">
-                                                <i class="fas fa-shield-alt text-blue-500 text-xs"></i>
-                                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Audit Trail</span>
-                                            </div>
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                <div class="flex items-center space-x-2">
-                                                    <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
-                                                        <i class="fas fa-user text-blue-600 dark:text-blue-400 text-sm"></i>
-                                                    </div>
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">Recorded By</div>
-                                                        <div class="text-sm font-bold text-gray-900 dark:text-white truncate">${transaction.created_by_name || 'Unknown User'}</div>
-                                                        ${transaction.created_by_code ? `<div class="text-xs text-gray-600 dark:text-gray-400">Code: ${transaction.created_by_code} | Role: ${transaction.created_by_role || 'N/A'}</div>` : ''}
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center space-x-2">
-                                                    <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center flex-shrink-0">
-                                                        <i class="fas fa-clock text-purple-600 dark:text-purple-400 text-sm"></i>
-                                                    </div>
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">Recorded On</div>
-                                                        <div class="text-sm font-bold text-gray-900 dark:text-white">${formattedDate}</div>
-                                                        <div class="text-xs text-gray-600 dark:text-gray-400">${formattedTime}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                if (!data.success) {
+                    transactionsList.innerHTML = '<div class="text-center py-8 px-6 text-red-500 dark:text-red-400">' + escapeHtml(data.message || 'Could not load transactions') + '</div>';
+                    return;
+                }
+
+                const all = data.transactions || [];
+                const stockInRows = all.filter(t => t.transaction_type === 'stock_in');
+                const stockOutRows = all.filter(t => t.transaction_type === 'stock_out');
+
+                function transactionTableRow(t) {
+                    const auditDate = t.created_at ? new Date(t.created_at.replace(' ', 'T')) : null;
+                    const when = auditDate
+                        ? auditDate.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : '—';
+                    const qty = typeof t.quantity === 'number' ? t.quantity : parseFloat(t.quantity);
+                    const qtyStr = (isNaN(qty) ? '—' : qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })) + ' ' + (t.unit_of_measure || '');
+                    const costCell = t.transaction_type === 'stock_in' ? formatMoneyKes(t.cost) : '<span class="text-gray-400">—</span>';
+                    const notes = t.notes ? escapeHtml(t.notes) : '—';
+                    return `
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                            <td class="px-3 py-2.5 whitespace-nowrap text-gray-700 dark:text-gray-300">${escapeHtml(t.transaction_date || '—')}</td>
+                            <td class="px-3 py-2.5 font-medium text-gray-900 dark:text-white">${escapeHtml(t.feed_name)}</td>
+                            <td class="px-3 py-2.5 text-gray-600 dark:text-gray-400 capitalize hidden md:table-cell">${escapeHtml(t.feed_type || '—')}</td>
+                            <td class="px-3 py-2.5 text-gray-700 dark:text-gray-300 min-w-[140px]">${escapeHtml(t.farm_name || '')}${t.farm_location ? '<span class="text-gray-500 dark:text-gray-500"> · </span>' + escapeHtml(t.farm_location) : ''}</td>
+                            <td class="px-3 py-2.5 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">${qtyStr}</td>
+                            <td class="px-3 py-2.5 text-right text-sm hidden lg:table-cell">${costCell}</td>
+                            <td class="px-3 py-2.5 hidden xl:table-cell text-gray-600 dark:text-gray-400">${t.supplier ? escapeHtml(t.supplier) : '—'}</td>
+                            <td class="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">${escapeHtml(t.created_by_name || '—')}</td>
+                            <td class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">${escapeHtml(when)}</td>
+                            <td class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 max-w-[120px] truncate hidden 2xl:table-cell" title="${escapeHtml(t.notes || '')}">${notes}</td>
+                        </tr>`;
+                }
+
+                function tableBlock(title, subtitle, iconClass, borderClass, headAccent, rows) {
+                    const empty = !rows || rows.length === 0;
+                    const thead = `
+                        <thead class="${headAccent}">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Txn date</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Feed</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell">Type</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Farm</th>
+                                <th class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide">Quantity</th>
+                                <th class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide hidden lg:table-cell">Total cost</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden xl:table-cell">Supplier</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">By</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Recorded</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden 2xl:table-cell">Notes</th>
+                            </tr>
+                        </thead>`;
+                    const body = empty
+                        ? `<tbody><tr><td colspan="10" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No ${title.toLowerCase()} yet</td></tr></tbody>`
+                        : `<tbody class="divide-y divide-gray-200 dark:divide-gray-700">${rows.map(transactionTableRow).join('')}</tbody>`;
+                    return `
+                        <div class="rounded-xl border-2 ${borderClass} overflow-hidden">
+                            <div class="px-4 py-3 ${headAccent} flex items-center gap-2">
+                                <i class="fas ${iconClass}"></i>
+                                <div>
+                                    <h4 class="font-bold text-gray-900 dark:text-white">${title}</h4>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400">${subtitle}</p>
                                 </div>
                             </div>
-                        `;
-                    }).join('');
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm text-left">${thead}${body}</table>
+                            </div>
+                        </div>`;
+                }
+
+                if (all.length === 0) {
+                    transactionsList.innerHTML = `
+                        <div class="text-center py-10 px-6 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-inbox text-3xl mb-2"></i>
+                            <p class="font-medium">No stock movements yet</p>
+                            <p class="text-sm mt-1">Use Stock In or Stock Out above to record your first transaction</p>
+                        </div>`;
                 } else {
-                    transactionsList.innerHTML = '<div class="text-center py-8 text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-3xl mb-2"></i><p>No transactions yet</p></div>';
+                    transactionsList.innerHTML = `
+                        <div class="space-y-6 px-4 sm:px-0">
+                            ${tableBlock(
+                                'Stock In',
+                                'Feed added to inventory (includes total cost when recorded)',
+                                'fa-arrow-down text-green-600 dark:text-green-400',
+                                'border-green-200 dark:border-green-800',
+                                'bg-green-50 dark:bg-green-900/25',
+                                stockInRows
+                            )}
+                            ${tableBlock(
+                                'Stock Out',
+                                'Feed removed from inventory',
+                                'fa-arrow-up text-red-600 dark:text-red-400',
+                                'border-red-200 dark:border-red-800',
+                                'bg-red-50 dark:bg-red-900/25',
+                                stockOutRows
+                            )}
+                        </div>`;
                 }
                 
                 // Update stats
@@ -1522,12 +1481,10 @@
             const suggestionsDiv = document.getElementById(suggestionsId);
             let selectedIndex = -1;
 
-            // Convert to uppercase on input
+            // Safer CAPS: show uppercase, normalize on blur (avoids blocking typing/IME)
+            input.style.textTransform = 'uppercase';
+            input.addEventListener('blur', function() { this.value = this.value.toUpperCase(); });
             input.addEventListener('input', function(e) {
-                const cursorPos = this.selectionStart;
-                this.value = this.value.toUpperCase();
-                this.setSelectionRange(cursorPos, cursorPos);
-                
                 const query = this.value.trim();
                 if (query.length > 0) {
                     const filtered = suppliersList.filter(supplier => 

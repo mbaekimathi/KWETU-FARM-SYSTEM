@@ -59,6 +59,15 @@ jspm_packages/
 # Optional REPL history
 .node_repl_history
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Local archives (optional backups — do not commit)
+*.zip
+
 # Output of 'npm pack'
 *.tgz
 
