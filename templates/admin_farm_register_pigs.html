@@ -149,6 +149,9 @@
             </div>
             
             <div class="flex items-center space-x-3 sm:space-x-4">
+                <button id="open-sidebar" class="md:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200" aria-label="Open sidebar">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
                 {% include 'includes/notification_dropdown.html' %}
                 <div class="hidden sm:block text-right">
                     <div id="live-time" class="text-sm font-medium text-gray-900 dark:text-white">12:00:00 PM</div>
@@ -159,16 +162,53 @@
                     <i class="fas fa-moon text-lg group-hover:scale-110 transition-transform duration-300"></i>
                 </button>
                 
-                <button onclick="openPigRegistrationModal()" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold">
-                    <i class="fas fa-plus mr-2"></i>
-                    Register New Pig
-                </button>
             </div>
         </div>
     </header>
 
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-lg">
+        <div class="flex flex-col h-full">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Pig Management</h2>
+                    <button id="close-sidebar" class="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin">
+                <a href="{% if user.role == 'manager' %}/manager/farm/register-pigs{% else %}/admin/farm/register-pigs{% endif %}" class="group flex items-center px-3 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg">
+                    <div class="w-6 h-6 bg-blue-100 dark:bg-blue-800/50 rounded-md flex items-center justify-center mr-3">
+                        <i class="fas fa-piggy-bank text-xs"></i>
+                    </div>
+                    <span class="text-sm font-medium flex-1">Register Pig</span>
+                </a>
+                <a href="{% if user.role == 'manager' %}/manager/farm/register-pigs?registration=batch{% else %}/admin/farm/register-pigs?registration=batch{% endif %}" class="group flex items-center px-3 py-3 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200">
+                    <div class="w-6 h-6 bg-purple-100 dark:bg-purple-800/50 rounded-md flex items-center justify-center mr-3">
+                        <i class="fas fa-layer-group text-xs"></i>
+                    </div>
+                    <span class="text-sm font-medium flex-1">Register Litter (B...)</span>
+                </a>
+                <a href="{% if user.role == 'manager' %}/manager/farm/register-batch{% else %}/admin/farm/register-batch{% endif %}" class="group flex items-center px-3 py-3 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all duration-200">
+                    <div class="w-6 h-6 bg-amber-100 dark:bg-amber-800/50 rounded-md flex items-center justify-center mr-3">
+                        <i class="fas fa-object-group text-xs"></i>
+                    </div>
+                    <span class="text-sm font-medium flex-1">Register Batch</span>
+                </a>
+                <a href="{% if user.role == 'manager' %}/manager/farm/pig-management{% else %}/admin/farm/pig-management{% endif %}" class="group flex items-center px-3 py-3 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-all duration-200">
+                    <div class="w-6 h-6 bg-pink-100 dark:bg-pink-800/50 rounded-md flex items-center justify-center mr-3">
+                        <i class="fas fa-list text-xs"></i>
+                    </div>
+                    <span class="text-sm font-medium flex-1">Pig Management</span>
+                </a>
+            </nav>
+        </div>
+    </aside>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+
     <!-- Main Content -->
-    <main class="pt-16 min-h-screen">
+    <main class="pt-16 md:pl-72 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <!-- Page Header -->
             <div class="mb-8 animate-slide-up">
@@ -196,8 +236,21 @@
             </div>
         </div>
 
+            <!-- Data Tabs -->
+            <div class="mb-4 flex items-center gap-2">
+                <button id="tab-pigs" type="button" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium" onclick="switchDataTab('pigs')">
+                    Registered Pigs
+                </button>
+                <button id="tab-litters" type="button" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium" onclick="switchDataTab('litters')">
+                    Litters
+                </button>
+                <button id="tab-batches" type="button" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium" onclick="switchDataTab('batches')">
+                    Batches
+                </button>
+            </div>
+
             <!-- Pigs List Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+            <div id="pigs-section" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
                 <!-- Section Header -->
                 <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex items-center justify-between">
@@ -248,9 +301,117 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Litters List Section -->
+            <div id="litters-section" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-layer-group text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Registered Litters</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Monitor and manage litter records</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="loadLitters()" class="group px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200 hover:shadow-md">
+                                <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-500"></i>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Litter ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sow Tag</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Piglets</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Alive Piglets</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farrowing Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="litters-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                    Open the Litters tab to load data
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Batches List Section -->
+            <div id="batches-section" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-boxes-stacked text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Registered Batches</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">All records with batch tag IDs (B...)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="loadBatches()" class="group px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all duration-200 hover:shadow-md">
+                                <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-500"></i>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Source</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age (Days)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Registered By</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batches-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                    Open the Batches tab to load data
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="combine-batch-section" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Register Batch Age (Combine Litters)</h2>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Select two or more litters. The system calculates weighted average age and creates a new B... batch while keeping source litter records.</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible Litters (unweaned/weaned)</label>
+                        <div id="combine-litters-list" class="max-h-72 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Open this tab to load litters...</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <p id="combine-preview" class="text-sm text-gray-600 dark:text-gray-400">Select litters to preview quantity.</p>
+                        <button type="button" onclick="submitBatchFromLitters()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium">
+                            Create Batch (B...)
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
-    </div>
 
     <!-- Pig Registration Modal -->
     <div id="pigRegistrationModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 transition-all duration-300">
@@ -423,6 +584,7 @@
 
     <script>
         let currentTagId = '';
+        let activeDataTab = 'pigs';
 
         // Dark Mode Toggle
         function toggleDarkMode() {
@@ -454,9 +616,38 @@
             if (themeToggle) {
                 themeToggle.addEventListener('click', toggleDarkMode);
             }
+
+            // Mobile sidebar controls
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const openSidebarBtn = document.getElementById('open-sidebar');
+            const closeSidebarBtn = document.getElementById('close-sidebar');
+
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+
+            if (openSidebarBtn) openSidebarBtn.addEventListener('click', openSidebar);
+            if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+            if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
             
             loadFarms();
             loadPigs();
+
+            // Sidebar "Register Litter" link lands here and preselects batch (Bxxx tags)
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('registration') === 'batch') {
+                openPigRegistrationModal();
+                const pigTypeSelect = document.getElementById('pigTypeSelect');
+                pigTypeSelect.value = 'batch';
+                pigTypeSelect.dispatchEvent(new Event('change'));
+            }
         });
 
         // Modal functions
@@ -476,6 +667,42 @@
             
             // Clear the tag ID display - it will be generated when pig type is selected
             document.getElementById('tagIdDisplay').value = '';
+        }
+
+        function switchDataTab(tabName) {
+            activeDataTab = tabName;
+            const pigsTab = document.getElementById('tab-pigs');
+            const littersTab = document.getElementById('tab-litters');
+            const batchesTab = document.getElementById('tab-batches');
+            const pigsSection = document.getElementById('pigs-section');
+            const littersSection = document.getElementById('litters-section');
+            const batchesSection = document.getElementById('batches-section');
+
+            if (tabName === 'litters') {
+                pigsSection.classList.add('hidden');
+                batchesSection.classList.add('hidden');
+                littersSection.classList.remove('hidden');
+                pigsTab.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium';
+                batchesTab.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium';
+                littersTab.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium';
+                loadLitters();
+            } else if (tabName === 'batches') {
+                pigsSection.classList.add('hidden');
+                littersSection.classList.add('hidden');
+                batchesSection.classList.remove('hidden');
+                pigsTab.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium';
+                littersTab.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium';
+                batchesTab.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium';
+                loadBatches();
+            } else {
+                littersSection.classList.add('hidden');
+                batchesSection.classList.add('hidden');
+                pigsSection.classList.remove('hidden');
+                littersTab.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium';
+                batchesTab.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium';
+                pigsTab.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium';
+                loadPigs();
+            }
         }
 
         function closePigRegistrationModal() {
@@ -603,6 +830,163 @@
                      </td>
                 </tr>
             `).join('');
+        }
+
+        async function loadLitters() {
+            try {
+                const response = await fetch('/api/litter/all');
+                const data = await response.json();
+                if (data.success) {
+                    displayLitters(data.litters || []);
+                } else {
+                    document.getElementById('litters-table-body').innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No litters registered yet</td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading litters:', error);
+                document.getElementById('litters-table-body').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading litters</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function displayLitters(litters) {
+            const tbody = document.getElementById('litters-table-body');
+            if (!litters.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No litters registered yet</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = litters.map(litter => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">${litter.litter_id || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${litter.sow_tag_id || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${litter.total_piglets ?? '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${litter.alive_piglets ?? '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${litter.farrowing_date ? new Date(litter.farrowing_date).toLocaleDateString() : '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${litter.status || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadBatches() {
+            try {
+                const response = await fetch('/api/pig/list');
+                const data = await response.json();
+                if (data.success) {
+                    const batches = (data.pigs || []).filter(p => p.pig_type === 'batch');
+                    displayBatches(batches);
+                } else {
+                    document.getElementById('batches-table-body').innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading batches:', error);
+                document.getElementById('batches-table-body').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading batches</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function displayBatches(batches) {
+            const tbody = document.getElementById('batches-table-body');
+            if (!batches.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = batches.map(batch => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">${batch.tag_id || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.farm_name || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.pig_source || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.age_days ?? '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.registered_by_name || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${batch.created_at ? new Date(batch.created_at).toLocaleDateString() : '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadLittersForBatchCombine() {
+            const holder = document.getElementById('combine-litters-list');
+            holder.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading litters...</p>';
+            try {
+                const response = await fetch('/api/litter/all');
+                const data = await response.json();
+                const litters = (data.litters || []).filter(l => ['unweaned', 'weaned'].includes((l.status || '').toLowerCase()));
+                if (!litters.length) {
+                    holder.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No eligible litters available.</p>';
+                    return;
+                }
+                holder.innerHTML = litters.map(l => `
+                    <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <input type="checkbox" class="combine-litter-checkbox" value="${l.id}" data-piglets="${l.alive_piglets ?? l.total_piglets ?? 0}">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">${l.litter_id || 'N/A'} - ${l.sow_tag_id || 'Unknown sow'} - Alive: ${l.alive_piglets ?? 0} - Status: ${l.status || '-'}</span>
+                    </label>
+                `).join('');
+                document.querySelectorAll('.combine-litter-checkbox').forEach(cb => cb.addEventListener('change', updateBatchCombinePreview));
+                updateBatchCombinePreview();
+            } catch (error) {
+                console.error('Error loading litters for batch combine:', error);
+                holder.innerHTML = '<p class="text-sm text-red-500">Failed to load litters.</p>';
+            }
+        }
+
+        function updateBatchCombinePreview() {
+            const selected = Array.from(document.querySelectorAll('.combine-litter-checkbox:checked'));
+            const qty = selected.reduce((sum, cb) => sum + (parseInt(cb.dataset.piglets || '0', 10) || 0), 0);
+            document.getElementById('combine-preview').textContent = selected.length
+                ? `Selected litters: ${selected.length} | Estimated quantity: ${qty}`
+                : 'Select litters to preview quantity.';
+        }
+
+        async function submitBatchFromLitters() {
+            const litterIds = Array.from(document.querySelectorAll('.combine-litter-checkbox:checked')).map(cb => parseInt(cb.value, 10));
+
+            if (litterIds.length < 2) {
+                showToast('Select at least two litters to combine', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/pig/register-batch-from-litters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        litter_ids: litterIds
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    loadBatches();
+                    loadLittersForBatchCombine();
+                    switchDataTab('batches');
+                } else {
+                    showToast(result.message || 'Failed to register batch', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating batch from litters:', error);
+                showToast('Failed to register batch from litters', 'error');
+            }
         }
 
         // Generate new tag ID

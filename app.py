@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import pymysql
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import secrets
 import socket
@@ -190,6 +190,78 @@ def generate_litter_id():
         traceback.print_exc()
         # Fallback: start from L001 if database query fails
         return f"L001"
+
+def ensure_farrowing_activity_templates_table(cursor):
+    """Ensure farrowing activity templates table exists and has defaults."""
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS farrowing_activity_templates (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            due_day INT NOT NULL,
+            activity_name VARCHAR(150) NOT NULL,
+            is_active TINYINT(1) DEFAULT 1,
+            created_by INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("SELECT COUNT(*) AS cnt FROM farrowing_activity_templates")
+    row = cursor.fetchone() or {}
+    if int(row.get('cnt') or 0) == 0:
+        # Defaults are intentionally combined by day (single row per day)
+        defaults = [
+            (1, 'Clear airways, ensure colostrum intake; Provide heat lamps; Remove afterbirth'),
+            (2, 'Iron injections; Ear notching/tagging'),
+            (3, 'Tail docking; Castration (males)'),
+            (14, 'Start creep feed'),
+            (21, 'Weaning')
+        ]
+        for due_day, activity_name in defaults:
+            cursor.execute(
+                "INSERT INTO farrowing_activity_templates (due_day, activity_name, is_active) VALUES (%s, %s, 1)",
+                (due_day, activity_name)
+            )
+
+def combine_same_day_farrowing_templates(cursor):
+    """Merge template rows so each due_day has one combined activity row."""
+    ensure_farrowing_activity_templates_table(cursor)
+    cursor.execute("""
+        SELECT id, due_day, activity_name, is_active
+        FROM farrowing_activity_templates
+        ORDER BY due_day ASC, id ASC
+    """)
+    rows = cursor.fetchall() or []
+    by_day = {}
+    for r in rows:
+        day = int(r['due_day'])
+        by_day.setdefault(day, []).append(r)
+
+    for day, group in by_day.items():
+        if len(group) <= 1:
+            continue
+
+        parts = []
+        is_active = 0
+        for g in group:
+            if g.get('is_active'):
+                is_active = 1
+            name = (g.get('activity_name') or '').strip()
+            if name:
+                # Split previously combined entries and de-duplicate while preserving order
+                for p in [x.strip() for x in name.split(';') if x.strip()]:
+                    if p not in parts:
+                        parts.append(p)
+
+        combined_name = '; '.join(parts)
+        keeper = group[0]
+        cursor.execute("""
+            UPDATE farrowing_activity_templates
+            SET activity_name = %s, is_active = %s, updated_at = NOW()
+            WHERE id = %s
+        """, (combined_name, is_active, keeper['id']))
+
+        for g in group[1:]:
+            cursor.execute("DELETE FROM farrowing_activity_templates WHERE id = %s", (g['id'],))
 
 def calculate_expected_weight(animal_id=None, litter_id=None, weighing_date=None):
     """Calculate expected weight based on age and weight categories"""
@@ -3078,6 +3150,21 @@ def admin_farm_register_pigs():
     
     return render_template('admin_farm_register_pigs.html', user=user_data)
 
+@app.route('/admin/farm/register-batch')
+def admin_farm_register_batch():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_register_batch.html', user=user_data)
+
 @app.route('/admin/farm/pig-management')
 def admin_farm_pig_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -3573,6 +3660,17 @@ def manager_farm_register_pigs():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     return render_template('admin_farm_register_pigs.html', user=user_data)
+
+@app.route('/manager/farm/register-batch')
+def manager_farm_register_batch():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_register_batch.html', user=user_data)
 
 @app.route('/manager/farm/breeding-management')
 def manager_farm_breeding_management():
@@ -13080,6 +13178,166 @@ def register_pig():
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Failed to register pig: {str(e)}'})
 
+@app.route('/api/pig/register-batch-from-litters', methods=['POST'])
+def register_batch_from_litters():
+    """Create one batch (B...) by combining selected litters while preserving source records."""
+    if 'employee_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        litter_ids = data.get('litter_ids') or []
+        batch_notes = (data.get('notes') or '').strip()
+
+        if not isinstance(litter_ids, list) or len(litter_ids) < 2:
+            return jsonify({'success': False, 'message': 'Select at least two litters to combine'}), 400
+
+        # Normalize and sanitize IDs
+        try:
+            litter_ids = [int(x) for x in litter_ids]
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid litter IDs'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        placeholders = ','.join(['%s'] * len(litter_ids))
+        cursor.execute(f"""
+            SELECT l.id, l.litter_id, l.farrowing_date, l.total_piglets, l.alive_piglets, l.status, p.farm_id
+            FROM litters l
+            LEFT JOIN pigs p ON l.sow_id = p.id
+            WHERE l.id IN ({placeholders})
+        """, tuple(litter_ids))
+        selected_litters = cursor.fetchall() or []
+
+        if len(selected_litters) != len(set(litter_ids)):
+            return jsonify({'success': False, 'message': 'Some selected litters were not found'}), 400
+
+        valid_statuses = {'unweaned', 'weaned'}
+        blocked = [l for l in selected_litters if (l.get('status') or '').lower() not in valid_statuses]
+        if blocked:
+            return jsonify({'success': False, 'message': 'Only unweaned or weaned litters can be combined into a batch'}), 400
+
+        # Auto-infer farm from selected litters (must be same farm)
+        farm_ids = {l.get('farm_id') for l in selected_litters if l.get('farm_id') is not None}
+        if len(farm_ids) != 1:
+            return jsonify({'success': False, 'message': 'Selected litters must belong to the same farm'}), 400
+        farm_id = next(iter(farm_ids))
+        pig_source = 'born'
+
+        today = datetime.now().date()
+        total_units = 0
+        weighted_age_sum = 0.0
+        for litter in selected_litters:
+            farrowing_date = litter.get('farrowing_date')
+            if not farrowing_date:
+                continue
+            # Weight age by available piglets in each litter
+            units = int(litter.get('alive_piglets') or litter.get('total_piglets') or 0)
+            if units <= 0:
+                continue
+            age_days = max((today - farrowing_date).days, 0)
+            weighted_age_sum += (age_days * units)
+            total_units += units
+
+        if total_units <= 0:
+            return jsonify({'success': False, 'message': 'Selected litters have no available piglets to batch'}), 400
+
+        avg_age_days = int(round(weighted_age_sum / total_units))
+        batch_birth_date = (today - timedelta(days=avg_age_days))
+        purchase_date = None
+
+        new_batch_tag = generate_pig_tag_id('batch')
+        combined_litters_text = ', '.join([l['litter_id'] for l in selected_litters if l.get('litter_id')])
+        system_note = f"Combined from litters: {combined_litters_text}"
+        final_note = f"{system_note}. User notes: {batch_notes}" if batch_notes else system_note
+
+        # Create consolidated batch record
+        cursor.execute("SHOW COLUMNS FROM pigs LIKE 'notes'")
+        has_pig_notes = cursor.fetchone() is not None
+
+        if has_pig_notes:
+            cursor.execute("""
+                INSERT INTO pigs (
+                    tag_id, farm_id, pig_type, pig_source, breed, gender, purpose,
+                    breeding_status, birth_date, purchase_date, age_days, registered_by, notes
+                )
+                VALUES (%s, %s, 'batch', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                new_batch_tag,
+                farm_id,
+                pig_source,
+                'Mixed Litter Batch',
+                'mixed',
+                'meat',
+                None,
+                batch_birth_date,
+                purchase_date,
+                avg_age_days,
+                session['employee_id'],
+                final_note
+            ))
+        else:
+            cursor.execute("""
+                INSERT INTO pigs (
+                    tag_id, farm_id, pig_type, pig_source, breed, gender, purpose,
+                    breeding_status, birth_date, purchase_date, age_days, registered_by
+                )
+                VALUES (%s, %s, 'batch', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                new_batch_tag,
+                farm_id,
+                pig_source,
+                'Mixed Litter Batch',
+                'mixed',
+                'meat',
+                None,
+                batch_birth_date,
+                purchase_date,
+                avg_age_days,
+                session['employee_id']
+            ))
+        new_batch_id = cursor.lastrowid
+
+        # Preserve source records and mark lifecycle progression in litter notes/status
+        for litter in selected_litters:
+            cursor.execute("""
+                UPDATE litters
+                SET status = 'weaned',
+                    notes = CONCAT(COALESCE(notes, ''), %s)
+                WHERE id = %s
+            """, (f" [BATCHED->{new_batch_tag} on {today.isoformat()}]{f' Notes: {batch_notes}' if batch_notes else ''}", litter['id']))
+
+        conn.commit()
+
+        log_activity(
+            session['employee_id'],
+            'BATCH_REGISTRATION',
+            f'Batch {new_batch_tag} created from {len(selected_litters)} litters (avg age {avg_age_days} days)'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': f'Batch {new_batch_tag} registered successfully from selected litters',
+            'batch_id': new_batch_id,
+            'tag_id': new_batch_tag,
+            'age_days': avg_age_days,
+            'quantity': total_units
+        })
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Batch-from-litters registration error: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to register batch: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 @app.route('/api/pig/registration-stats', methods=['GET'])
 def get_pig_registration_stats():
     """Get pig registration statistics for dashboard"""
@@ -13154,7 +13412,7 @@ def get_pigs_list():
             FROM pigs p 
             LEFT JOIN farms f ON p.farm_id = f.id 
             LEFT JOIN employees e ON p.registered_by = e.id 
-            ORDER BY p.created_at DESC
+            ORDER BY p.tag_id DESC, p.created_at DESC
         """)
         pigs = cursor.fetchall()
         
@@ -13696,7 +13954,7 @@ def get_sows():
             FROM pigs p
             LEFT JOIN farms f ON p.farm_id = f.id
             WHERE p.gender = 'female'
-            ORDER BY p.tag_id
+            ORDER BY p.tag_id DESC
         """)
         
         sows = cursor.fetchall()
@@ -13921,7 +14179,7 @@ def get_available_sows():
             AND p.purpose = 'breeding' 
             AND p.breeding_status = 'available'
             AND p.status = 'active'
-            ORDER BY p.tag_id
+            ORDER BY p.tag_id DESC
         """)
         sows = cursor.fetchall()
         
@@ -14121,7 +14379,7 @@ def get_breeding_records():
             LEFT JOIN pigs sow ON br.sow_id = sow.id
             LEFT JOIN pigs boar ON br.boar_id = boar.id
             LEFT JOIN employees e ON br.created_by = e.id
-            ORDER BY br.created_at DESC
+            ORDER BY sow.tag_id DESC, boar.tag_id DESC, br.created_at DESC
         """)
         records = cursor.fetchall()
         
@@ -14832,7 +15090,7 @@ def get_completed_farrowings():
                         print(f"Error creating litters table even without foreign keys: {str(create_litters_error2)}")
         
         # Get completed farrowing records with unweaned litters only
-        # Show farrowing records that either have unweaned litters or no litter record yet (meaning not weaned)
+        # Strict filter: only rows that already have an unweaned litter record
         if table_verified:
             try:
                 # Ensure we're using the correct database
@@ -14855,7 +15113,7 @@ def get_completed_farrowings():
                     LEFT JOIN pigs boar ON br.boar_id = boar.id
                     LEFT JOIN employees e ON fr.created_by = e.id
                     LEFT JOIN litters l ON fr.id = l.farrowing_record_id
-                    WHERE (l.status = 'unweaned' OR l.status IS NULL)
+                    WHERE l.status = 'unweaned'
                     ORDER BY fr.farrowing_date DESC
                 """)
                 records = cursor.fetchall()
@@ -15036,18 +15294,16 @@ def register_farrowing(breeding_id):
         
         farrowing_id = cursor.lastrowid
         
-        # Create farrowing activities with due dates
-        activities = [
-            (1, 'Clear airways, ensure colostrum intake'),
-            (1, 'Provide heat lamps'),
-            (1, 'Remove afterbirth'),
-            (2, 'Iron injections'),
-            (2, 'Ear notching/tagging'),
-            (3, 'Tail docking'),
-            (3, 'Castration (males)'),
-            (14, 'Start creep feed'),
-            (21, 'Weaning')
-        ]
+        # Create farrowing activities with due dates from settings templates
+        combine_same_day_farrowing_templates(cursor)
+        cursor.execute("""
+            SELECT due_day, activity_name
+            FROM farrowing_activity_templates
+            WHERE is_active = 1
+            ORDER BY due_day ASC, id ASC
+        """)
+        template_rows = cursor.fetchall() or []
+        activities = [(int(r['due_day']), r['activity_name']) for r in template_rows]
         
         for due_day, activity_name in activities:
             # Convert farrowing_date string to date object for timedelta calculation
@@ -15166,20 +15422,68 @@ def get_farrowing_activities(farrowing_id):
             """, (farrowing_id,))
             activities = cursor.fetchall()
         
-        # Convert to list of dictionaries
-        activities_list = []
+        # Combine same-day activities into a single row for popup display
+        grouped = {}
         for activity in activities:
+            day = int(activity['due_day'])
+            entry = grouped.get(day)
+            if not entry:
+                entry = {
+                    'id': activity['id'],
+                    'activity_ids': [],
+                    'activity_names': [],
+                    'due_day': day,
+                    'due_date': activity['due_date'],
+                    'all_completed': True,
+                    'completed_dates': [],
+                    'completed_by_names': [],
+                    'notes_list': [],
+                    'weaning_weight': None,
+                    'weaning_date': None
+                }
+                grouped[day] = entry
+
+            entry['activity_ids'].append(activity['id'])
+            name = (activity.get('activity_name') or '').strip()
+            if name:
+                for part in [p.strip() for p in name.split(';') if p.strip()]:
+                    if part not in entry['activity_names']:
+                        entry['activity_names'].append(part)
+
+            is_completed = bool(activity.get('completed'))
+            entry['all_completed'] = entry['all_completed'] and is_completed
+
+            if activity.get('completed_date'):
+                entry['completed_dates'].append(activity['completed_date'])
+            if activity.get('completed_by_name'):
+                if activity['completed_by_name'] not in entry['completed_by_names']:
+                    entry['completed_by_names'].append(activity['completed_by_name'])
+            if activity.get('notes'):
+                note = str(activity.get('notes')).strip()
+                if note and note not in entry['notes_list']:
+                    entry['notes_list'].append(note)
+
+            if activity.get('weaning_weight') is not None and entry['weaning_weight'] is None:
+                entry['weaning_weight'] = float(activity['weaning_weight'])
+            if activity.get('weaning_date') and entry['weaning_date'] is None:
+                entry['weaning_date'] = activity['weaning_date']
+
+        activities_list = []
+        for day in sorted(grouped.keys()):
+            entry = grouped[day]
+            latest_completed_date = max(entry['completed_dates']) if entry['completed_dates'] else None
             activities_list.append({
-                'id': activity['id'],
-                'activity_name': activity['activity_name'],
-                'due_day': activity['due_day'],
-                'due_date': activity['due_date'].isoformat() if activity['due_date'] else None,
-                'completed': bool(activity['completed']),
-                'completed_date': activity['completed_date'].isoformat() if activity['completed_date'] else None,
-                'completed_by': activity['completed_by_name'],
-                'notes': activity['notes'],
-                'weaning_weight': float(activity['weaning_weight']) if activity['weaning_weight'] else None,
-                'weaning_date': activity['weaning_date'].isoformat() if activity['weaning_date'] else None
+                'id': entry['id'],
+                'activity_ids': entry['activity_ids'],
+                'activity_name': '; '.join(entry['activity_names']),
+                'due_day': entry['due_day'],
+                'due_date': entry['due_date'].isoformat() if entry['due_date'] else None,
+                'completed': entry['all_completed'],
+                'completed_date': latest_completed_date.isoformat() if latest_completed_date else None,
+                'completed_by_name': ', '.join(entry['completed_by_names']) if entry['completed_by_names'] else None,
+                'notes': ' | '.join(entry['notes_list']) if entry['notes_list'] else None,
+                'weaning_weight': entry['weaning_weight'],
+                'weaning_date': entry['weaning_date'].isoformat() if entry['weaning_date'] else None
             })
         
         cursor.close()
@@ -15194,6 +15498,112 @@ def get_farrowing_activities(farrowing_id):
         print(f"Error getting farrowing activities: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to get activities: {str(e)}'})
 
+@app.route('/api/farrowing/activity-templates', methods=['GET'])
+def get_farrowing_activity_templates():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        combine_same_day_farrowing_templates(cursor)
+        conn.commit()
+        cursor.execute("""
+            SELECT id, due_day, activity_name, is_active, created_at, updated_at
+            FROM farrowing_activity_templates
+            ORDER BY due_day ASC, id ASC
+        """)
+        rows = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'templates': rows})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to load templates: {str(e)}'}), 500
+
+@app.route('/api/farrowing/activity-templates', methods=['POST'])
+def create_farrowing_activity_template():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json(silent=True) or {}
+        due_day = int(data.get('due_day'))
+        activity_name = (data.get('activity_name') or '').strip()
+        if due_day < 0 or not activity_name:
+            return jsonify({'success': False, 'message': 'Due day and activity name are required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        combine_same_day_farrowing_templates(cursor)
+        cursor.execute("SELECT id, activity_name, is_active FROM farrowing_activity_templates WHERE due_day = %s LIMIT 1", (due_day,))
+        existing = cursor.fetchone()
+        if existing:
+            current_parts = [x.strip() for x in (existing.get('activity_name') or '').split(';') if x.strip()]
+            if activity_name not in current_parts:
+                current_parts.append(activity_name)
+            cursor.execute("""
+                UPDATE farrowing_activity_templates
+                SET activity_name = %s, is_active = 1, updated_at = NOW()
+                WHERE id = %s
+            """, ('; '.join(current_parts), existing['id']))
+        else:
+            cursor.execute("""
+                INSERT INTO farrowing_activity_templates (due_day, activity_name, is_active, created_by)
+                VALUES (%s, %s, 1, %s)
+            """, (due_day, activity_name, session['employee_id']))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Activity template created successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to create template: {str(e)}'}), 500
+
+@app.route('/api/farrowing/activity-templates/<int:template_id>', methods=['PUT'])
+def update_farrowing_activity_template(template_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json(silent=True) or {}
+        due_day = int(data.get('due_day'))
+        activity_name = (data.get('activity_name') or '').strip()
+        is_active = 1 if data.get('is_active', True) else 0
+        if due_day < 0 or not activity_name:
+            return jsonify({'success': False, 'message': 'Due day and activity name are required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        combine_same_day_farrowing_templates(cursor)
+        cursor.execute("""
+            UPDATE farrowing_activity_templates
+            SET due_day = %s, activity_name = %s, is_active = %s, updated_at = NOW()
+            WHERE id = %s
+        """, (due_day, activity_name, is_active, template_id))
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'Template not found'}), 404
+        combine_same_day_farrowing_templates(cursor)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Activity template updated successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to update template: {str(e)}'}), 500
+
+@app.route('/api/farrowing/activity-templates/<int:template_id>', methods=['DELETE'])
+def delete_farrowing_activity_template(template_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        combine_same_day_farrowing_templates(cursor)
+        cursor.execute("DELETE FROM farrowing_activity_templates WHERE id = %s", (template_id,))
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'Template not found'}), 404
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Activity template deleted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to delete template: {str(e)}'}), 500
+
 @app.route('/api/farrowing/activities/<int:activity_id>/complete', methods=['POST'])
 def complete_farrowing_activity(activity_id):
     """Mark a farrowing activity as completed"""
@@ -15203,6 +15613,7 @@ def complete_farrowing_activity(activity_id):
     try:
         data = request.get_json()
         notes = data.get('notes', '')
+        litter_avg_weight = data.get('litter_avg_weight')
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -15256,6 +15667,16 @@ def complete_farrowing_activity(activity_id):
             
             if not weaning_date:
                 return jsonify({'success': False, 'message': 'Weaning date and time is required for weaning activity'})
+
+        # Optional litter average weight update from completion modal
+        parsed_litter_avg_weight = None
+        if litter_avg_weight not in [None, '']:
+            try:
+                parsed_litter_avg_weight = float(litter_avg_weight)
+                if parsed_litter_avg_weight <= 0:
+                    return jsonify({'success': False, 'message': 'Litter average weight must be greater than 0'})
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'message': 'Invalid litter average weight value'})
         
         # Mark activity as completed
         cursor.execute("""
@@ -15264,6 +15685,13 @@ def complete_farrowing_activity(activity_id):
                 completed_by = %s, notes = %s, weaning_weight = %s, weaning_date = %s, updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
         """, (session['employee_id'], notes, weaning_weight, weaning_date, activity_id))
+
+        if parsed_litter_avg_weight is not None:
+            cursor.execute("""
+                UPDATE farrowing_records
+                SET avg_weight = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (parsed_litter_avg_weight, activity['farrowing_record_id']))
         
         conn.commit()
         cursor.close()
@@ -15343,7 +15771,7 @@ def check_sow_recovery_status(farrowing_id):
         
         # Get farrowing details and calculate recovery status
         cursor.execute("""
-            SELECT fr.farrowing_date, fr.id, br.sow_id, p.tag_id as sow_tag_id,
+            SELECT fr.farrowing_date, fr.id, fr.avg_weight as farrowing_avg_weight, br.sow_id, p.tag_id as sow_tag_id,
                    p.breeding_status, p.breed
             FROM farrowing_records fr
             JOIN breeding_records br ON fr.breeding_id = br.id
@@ -15372,6 +15800,59 @@ def check_sow_recovery_status(farrowing_id):
         activities_result = cursor.fetchone()
         all_activities_completed = activities_result['total_activities'] == activities_result['completed_activities']
         
+        # Weight trend for related litter
+        cursor.execute("""
+            SELECT id, litter_id, avg_weight, weaning_weight
+            FROM litters
+            WHERE farrowing_record_id = %s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (farrowing_id,))
+        litter_row = cursor.fetchone()
+
+        start_weight = float(farrowing.get('farrowing_avg_weight') or 0) if farrowing.get('farrowing_avg_weight') is not None else None
+        latest_weight = None
+        latest_source = None
+        litter_id = None
+        litter_tag = None
+
+        if litter_row:
+            litter_id = litter_row.get('id')
+            litter_tag = litter_row.get('litter_id')
+
+            # Prefer latest explicitly recorded litter weight
+            cursor.execute("""
+                SELECT weight
+                FROM weight_records
+                WHERE litter_id = %s
+                ORDER BY weighing_date DESC, created_at DESC
+                LIMIT 1
+            """, (litter_id,))
+            wr = cursor.fetchone()
+            if wr and wr.get('weight') is not None:
+                latest_weight = float(wr['weight'])
+                latest_source = 'weight_record'
+            elif litter_row.get('weaning_weight') is not None:
+                latest_weight = float(litter_row['weaning_weight'])
+                latest_source = 'weaning_weight'
+            elif litter_row.get('avg_weight') is not None:
+                latest_weight = float(litter_row['avg_weight'])
+                latest_source = 'litter_avg_weight'
+
+        trend_direction = 'unknown'
+        weight_change = None
+        weight_change_pct = None
+        if start_weight is not None and latest_weight is not None:
+            weight_change = round(latest_weight - start_weight, 2)
+            if start_weight > 0:
+                weight_change_pct = round((weight_change / start_weight) * 100, 1)
+            if abs(weight_change) < 0.01:
+                trend_direction = 'stable'
+            elif weight_change > 0:
+                trend_direction = 'up'
+            else:
+                trend_direction = 'down'
+
         # Check if sow is ready for next breeding
         sow_ready = today >= recovery_date and all_activities_completed
         
@@ -15388,7 +15869,14 @@ def check_sow_recovery_status(farrowing_id):
                 'sow_ready': sow_ready,
                 'sow_tag_id': farrowing['sow_tag_id'],
                 'current_breeding_status': farrowing['breeding_status'],
-                'sow_breed': farrowing['breed']
+                'sow_breed': farrowing['breed'],
+                'litter_id': litter_tag,
+                'start_weight': start_weight,
+                'latest_weight': latest_weight,
+                'latest_weight_source': latest_source,
+                'weight_change': weight_change,
+                'weight_change_pct': weight_change_pct,
+                'weight_trend_direction': trend_direction
             }
         })
         
@@ -19341,6 +19829,38 @@ def update_litter(litter_id):
         print(f"Error updating litter: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to update litter: {str(e)}'})
 
+@app.route('/api/litter/delete/<int:litter_id>', methods=['DELETE'])
+def delete_litter(litter_id):
+    """Delete a litter record."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT litter_id FROM litters WHERE id = %s", (litter_id,))
+        litter = cursor.fetchone()
+        if not litter:
+            return jsonify({'success': False, 'message': 'Litter not found'}), 404
+
+        cursor.execute("DELETE FROM litters WHERE id = %s", (litter_id,))
+        conn.commit()
+
+        return jsonify({'success': True, 'message': f"Litter {litter.get('litter_id') or litter_id} deleted successfully"})
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error deleting litter: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to delete litter: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 @app.route('/api/litter/<litter_id>/activities', methods=['GET'])
 def get_litter_activities(litter_id):
     """Get all activities for a specific litter"""
@@ -22213,6 +22733,38 @@ def completed_farrowings_page():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     return render_template('admin_farm_completed_farrowings.html', user=user_data)
+
+@app.route('/admin/farm/farrowing-activity-settings')
+def admin_farrowing_activity_settings_page():
+    if 'employee_id' not in session:
+        return redirect(url_for('employee_login'))
+    if session.get('employee_role') not in ['administrator', 'manager']:
+        flash('Access denied. Administrator or Manager privileges required.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session.get('employee_status', 'active'),
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_farrowing_activity_settings.html', user=user_data)
+
+@app.route('/manager/farm/farrowing-activity-settings')
+def manager_farrowing_activity_settings_page():
+    if 'employee_id' not in session:
+        return redirect(url_for('employee_login'))
+    if session.get('employee_role') not in ['administrator', 'manager']:
+        flash('Access denied. Administrator or Manager privileges required.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session.get('employee_status', 'active'),
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_farrowing_activity_settings.html', user=user_data)
 
 @app.route('/admin/farm/family-tree')
 def family_tree_page():

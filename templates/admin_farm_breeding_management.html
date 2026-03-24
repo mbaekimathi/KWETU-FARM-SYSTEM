@@ -419,6 +419,17 @@
         <!-- Sidebar Navigation -->
         <nav class="mt-8 px-4">
             <div class="space-y-2">
+                <!-- Dashboard -->
+                <a href="{% if user.role == 'manager' %}/manager/dashboard{% else %}/admin/dashboard{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
+                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                        <i class="fas fa-chart-line text-gray-600 dark:text-gray-400 text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm">Dashboard</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Overview</p>
+                    </div>
+                </a>
+
                 <!-- Breeding Management (Active) -->
                 <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}management" class="group flex items-center px-4 py-4 bg-gradient-to-r from-pink-50 via-purple-100 to-blue-50 dark:from-pink-900/40 dark:via-purple-900/40 dark:to-blue-900/40 text-pink-700 dark:text-pink-300 rounded-xl shadow-lg border border-pink-200 dark:border-pink-700/50 relative overflow-hidden" role="menuitem" aria-current="page">
                     <div class="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-purple-500/10"></div>
@@ -432,6 +443,16 @@
                     <div class="w-2 h-2 bg-pink-500 rounded-full animate-pulse-slow"></div>
                 </a>
 
+                <!-- Quick Registration Links -->
+                <div class="ml-6 space-y-2 border-l-2 border-blue-200 dark:border-blue-700/50 pl-4">
+                    <a href="#" onclick="const modal = document.getElementById('new-breeding-modal'); showModal(modal); return false;" class="group flex items-center px-3 py-3 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200 hover:shadow-md" role="menuitem">
+                        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-800/50 rounded-lg flex items-center justify-center mr-3 group-hover:scale-105 transition-transform duration-200">
+                            <i class="fas fa-plus text-blue-600 dark:text-blue-400 text-xs"></i>
+                        </div>
+                        <span class="font-medium text-sm">New Breeding</span>
+                    </a>
+                </div>
+
                 <!-- Breeding Records -->
                 <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}records" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
                     <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
@@ -440,28 +461,6 @@
                     <div class="flex-1">
                         <span class="font-semibold text-sm">Breeding Records</span>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Active & Pregnant</p>
-                        </div>
-                </a>
-
-                <!-- Failed Conceptions -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/failed-conceptions{% else %}/admin/farm/failed-conceptions{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-times-circle text-gray-600 dark:text-gray-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Failed Conceptions</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Failed Attempts</p>
-                    </div>
-                </a>
-
-                <!-- Completed Farrowings -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/completed-farrowings{% else %}/admin/farm/completed-farrowings{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-check-circle text-gray-600 dark:text-gray-400 text-lg"></i>
-                        </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Completed Farrowings</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Successful Births</p>
                         </div>
                 </a>
 
@@ -476,16 +475,6 @@
                         </div>
                 </a>
 
-                <!-- Dashboard -->
-                <a href="{% if user.role == 'manager' %}/manager/dashboard{% else %}/admin/dashboard{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-chart-line text-gray-600 dark:text-gray-400 text-lg"></i>
-                        </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Dashboard</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Overview</p>
-                        </div>
-                    </a>
                 </div>
             </nav>
             

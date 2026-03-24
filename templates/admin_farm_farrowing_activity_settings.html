@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farrowing Activities Settings - Pig Farm Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 shadow-2xl transform -translate-x-full transition-all duration-300 ease-in-out md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col h-full">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-500 to-purple-600">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-4">
+                        <i class="fas fa-sliders-h text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white">Pig Farm Pro</h1>
+                        <p class="text-sm text-white/90 font-medium">Activity Settings</p>
+                    </div>
+                </div>
+            </div>
+            <nav class="mt-8 px-4 space-y-2">
+                <a href="{% if user.role == 'manager' %}/manager/farm/completed-farrowings{% else %}/admin/farm/completed-farrowings{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl">
+                    <i class="fas fa-check-circle mr-4 text-green-500"></i>
+                    <span class="font-semibold text-sm">Completed Farrowings</span>
+                </a>
+                <a href="{% if user.role == 'manager' %}/manager/farm/farrowing-activity-settings{% else %}/admin/farm/farrowing-activity-settings{% endif %}" class="group flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-200 dark:border-indigo-700/50">
+                    <i class="fas fa-sliders-h mr-4"></i>
+                    <span class="font-semibold text-sm">Farrowing Activities Settings</span>
+                </a>
+            </nav>
+        </div>
+    </div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden"></div>
+
+    <main class="md:ml-72 min-h-screen p-6 lg:p-8">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Farrowing Activities Settings</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Register, edit, and delete default activities used during farrowing.</p>
+                </div>
+                <button onclick="loadTemplates()" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                    <i class="fas fa-sync-alt mr-2"></i>Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="xl:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" id="form-title">Register Activity</h2>
+                <form id="activity-form" class="space-y-4">
+                    <input type="hidden" id="template-id">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Day</label>
+                        <input id="due-day" type="number" min="0" required class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Activity Name</label>
+                        <input id="activity-name" type="text" required class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    </div>
+                    <div class="flex items-center">
+                        <input id="is-active" type="checkbox" checked class="mr-2">
+                        <label for="is-active" class="text-sm text-gray-700 dark:text-gray-300">Active</label>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white">Save</button>
+                        <button type="button" onclick="resetForm()" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">Clear</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="xl:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Configured Activities</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Day</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Activity</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="templates-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr><td colspan="4" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let templates = [];
+
+        function resetForm() {
+            document.getElementById('template-id').value = '';
+            document.getElementById('due-day').value = '';
+            document.getElementById('activity-name').value = '';
+            document.getElementById('is-active').checked = true;
+            document.getElementById('form-title').textContent = 'Register Activity';
+        }
+
+        function editTemplate(id) {
+            const row = templates.find(t => t.id === id);
+            if (!row) return;
+            document.getElementById('template-id').value = row.id;
+            document.getElementById('due-day').value = row.due_day;
+            document.getElementById('activity-name').value = row.activity_name;
+            document.getElementById('is-active').checked = !!row.is_active;
+            document.getElementById('form-title').textContent = 'Edit Activity';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteTemplate(id) {
+            if (!confirm('Delete this activity template?')) return;
+            const response = await fetch(`/api/farrowing/activity-templates/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            alert(result.message || (result.success ? 'Deleted' : 'Failed to delete'));
+            if (result.success) loadTemplates();
+        }
+
+        async function loadTemplates() {
+            const response = await fetch('/api/farrowing/activity-templates');
+            const data = await response.json();
+            templates = data.templates || [];
+            const body = document.getElementById('templates-body');
+            if (!templates.length) {
+                body.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">No activity templates found</td></tr>';
+                return;
+            }
+            body.innerHTML = templates.map(t => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">Day ${t.due_day}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${t.activity_name}</td>
+                    <td class="px-4 py-3 text-sm">${t.is_active ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Active</span>' : '<span class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700">Inactive</span>'}</td>
+                    <td class="px-4 py-3 text-sm">
+                        <button onclick="editTemplate(${t.id})" class="px-2 py-1 rounded bg-blue-100 text-blue-700 mr-2">Edit</button>
+                        <button onclick="deleteTemplate(${t.id})" class="px-2 py-1 rounded bg-red-100 text-red-700">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('activity-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('template-id').value;
+            const payload = {
+                due_day: parseInt(document.getElementById('due-day').value, 10),
+                activity_name: document.getElementById('activity-name').value.trim(),
+                is_active: document.getElementById('is-active').checked
+            };
+            const url = id ? `/api/farrowing/activity-templates/${id}` : '/api/farrowing/activity-templates';
+            const method = id ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            alert(result.message || (result.success ? 'Saved' : 'Failed'));
+            if (result.success) {
+                resetForm();
+                loadTemplates();
+            }
+        });
+
+        loadTemplates();
+    </script>
+</body>
+</html>

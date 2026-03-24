@@ -289,24 +289,24 @@
                         <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                     </a>
 
-                    <!-- Pig Vaccination Tracking -->
+                    <!-- Medical Tracking -->
                     <a href="{% if user.role == 'manager' %}/manager/farm/vaccination-tracking{% else %}/admin/farm/vaccination-tracking{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
                         <div class="w-10 h-10 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
                             <i class="fas fa-syringe text-green-600 dark:text-green-400 text-lg"></i>
                         </div>
                         <div class="flex-1">
-                            <span class="font-semibold text-sm">Pig Vaccination Tracking</span>
+                            <span class="font-semibold text-sm">Medical Tracking</span>
                             <p class="text-xs text-gray-500 dark:text-gray-400">Track pig vaccines & schedule</p>
                         </div>
                     </a>
 
-                    <!-- Pig Vaccination Settings -->
+                    <!-- Medical Settings -->
                     <a href="{% if user.role == 'manager' %}/manager/farm/vaccination-settings{% else %}/admin/farm/vaccination-settings{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
                         <div class="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
                             <i class="fas fa-cog text-purple-600 dark:text-purple-400 text-lg"></i>
                         </div>
                         <div class="flex-1">
-                            <span class="font-semibold text-sm">Pig Vaccination Settings</span>
+                            <span class="font-semibold text-sm">Medical Settings</span>
                             <p class="text-xs text-gray-500 dark:text-gray-400">Pig schedule & protocols</p>
                         </div>
                     </a>

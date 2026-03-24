@@ -268,7 +268,7 @@
                     <!-- Active indicator -->
                     <div class="ml-2 w-3 h-3 bg-pink-500 rounded-full animate-pulse flex-shrink-0"></div>
                 </a>
-                
+
                 <!-- Pig Management Sub-links -->
                 <div class="ml-6 space-y-2 border-l-2 border-pink-200 dark:border-pink-700/50 pl-4">
                     <a href="{% if user.role == 'manager' %}/manager/farm/register-pigs{% else %}/admin/farm/register-pigs{% endif %}" class="group flex items-center px-3 py-3 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
@@ -282,7 +282,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </a>
-                    
+
                     <a href="{% if user.role == 'manager' %}/manager/farm/breeding-management{% else %}/admin/farm/breeding-management{% endif %}" class="group flex items-center px-3 py-3 text-pink-600 dark:text-pink-400 hover:text-pink-800 dark:hover:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
                         <div class="w-6 h-6 bg-pink-100 dark:bg-pink-800/50 rounded-md flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
                             <svg class="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -450,9 +450,15 @@
                 </div>
             </div>
 
+            <!-- Data Tabs -->
+            <div class="mb-4 flex items-center gap-2 overflow-x-auto">
+                <button id="tab-pigs-btn" onclick="switchPigDataTab('pigs')" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap">Pigs</button>
+                <button id="tab-litters-btn" onclick="switchPigDataTab('litters')" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Litters</button>
+                <button id="tab-batches-btn" onclick="switchPigDataTab('batches')" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Batches</button>
+            </div>
 
             <!-- Pigs Table Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+            <div id="pigs-section" class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
                 <!-- Section Header -->
                 <div class="px-3 sm:px-6 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
@@ -527,7 +533,7 @@
             </div>
 
             <!-- Litters Section -->
-            <div class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+            <div id="litters-section" class="hidden mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
                 <!-- Section Header -->
                 <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex items-center justify-between">
@@ -579,6 +585,63 @@
                             <!-- Mobile cards will be populated by JavaScript -->
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Batches Section -->
+            <div id="batches-section" class="hidden mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-boxes-stacked text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Registered Batches</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Edit and delete batch records</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="loadBatches()" class="group px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all duration-200 hover:shadow-md">
+                                <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-500"></i>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 hidden lg:table">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID / Gender / Age (days)</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type / Source / Breed</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Purpose</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breeding Status</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batches-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr><td colspan="9" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading batches...</td></tr>
+                        </tbody>
+                    </table>
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 hidden md:table lg:hidden">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID / Gender / Age (days)</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type / Source / Breed</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batches-table-body-md" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading batches...</td></tr>
+                        </tbody>
+                    </table>
+                    <div id="batches-mobile-cards" class="space-y-4 md:hidden"></div>
                 </div>
             </div>
         </div>
@@ -1442,14 +1505,17 @@
         // Pig Management Functions
         let currentPigData = null;
         let currentLittersData = [];
+        let activePigDataTab = 'pigs';
 
         // Load pigs on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadPigs();
             loadLitters();
+            loadBatches();
             loadFarms();
             recalculateAllPigAges();
             checkCompletedBreedingCycles();
+            switchPigDataTab('pigs');
         });
 
         // Recalculate ages for all pigs
@@ -1510,11 +1576,12 @@
                 if (data.success) {
                     allPigs = data.pigs; // Store all pigs globally
                     filteredPigs = data.pigs; // Initially show all pigs
-                    displayPigs(data.pigs);
+                    applyCurrentPigTabData();
                 } else {
                     allPigs = [];
                     filteredPigs = [];
                     displayPigs([]);
+                    displayBatches([]);
                 }
             })
             .catch(error => {
@@ -1522,7 +1589,53 @@
                 allPigs = [];
                 filteredPigs = [];
                 displayPigs([]);
+                displayBatches([]);
             });
+        }
+
+        function loadBatches() {
+            const batches = (filteredPigs || []).filter(pig => pig.pig_type === 'batch');
+            displayBatches(batches);
+        }
+
+        function switchPigDataTab(tab) {
+            activePigDataTab = tab;
+            const pigsBtn = document.getElementById('tab-pigs-btn');
+            const littersBtn = document.getElementById('tab-litters-btn');
+            const batchesBtn = document.getElementById('tab-batches-btn');
+            const pigsSection = document.getElementById('pigs-section');
+            const littersSection = document.getElementById('litters-section');
+            const batchesSection = document.getElementById('batches-section');
+
+            pigsSection.classList.add('hidden');
+            littersSection.classList.add('hidden');
+            batchesSection.classList.add('hidden');
+
+            pigsBtn.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
+            littersBtn.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
+            batchesBtn.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
+
+            if (tab === 'litters') {
+                littersSection.classList.remove('hidden');
+                littersBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+                loadLitters();
+            } else if (tab === 'batches') {
+                batchesSection.classList.remove('hidden');
+                batchesBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+                loadBatches();
+            } else {
+                pigsSection.classList.remove('hidden');
+                pigsBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+                displayPigs((filteredPigs || []).filter(pig => pig.pig_type !== 'batch' && pig.pig_type !== 'litter'));
+            }
+        }
+
+        function applyCurrentPigTabData() {
+            if (activePigDataTab === 'batches') {
+                loadBatches();
+            } else if (activePigDataTab === 'pigs') {
+                displayPigs((filteredPigs || []).filter(pig => pig.pig_type !== 'batch' && pig.pig_type !== 'litter'));
+            }
         }
 
         // Search pigs by tag ID
@@ -1551,8 +1664,8 @@
                     searchCount.textContent = filteredPigs.length;
                 }
                 
-                // Update display
-                displayPigs(filteredPigs);
+                // Update display for current tab
+                applyCurrentPigTabData();
                 
                 // Hide spinner
                 spinner.classList.add('hidden');
@@ -1567,7 +1680,7 @@
             searchInput.value = '';
             searchResults.classList.add('hidden');
             filteredPigs = allPigs;
-            displayPigs(allPigs);
+            applyCurrentPigTabData();
         }
 
         // Global variable to store pig ID for deletion
@@ -1641,7 +1754,7 @@
                     filteredPigs = filteredPigs.filter(pig => pig.id !== pigToDelete);
                     
                     // Refresh display
-                    displayPigs(filteredPigs);
+                    applyCurrentPigTabData();
                 } else {
                     showToast(data.message, 'error');
                 }
@@ -1892,6 +2005,78 @@
             }).join('');
         }
 
+        function displayBatches(batches) {
+            const tbody = document.getElementById('batches-table-body');
+            const tbodyMd = document.getElementById('batches-table-body-md');
+            const mobileCards = document.getElementById('batches-mobile-cards');
+
+            if (!tbody || !tbodyMd || !mobileCards) return;
+
+            if (batches.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td></tr>';
+                tbodyMd.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td></tr>';
+                mobileCards.innerHTML = '<div class="text-center py-8 text-gray-500 dark:text-gray-400"><i class="fas fa-boxes-stacked text-4xl mb-4"></i><p>No batches registered yet</p></div>';
+                return;
+            }
+
+            tbody.innerHTML = batches.map(pig => {
+                const isEdited = pig.is_edited || pig.tag_id.startsWith('E');
+                const tagIdClass = isEdited ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
+                return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-3 lg:px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tagIdClass}">${pig.tag_id}</span>
+                            ${isEdited ? '<span class="text-xs text-orange-600 dark:text-orange-400" title="Edited">✏️</span>' : ''}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${pig.gender || '-'} / ${pig.age_days ?? '-'} days</div>
+                    </td>
+                    <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${pig.farm_name || '-'}</td>
+                    <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${(pig.pig_type || '-').replace('_',' ')} / ${pig.pig_source || '-'} / ${pig.breed || '-'}</td>
+                    <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${pig.purpose || '-'}</td>
+                    <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${pig.breeding_status || '-'}</td>
+                    <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${pig.status || '-'}</td>
+                    <td class="px-3 lg:px-6 py-4 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="editPig(${pig.id})" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Edit batch"><i class="fas fa-edit"></i></button>
+                            <button onclick="deletePig(${pig.id}, '${pig.tag_id}')" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Delete batch"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            tbodyMd.innerHTML = batches.map(pig => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${pig.tag_id}</td>
+                    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${pig.farm_name || '-'}</td>
+                    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${pig.pig_source || '-'} / ${pig.breed || '-'}</td>
+                    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${pig.status || '-'}</td>
+                    <td class="px-3 py-4 text-sm">
+                        <button onclick="editPig(${pig.id})" class="text-blue-600 hover:text-blue-900 mr-2" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button onclick="deletePig(${pig.id}, '${pig.tag_id}')" class="text-red-600 hover:text-red-900" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            mobileCards.innerHTML = batches.map(pig => `
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">${pig.tag_id}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">${pig.status || '-'}</span>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Farm:</span><span class="text-gray-900 dark:text-white">${pig.farm_name || '-'}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Source:</span><span class="text-gray-900 dark:text-white">${pig.pig_source || '-'}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Age:</span><span class="text-gray-900 dark:text-white">${pig.age_days ?? '-'} days</span></div>
+                    </div>
+                    <div class="flex items-center space-x-2 mt-4">
+                        <button onclick="editPig(${pig.id})" class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-medium rounded-lg">Edit</button>
+                        <button onclick="deletePig(${pig.id}, '${pig.tag_id}')" class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-lg">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         // Load litters for table
         function loadLitters() {
             fetch('/api/litter/all')
@@ -2009,6 +2194,12 @@
                                 </svg>
                                 Edit
                             </button>
+                            <button onclick="deleteLitter(${litter.id}, '${litter.litter_id}')" class="inline-flex items-center px-3 py-1 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-lg transition-colors">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Delete
+                            </button>
                             ${!litter.weaning_date && litter.status !== 'weaned' && ageInDays >= 21 ? 
                                 `<button onclick="weanLitter(${litter.id})" class="inline-flex items-center px-3 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-lg transition-colors">
                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2096,6 +2287,12 @@
                             </svg>
                             Edit
                         </button>
+                        <button onclick="deleteLitter(${litter.id}, '${litter.litter_id}')" class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-lg transition-colors">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Delete
+                        </button>
                         ${!litter.weaning_date && litter.status !== 'weaned' && ageInDays >= 21 ? 
                             `<button onclick="weanLitter(${litter.id})" class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-lg transition-colors">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2136,6 +2333,29 @@
                     showToast('Error weaning litter. Please try again.', 'error');
                 });
             }
+        }
+
+        function deleteLitter(litterId, litterTag) {
+            const confirmed = confirm(`Delete litter ${litterTag}? This action cannot be undone.`);
+            if (!confirmed) return;
+
+            fetch(`/api/litter/delete/${litterId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message || 'Litter deleted successfully', 'success');
+                    loadLitters();
+                } else {
+                    showToast(data.message || 'Failed to delete litter', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting litter:', error);
+                showToast('Error deleting litter. Please try again.', 'error');
+            });
         }
 
         // Toggle weaning fields based on status
