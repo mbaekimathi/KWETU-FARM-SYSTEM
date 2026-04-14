@@ -544,7 +544,7 @@
                     // Create list/table structure
                     const tableHTML = `
                         <div class="overflow-x-auto -mx-4 sm:mx-0">
-                            <table class="w-full min-w-full">
+                            <table class="w-full min-w-full table-fixed">
                                 <thead>
                                     <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sow ID</th>
@@ -554,7 +554,7 @@
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left</th>
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left to Serve</th>
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                        <th class="w-36 px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -600,19 +600,19 @@
                                                         ${(record.breeding_status || 'unknown').replace('_', ' ')}
                                                     </span>
                                                 </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-                                                    <div class="flex items-center justify-center gap-2 flex-wrap">
+                                                <td class="w-36 px-3 sm:px-4 md:px-6 py-3 sm:py-4 align-top">
+                                                    <div class="flex flex-col items-center gap-2">
                                                         <button 
                                                             onclick="showBreedingDetailsFromButton(this)"
                                                             data-record='${JSON.stringify(record).replace(/'/g, "&apos;")}'
-                                                            class="inline-flex items-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all duration-200"
+                                                            class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all duration-200"
                                                             title="View Details"
                                                         >
                                                             <i class="fas fa-eye mr-1 sm:mr-2"></i>
                                                             <span class="hidden sm:inline">View</span>
                                                         </button>
                                                         ${record.days_to_farrowing !== null && record.days_to_farrowing <= 7 ? `
-                                                            <button onclick="showRegisterFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}')" class="inline-flex items-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200">
+                                                            <button onclick="showRegisterFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200">
                                                                 <i class="fas fa-baby mr-1 sm:mr-2"></i>
                                                                 <span class="hidden sm:inline">Register</span>
                                                             </button>
