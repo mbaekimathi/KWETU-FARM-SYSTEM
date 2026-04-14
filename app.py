@@ -15761,7 +15761,7 @@ def complete_farrowing_activity_simple(activity_id):
 
 @app.route('/api/farrowing/check-recovery/<int:farrowing_id>', methods=['GET'])
 def check_sow_recovery_status(farrowing_id):
-    """Check if sow is ready for next breeding (40 days after farrowing)"""
+    """Check if sow is ready for next breeding based on activity completion"""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -15769,7 +15769,7 @@ def check_sow_recovery_status(farrowing_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get farrowing details and calculate recovery status
+        # Get farrowing details
         cursor.execute("""
             SELECT fr.farrowing_date, fr.id, fr.avg_weight as farrowing_avg_weight, br.sow_id, p.tag_id as sow_tag_id,
                    p.breeding_status, p.breed
@@ -15783,11 +15783,10 @@ def check_sow_recovery_status(farrowing_id):
         if not farrowing:
             return jsonify({'success': False, 'message': 'Farrowing record not found'})
         
-        from datetime import datetime, timedelta
-        today = datetime.now().date()
         farrowing_date = farrowing['farrowing_date']
-        recovery_date = farrowing_date + timedelta(days=40)
-        days_until_recovery = (recovery_date - today).days
+        # Keep compatibility fields in response; readiness now depends on activities.
+        recovery_date = farrowing_date
+        days_until_recovery = 0
         
         # Check if all activities are completed
         cursor.execute("""
@@ -15853,8 +15852,8 @@ def check_sow_recovery_status(farrowing_id):
             else:
                 trend_direction = 'down'
 
-        # Check if sow is ready for next breeding
-        sow_ready = today >= recovery_date and all_activities_completed
+        # Sow is ready only when all activities are completed by the user.
+        sow_ready = all_activities_completed
         
         cursor.close()
         conn.close()
@@ -15886,7 +15885,7 @@ def check_sow_recovery_status(farrowing_id):
 
 @app.route('/api/farrowing/mark-sow-available/<int:farrowing_id>', methods=['POST'])
 def mark_sow_available_for_breeding(farrowing_id):
-    """Mark sow as available for next breeding after recovery period"""
+    """Mark sow as available for next breeding after activity completion"""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -15906,18 +15905,6 @@ def mark_sow_available_for_breeding(farrowing_id):
         farrowing = cursor.fetchone()
         if not farrowing:
             return jsonify({'success': False, 'message': 'Farrowing record not found'})
-        
-        # Check if recovery period is complete
-        from datetime import datetime, timedelta
-        today = datetime.now().date()
-        farrowing_date = farrowing['farrowing_date']
-        recovery_date = farrowing_date + timedelta(days=40)
-        
-        if today < recovery_date:
-            return jsonify({
-                'success': False, 
-                'message': f'Sow is not ready yet. Recovery period ends on {recovery_date.strftime("%Y-%m-%d")}'
-            })
         
         # Check if all activities are completed
         cursor.execute("""
@@ -15968,29 +15955,6 @@ def mark_sow_available_for_breeding(farrowing_id):
                     'message': 'Cannot mark sow as available. Incomplete farrowing activities:',
                     'incomplete_activities': incomplete_list
                 })
-        
-        # Check if litter registration is required
-        cursor.execute("""
-            SELECT COUNT(*) as litter_count
-            FROM litters 
-            WHERE farrowing_record_id = %s
-        """, (farrowing_id,))
-        
-        litter_result = cursor.fetchone()
-        if litter_result['litter_count'] == 0:
-            # Litter registration is required before marking sow as available
-            return jsonify({
-                'success': False, 
-                'message': 'Litter registration required',
-                'requires_litter_registration': True,
-                'farrowing_data': {
-                    'farrowing_id': farrowing_id,
-                    'breeding_id': farrowing['breeding_id'],
-                    'sow_id': farrowing['sow_id'],
-                    'sow_tag_id': farrowing['sow_tag_id'],
-                    'farrowing_date': farrowing['farrowing_date'].strftime('%Y-%m-%d')
-                }
-            })
         
         # Update sow's breeding status to available
         cursor.execute("""

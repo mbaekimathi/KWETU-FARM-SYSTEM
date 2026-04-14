@@ -673,7 +673,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Available Sows</h2>
-                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">Select from the cards below</p>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">Browse available sows in a list</p>
                             </div>
                             <div class="flex items-center gap-2 sm:gap-3">
                                 <div class="relative flex-1 sm:flex-none min-w-0">
@@ -693,13 +693,29 @@
                     
                     <!-- Sows Container -->
                     <div id="sows-container" class="p-3 sm:p-4">
-                        <div id="sows-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                            <div class="col-span-full flex items-center justify-center py-8 sm:py-10">
-                                <div class="text-center">
-                                    <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-pink-500 mx-auto mb-2"></div>
-                                    <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Loading sows...</p>
-                                </div>
-                            </div>
+                        <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-900/40">
+                                    <tr>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Sow Tag</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Breed</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Age (Days)</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Health</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Last Breeding</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sows-list-body" class="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-800">
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-8">
+                                            <div class="text-center">
+                                                <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-pink-500 mx-auto mb-2"></div>
+                                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Loading sows...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -1107,12 +1123,13 @@
             if (searchSows) {
                 searchSows.addEventListener('input', function() {
                     const searchTerm = this.value.toLowerCase().trim();
-                    const sowCards = document.querySelectorAll('#sows-grid .breeding-card');
-                    sowCards.forEach(card => {
-                        const tag = (card.querySelector('h3')?.textContent || '').toLowerCase();
-                        const subtitle = (card.querySelector('h3 + p')?.textContent || '').toLowerCase();
-                        const match = !searchTerm || tag.includes(searchTerm) || subtitle.includes(searchTerm);
-                        card.style.display = match ? '' : 'none';
+                    const sowRows = document.querySelectorAll('#sows-list-body tr[data-sow-id]');
+                    sowRows.forEach(row => {
+                        const tag = (row.dataset.tagId || '').toLowerCase();
+                        const breed = (row.dataset.breed || '').toLowerCase();
+                        const health = (row.dataset.health || '').toLowerCase();
+                        const match = !searchTerm || tag.includes(searchTerm) || breed.includes(searchTerm) || health.includes(searchTerm);
+                        row.style.display = match ? '' : 'none';
                     });
                 });
             }
@@ -1379,74 +1396,64 @@
             loadCompletedFarrowings();
         }
 
-        // Display sows in cards (compact, responsive grid)
+        // Display sows in list rows
         function displaySows(sows) {
-            const grid = document.getElementById('sows-grid');
-            if (!grid) return;
+            const listBody = document.getElementById('sows-list-body');
+            if (!listBody) return;
             
             if (sows.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full flex items-center justify-center py-8 sm:py-10">
-                        <div class="text-center">
-                            <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow">
-                                <i class="fas fa-female text-gray-400 text-xl"></i>
+                listBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8">
+                            <div class="text-center">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                                    <i class="fas fa-female text-gray-400 text-xl"></i>
+                                </div>
+                                <h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1">No Available Sows</h3>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">No sows are currently available for breeding.</p>
                             </div>
-                            <h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1">No Available Sows</h3>
-                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">No sows are currently available for breeding.</p>
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                 `;
                 return;
             }
             
-            grid.innerHTML = sows.map((sow, index) => `
-                <div class="breeding-card group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2 sm:p-3 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative animate-slide-up" style="animation-delay: ${index * 0.05}s" data-sow-id="${sow.id}">
-                    <div class="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div class="relative z-10 flex flex-col h-full min-h-0">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <div class="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-900/30 dark:to-pink-800/30 rounded-md flex items-center justify-center shrink-0">
-                                <i class="fas fa-female text-pink-600 dark:text-pink-400 text-xs"></i>
-                            </div>
-                            <span class="px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">AVAILABLE</span>
-                        </div>
-                        <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate mb-0.5">${sow.tag_id || 'Untagged Sow'}</h3>
-                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-2">${sow.breed || 'Unknown'} · ${sow.age_days ? Math.round(sow.age_days / 30) + 'mo' : '—'}</p>
-                        <div class="space-y-0.5 mb-2 flex-1 min-h-0">
-                            <div class="flex justify-between items-center text-[10px] sm:text-xs">
-                                <span class="text-gray-500 dark:text-gray-400">Health</span>
-                                <span class="font-medium text-gray-900 dark:text-white truncate ml-1">${sow.health_status || 'Healthy'}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-[10px] sm:text-xs">
-                                <span class="text-gray-500 dark:text-gray-400">Last bred</span>
-                                <span class="font-medium text-gray-900 dark:text-white truncate ml-1">${sow.last_breeding_date ? new Date(sow.last_breeding_date).toLocaleDateString() : 'Never'}</span>
-                            </div>
-                        </div>
-                        <button onclick="selectSowForBreeding(${sow.id})" class="w-full px-2 py-1.5 sm:py-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white text-[10px] sm:text-xs font-semibold rounded-md transition-all duration-200 hover:shadow">
+            listBody.innerHTML = sows.map((sow) => `
+                <tr class="hover:bg-pink-50/60 dark:hover:bg-pink-900/10 transition-colors" data-sow-id="${sow.id}" data-tag-id="${sow.tag_id || ''}" data-breed="${sow.breed || ''}" data-health="${sow.health_status || ''}">
+                    <td class="px-3 sm:px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${sow.tag_id || 'Untagged Sow'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.breed || 'Unknown'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.age_days ?? '—'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.health_status || 'Healthy'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.last_breeding_date ? new Date(sow.last_breeding_date).toLocaleDateString() : 'Never'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-right">
+                        <button onclick="selectSowForBreeding(${sow.id})" class="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white text-xs font-semibold rounded-md transition-all duration-200">
                             <i class="fas fa-heart mr-1"></i>Select
                         </button>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `).join('');
         }
 
         // Display sows error
         function displaySowsError() {
-            const grid = document.getElementById('sows-grid');
-            if (grid) {
-                grid.innerHTML = `
-                    <div class="col-span-full flex items-center justify-center py-8 sm:py-10">
-                        <div class="text-center">
-                            <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-full flex items-center justify-center mx-auto mb-3 shadow">
-                                <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+            const listBody = document.getElementById('sows-list-body');
+            if (listBody) {
+                listBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8">
+                            <div class="text-center">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                                </div>
+                                <h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1">Error Loading Sows</h3>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">Failed to load sow data. Please try again.</p>
+                                <button onclick="loadAvailableSows()" class="inline-flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-xs sm:text-sm">
+                                    <i class="fas fa-sync-alt mr-1.5"></i>
+                                    Try Again
+                                </button>
                             </div>
-                            <h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1">Error Loading Sows</h3>
-                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">Failed to load sow data. Please try again.</p>
-                            <button onclick="loadAvailableSows()" class="inline-flex items-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-xs sm:text-sm">
-                                <i class="fas fa-sync-alt mr-1.5"></i>
-                                Try Again
-                            </button>
-                        </div>
-                    </div>
+                        </td>
+                    </tr>
                 `;
             }
         }
@@ -1523,18 +1530,19 @@
             }
         }
 
-        // Search functionality for sows (filters breeding cards)
+        // Search functionality for sows (filters list rows)
         function setupSowSearch() {
             const searchInput = document.getElementById('search-sows');
             if (searchInput) {
                 searchInput.addEventListener('input', function() {
                     const searchTerm = this.value.toLowerCase().trim();
-                    const sowCards = document.querySelectorAll('#sows-grid .breeding-card');
-                    sowCards.forEach(card => {
-                        const tag = (card.querySelector('h3')?.textContent || '').toLowerCase();
-                        const subtitle = (card.querySelector('h3 + p')?.textContent || '').toLowerCase();
-                        const match = !searchTerm || tag.includes(searchTerm) || subtitle.includes(searchTerm);
-                        card.style.display = match ? '' : 'none';
+                    const sowRows = document.querySelectorAll('#sows-list-body tr[data-sow-id]');
+                    sowRows.forEach(row => {
+                        const tag = (row.dataset.tagId || '').toLowerCase();
+                        const breed = (row.dataset.breed || '').toLowerCase();
+                        const health = (row.dataset.health || '').toLowerCase();
+                        const match = !searchTerm || tag.includes(searchTerm) || breed.includes(searchTerm) || health.includes(searchTerm);
+                        row.style.display = match ? '' : 'none';
                     });
                 });
             }
