@@ -218,7 +218,56 @@
                 const data = await response.json();
                 if (data.success) {
                     const breedingRecords = data.records;
-                    const displayRecords = breedingRecords.filter(r => ['served', 'pregnant', 'farrowed', 'completed', 'failed'].includes(r.breeding_status));
+                    const displayRecords = breedingRecords
+                        .filter(r => ['served', 'pregnant', 'farrowed', 'completed', 'failed'].includes(r.breeding_status))
+                        .sort((a, b) => {
+                            const getDaysLeft = (record) => {
+                                if (record.days_to_farrowing !== null && record.days_to_farrowing !== undefined && record.days_to_farrowing !== '') {
+                                    return Number(record.days_to_farrowing);
+                                }
+                                if (record.expected_due_date) {
+                                    return Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24));
+                                }
+                                return null;
+                            };
+
+                            const getRecentFarrowingTime = (record) => {
+                                const dateCandidate =
+                                    record.farrowing_date ||
+                                    record.actual_farrowing_date ||
+                                    record.updated_at ||
+                                    record.mating_date ||
+                                    record.expected_due_date;
+                                const parsed = dateCandidate ? new Date(dateCandidate).getTime() : 0;
+                                return Number.isNaN(parsed) ? 0 : parsed;
+                            };
+
+                            const aDays = getDaysLeft(a);
+                            const bDays = getDaysLeft(b);
+                            const aIsZero = aDays === 0;
+                            const bIsZero = bDays === 0;
+
+                            // Rule 1: all 0-day records go to the bottom
+                            if (aIsZero !== bIsZero) {
+                                return aIsZero ? 1 : -1;
+                            }
+
+                            // Rule 2: for non-zero records, least days left first
+                            if (!aIsZero && !bIsZero) {
+                                if (aDays === null && bDays !== null) return 1;
+                                if (aDays !== null && bDays === null) return -1;
+                                if (aDays !== null && bDays !== null && aDays !== bDays) {
+                                    return aDays - bDays;
+                                }
+                            }
+
+                            // Rule 3: among 0-day records, most recently farrowed first
+                            if (aIsZero && bIsZero) {
+                                return getRecentFarrowingTime(b) - getRecentFarrowingTime(a);
+                            }
+
+                            return 0;
+                        });
                     
                     // Update the counts in the statistics card (pregnant + farrowed view)
                     document.getElementById('active-breeding-count').textContent = displayRecords.length;
@@ -265,13 +314,14 @@
                                     ${displayRecords.map((record, index) => {
                                         const daysLeft = record.days_to_farrowing !== null ? record.days_to_farrowing : (record.expected_due_date ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24)) : null);
                                         let daysLeftToServe = '-';
-                                        if (record.breeding_status === 'farrowed' && record.expected_due_date) {
-                                            const today = new Date();
-                                            const farrowDate = new Date(record.expected_due_date);
-                                            const daysSinceFarrow = Math.floor((today - farrowDate) / (1000 * 60 * 60 * 24));
-                                            const recoveryWindowDays = 21;
-                                            const remaining = recoveryWindowDays - daysSinceFarrow;
-                                            daysLeftToServe = remaining > 0 ? remaining : 'Ready';
+                                        if (record.breeding_status === 'farrowed') {
+                                            if (record.days_left_to_serve !== null && record.days_left_to_serve !== undefined) {
+                                                daysLeftToServe = Number(record.days_left_to_serve) > 0
+                                                    ? Number(record.days_left_to_serve)
+                                                    : 'Ready';
+                                            } else {
+                                                daysLeftToServe = 'Ready';
+                                            }
                                         }
                                         
                                         return `

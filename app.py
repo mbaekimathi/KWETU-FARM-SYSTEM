@@ -95,7 +95,7 @@ def get_current_employee_profile_image():
         return None
 
 # Database configuration
-# Auto-detect environment and use appropriate database settings
+# Auto-detect environment and use environment-specific credential keys
 def is_localhost():
     """Check if the app is running on localhost"""
     try:
@@ -107,45 +107,51 @@ def is_localhost():
     except:
         return False
 
+# Environment mode:
+# - Set APP_ENV=local or APP_ENV=production to force behavior
+# - If APP_ENV is not set, fallback to hostname detection
+APP_ENV = os.environ.get("APP_ENV", "").strip().lower()
+IS_LOCAL_ENV = APP_ENV == "local" or (APP_ENV == "" and is_localhost())
+
 # Database configuration based on environment
-if is_localhost():
+if IS_LOCAL_ENV:
     # Local development settings
     DB_CONFIG = {
-        'host': os.environ.get('DB_HOST', 'localhost'),
-        'user': os.environ.get('DB_USER', 'root'),
-        'password': os.environ.get('DB_PASSWORD', ''),
-        'database': os.environ.get('DB_NAME', 'kwetu_farm'),
+        'host': os.environ.get('LOCAL_DB_HOST', os.environ.get('DB_HOST', 'localhost')),
+        'user': os.environ.get('LOCAL_DB_USER', os.environ.get('DB_USER', 'root')),
+        'password': os.environ.get('LOCAL_DB_PASSWORD', os.environ.get('DB_PASSWORD', '')),
+        'database': os.environ.get('LOCAL_DB_NAME', os.environ.get('DB_NAME', 'kwetu_farm')),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
     
     # Database configuration without database name for initial connection
     DB_CONFIG_NO_DB = {
-        'host': os.environ.get('DB_HOST', 'localhost'),
-        'user': os.environ.get('DB_USER', 'root'),
-        'password': os.environ.get('DB_PASSWORD', ''),
+        'host': os.environ.get('LOCAL_DB_HOST', os.environ.get('DB_HOST', 'localhost')),
+        'user': os.environ.get('LOCAL_DB_USER', os.environ.get('DB_USER', 'root')),
+        'password': os.environ.get('LOCAL_DB_PASSWORD', os.environ.get('DB_PASSWORD', '')),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
     
     print("Running in LOCAL development mode")
-    print("   Database: localhost (root user)")
+    print(f"   Database: {DB_CONFIG['host']} ({DB_CONFIG['user']} user)")
 else:
     # Production/cPanel settings
     DB_CONFIG = {
-        'host': os.environ.get('DB_HOST', 'localhost'),  # cPanel usually uses localhost
-        'user': os.environ.get('DB_USER', 'kwetufar_farm'),
-        'password': os.environ.get('DB_PASSWORD', ''),
-        'database': os.environ.get('DB_NAME', 'kwetufar_farm'),
+        'host': os.environ.get('PROD_DB_HOST', os.environ.get('DB_HOST', 'localhost')),  # cPanel usually uses localhost
+        'user': os.environ.get('PROD_DB_USER', os.environ.get('DB_USER', 'kwetufar_farm')),
+        'password': os.environ.get('PROD_DB_PASSWORD', os.environ.get('DB_PASSWORD', '')),
+        'database': os.environ.get('PROD_DB_NAME', os.environ.get('DB_NAME', 'kwetufar_farm')),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
     
     # Database configuration without database name for initial connection
     DB_CONFIG_NO_DB = {
-        'host': os.environ.get('DB_HOST', 'localhost'),  # cPanel usually uses localhost
-        'user': os.environ.get('DB_USER', 'kwetufar_farm'),
-        'password': os.environ.get('DB_PASSWORD', ''),
+        'host': os.environ.get('PROD_DB_HOST', os.environ.get('DB_HOST', 'localhost')),  # cPanel usually uses localhost
+        'user': os.environ.get('PROD_DB_USER', os.environ.get('DB_USER', 'kwetufar_farm')),
+        'password': os.environ.get('PROD_DB_PASSWORD', os.environ.get('DB_PASSWORD', '')),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
@@ -14633,6 +14639,11 @@ def get_breeding_records():
                    sow.tag_id as sow_tag_id, sow.breed as sow_breed, sow.breeding_status as sow_breeding_status,
                    boar.tag_id as boar_tag_id, boar.breed as boar_breed,
                    e.full_name as created_by_name,
+                   (
+                       SELECT MAX(fr.farrowing_date)
+                       FROM farrowing_records fr
+                       WHERE fr.breeding_id = br.id
+                   ) AS last_farrowing_date,
                    EXISTS(
                        SELECT 1
                        FROM farrowing_records fr
@@ -14646,6 +14657,16 @@ def get_breeding_records():
             ORDER BY br.created_at DESC, br.id DESC
         """)
         records = cursor.fetchall()
+
+        # Use farrowing activity settings "days" (due_day) as serving recovery window.
+        # If no template is set, fallback to 21 days.
+        cursor.execute("""
+            SELECT COALESCE(MAX(due_day), 21) AS serving_recovery_days
+            FROM farrowing_activity_templates
+            WHERE is_active = 1
+        """)
+        recovery_cfg = cursor.fetchone() or {}
+        serving_recovery_days = int(recovery_cfg.get('serving_recovery_days') or 21)
         
         # Process records using breeding record status (per-cycle unique state)
         from datetime import datetime
@@ -14722,6 +14743,37 @@ def get_breeding_records():
                 record_dict['can_cancel'] = False
                 record_dict['days_to_farrowing'] = None
                 record_dict['expected_due_date'] = None
+
+            # Days left to serve for farrowed sows:
+            # calculated from farrowing date against configured farrowing-activity due_day window.
+            record_dict['days_left_to_serve'] = None
+            if breeding_status == 'farrowed':
+                farrowing_date = record.get('last_farrowing_date')
+
+                if isinstance(farrowing_date, datetime):
+                    farrowing_date = farrowing_date.date()
+                elif isinstance(farrowing_date, str):
+                    from datetime import datetime as dt
+                    try:
+                        farrowing_date = dt.strptime(farrowing_date.split(' ')[0], '%Y-%m-%d').date()
+                    except Exception:
+                        farrowing_date = None
+
+                # Backward-compatible fallback when farrowing date is not present
+                if not farrowing_date and record_dict.get('expected_due_date'):
+                    from datetime import datetime as dt
+                    try:
+                        farrowing_date = dt.strptime(record_dict['expected_due_date'], '%Y-%m-%d').date()
+                    except Exception:
+                        farrowing_date = None
+
+                if farrowing_date:
+                    days_since_farrowing = (today - farrowing_date).days
+                    remaining_days = serving_recovery_days - days_since_farrowing
+                    record_dict['days_left_to_serve'] = remaining_days if remaining_days > 0 else 0
+                else:
+                    record_dict['days_left_to_serve'] = 0
+            record_dict['serving_recovery_window_days'] = serving_recovery_days
             
             processed_records.append(record_dict)
         
