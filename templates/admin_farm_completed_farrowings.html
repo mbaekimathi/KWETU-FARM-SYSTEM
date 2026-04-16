@@ -137,6 +137,9 @@
     </main>
 
     <script>
+        const APP_ROOT = "{{ request.script_root or '' }}";
+        const apiUrl = (path) => `${APP_ROOT}${path}`;
+
         // Dark mode toggle functionality
         function toggleDarkMode() {
             document.documentElement.classList.toggle('dark');
@@ -204,7 +207,7 @@
         async function loadCompletedFarrowings() {
             try {
                 console.log('Loading completed farrowings...');
-                const response = await fetch('/api/breeding/completed-farrowings');
+                const response = await fetch(apiUrl('/api/breeding/completed-farrowings'));
                 console.log('Response status:', response.status);
                 
                 if (!response.ok) {
@@ -369,7 +372,7 @@
         // Check recovery status for a sow
         async function checkRecoveryStatus(farrowingId) {
             try {
-                const response = await fetch(`/api/farrowing/check-recovery/${farrowingId}`);
+                const response = await fetch(apiUrl(`/api/farrowing/check-recovery/${farrowingId}`));
                 const data = await response.json();
                 if (data.success) {
                     showRecoveryStatusModal(data.data, farrowingId);
@@ -731,7 +734,7 @@
         async function markSowAvailable(farrowingId) {
             if (confirm('Are you sure you want to mark this sow as available for next breeding? This will complete the successful breeding cycle.')) {
                 try {
-                    const response = await fetch(`/api/farrowing/mark-sow-available/${farrowingId}`, {
+                    const response = await fetch(apiUrl(`/api/farrowing/mark-sow-available/${farrowingId}`), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -871,7 +874,7 @@
         // View farrowing activities
         async function viewFarrowingActivities(farrowingId) {
             try {
-                const response = await fetch(`/api/farrowing/activities/${farrowingId}`);
+                const response = await fetch(apiUrl(`/api/farrowing/activities/${farrowingId}`));
                 const data = await response.json();
                 if (data.success) {
                     showActivitiesModal(data.activities, farrowingId);
@@ -1044,7 +1047,7 @@
         async function completeActivitiesWithData(activityIds, activityData) {
             try {
                 for (const activityId of activityIds) {
-                    const response = await fetch(`/api/farrowing/activities/${activityId}/complete`, {
+                    const response = await fetch(apiUrl(`/api/farrowing/activities/${activityId}/complete`), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1188,7 +1191,7 @@
         // Check for weaning data and display if available
         async function checkWeaningData(farrowingId) {
             try {
-                const response = await fetch(`/api/farrowing/activities/${farrowingId}`);
+                const response = await fetch(apiUrl(`/api/farrowing/activities/${farrowingId}`));
                 const data = await response.json();
                 if (data.success) {
                     const weaningActivity = data.activities.find(activity => 
@@ -1211,7 +1214,7 @@
 
         // Generate next available litter ID
         function generateNextLitterId() {
-            fetch('/api/litter/next-id')
+            fetch(apiUrl('/api/litter/next-id'))
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -1250,7 +1253,7 @@
             };
 
             // Submit litter registration
-            fetch('/api/litter/register', {
+            fetch(apiUrl('/api/litter/register'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1482,7 +1485,7 @@
             }
             
             try {
-                const response = await fetch(`/api/farrowing/${farrowingId}/edit`, {
+                const response = await fetch(apiUrl(`/api/farrowing/${farrowingId}/edit`), {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1591,7 +1594,7 @@
 
         async function submitDeleteFarrowing(farrowingId) {
             try {
-                const response = await fetch(`/api/farrowing/${farrowingId}/delete`, {
+                const response = await fetch(apiUrl(`/api/farrowing/${farrowingId}/delete`), {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1679,7 +1682,7 @@
 
         async function loadFarrowingAuditHistory(farrowingId) {
             try {
-                const response = await fetch(`/api/farrowing/${farrowingId}/audit`);
+                const response = await fetch(apiUrl(`/api/farrowing/${farrowingId}/audit`));
                 const data = await response.json();
                 
                 if (data.success) {
