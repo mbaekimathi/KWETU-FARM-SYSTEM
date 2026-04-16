@@ -14647,6 +14647,11 @@ def get_breeding_records():
                    EXISTS(
                        SELECT 1
                        FROM farrowing_records fr
+                       WHERE fr.breeding_id = br.id
+                   ) AS has_farrowing_record,
+                   EXISTS(
+                       SELECT 1
+                       FROM farrowing_records fr
                        JOIN litters l ON l.farrowing_record_id = fr.id
                        WHERE fr.breeding_id = br.id
                    ) AS has_registered_litter
@@ -14700,6 +14705,7 @@ def get_breeding_records():
             breeding_status = record['status']
             record_dict['breeding_status'] = breeding_status
             record_dict['breeding_ref'] = f"BR-{int(record['id']):05d}"
+            record_dict['has_farrowing_record'] = bool(record.get('has_farrowing_record'))
             record_dict['has_registered_litter'] = bool(record.get('has_registered_litter'))
             
             # Calculate days to farrowing (pregnancy is 114 days)

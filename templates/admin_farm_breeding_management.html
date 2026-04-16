@@ -785,6 +785,16 @@
             setupMobileMenu();
             setupSearch();
             setupModals();
+
+            // Support deep-linking from other pages to open the register modal immediately.
+            const openRegister = new URLSearchParams(window.location.search).get('openRegister');
+            if (openRegister === '1') {
+                const newBreedingBtn = document.getElementById('new-breeding-btn');
+                if (newBreedingBtn) {
+                    newBreedingBtn.click();
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
             
             // Initialize user dropdown
         const userDropdownBtn = document.getElementById('user-dropdown-btn');

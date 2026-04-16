@@ -379,15 +379,16 @@
                                                             <span class="hidden sm:inline">Delete</span>
                                                         </button>
                                                         ${record.can_cancel ? `
-                                                            <button onclick="showCancelBreedingModal(${record.id})" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all duration-200" title="Cancel conception">
+                                                            <button onclick="showCancelBreedingModal(${record.id})" class="inline-flex items-center justify-center w-32 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all duration-200" title="Cancel conception">
                                                                 <i class="fas fa-times mr-1 sm:mr-2"></i>
-                                                                <span class="hidden sm:inline">Cancel</span>
+                                                                <span>
+                                                                    ${record.days_remaining_to_cancel > 0
+                                                                        ? `Cancel (${record.days_remaining_to_cancel} day${record.days_remaining_to_cancel === 1 ? '' : 's'} left)`
+                                                                        : 'Cancel (Last day)'}
+                                                                </span>
                                                             </button>
-                                                            <div class="inline-flex items-center justify-center w-24 px-2 py-1 text-[11px] font-semibold rounded-md bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
-                                                                ${record.days_remaining_to_cancel > 0 ? `${record.days_remaining_to_cancel} day${record.days_remaining_to_cancel === 1 ? '' : 's'} left` : 'Last day'}
-                                                            </div>
                                                         ` : ''}
-                                                        ${record.days_to_farrowing !== null && record.days_to_farrowing <= 7 && !record.has_registered_litter && record.breeding_status === 'pregnant' ? `
+                                                        ${record.days_to_farrowing !== null && record.days_to_farrowing <= 7 && !record.has_farrowing_record && !record.has_registered_litter && record.breeding_status === 'pregnant' ? `
                                                             <button onclick="showRegisterFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200">
                                                                 <i class="fas fa-baby mr-1 sm:mr-2"></i>
                                                                 <span class="hidden sm:inline">Register</span>
@@ -521,6 +522,16 @@
             loadBreedingRecords();
             setupSearch();
             setupMobileMenu();
+
+            // "Register new breeding" lives in the shared sidebar, but this page has no register modal.
+            // Route to breeding management and auto-open the modal there.
+            const sidebarRegisterBtn = document.getElementById('sidebar-register-new-breeding');
+            if (sidebarRegisterBtn) {
+                sidebarRegisterBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.location.href = "{{ '/manager/farm/breeding-management?openRegister=1' if user.role == 'manager' else '/admin/farm/breeding-management?openRegister=1' }}";
+                });
+            }
         });
 
         // Modal functionality for registering farrowing
