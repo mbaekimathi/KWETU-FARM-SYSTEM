@@ -9,6 +9,28 @@ import subprocess
 
 import db_migrations
 
+
+def load_dotenv_file(dotenv_path=".env"):
+    """Load simple KEY=VALUE pairs from a .env file into os.environ."""
+    if not os.path.exists(dotenv_path):
+        return
+    try:
+        with open(dotenv_path, "r", encoding="utf-8") as dotenv_file:
+            for raw_line in dotenv_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip("'").strip('"')
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception as e:
+        print(f"Warning: Could not load .env file: {e}")
+
+
+load_dotenv_file()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-production-secret-key-change-this')
 
@@ -89,19 +111,19 @@ def is_localhost():
 if is_localhost():
     # Local development settings
     DB_CONFIG = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': '',
-        'database': 'kwetu_farm',
+        'host': os.environ.get('DB_HOST', 'localhost'),
+        'user': os.environ.get('DB_USER', 'root'),
+        'password': os.environ.get('DB_PASSWORD', ''),
+        'database': os.environ.get('DB_NAME', 'kwetu_farm'),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
     
     # Database configuration without database name for initial connection
     DB_CONFIG_NO_DB = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': '',
+        'host': os.environ.get('DB_HOST', 'localhost'),
+        'user': os.environ.get('DB_USER', 'root'),
+        'password': os.environ.get('DB_PASSWORD', ''),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
@@ -111,19 +133,19 @@ if is_localhost():
 else:
     # Production/cPanel settings
     DB_CONFIG = {
-        'host': 'localhost',  # cPanel usually uses localhost
-        'user': 'kwetufar_farm',
-        'password': 'Itskimathi007',
-        'database': 'kwetufar_farm',
+        'host': os.environ.get('DB_HOST', 'localhost'),  # cPanel usually uses localhost
+        'user': os.environ.get('DB_USER', 'kwetufar_farm'),
+        'password': os.environ.get('DB_PASSWORD', ''),
+        'database': os.environ.get('DB_NAME', 'kwetufar_farm'),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
     
     # Database configuration without database name for initial connection
     DB_CONFIG_NO_DB = {
-        'host': 'localhost',  # cPanel usually uses localhost
-        'user': 'kwetufar_farm',
-        'password': 'Itskimathi007',
+        'host': os.environ.get('DB_HOST', 'localhost'),  # cPanel usually uses localhost
+        'user': os.environ.get('DB_USER', 'kwetufar_farm'),
+        'password': os.environ.get('DB_PASSWORD', ''),
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
