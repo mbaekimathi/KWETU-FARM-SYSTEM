@@ -1,0 +1,9 @@
+{# Back-compat include: chicken hub shell using unified sidebar + shared nav fragment.
+   Set farm_chicken_mgmt_hub_nav_active before include (see original docstring on each page).
+#}
+{% set farm_sidebar_banner_title = farm_sidebar_banner_title|default('Chicken') %}
+{% set farm_sidebar_banner_sub = farm_sidebar_banner_sub|default('Quick navigation') %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_chicken_management_hub.html' %}
+{% set farm_sidebar_aria_label = 'Chicken management quick links' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>

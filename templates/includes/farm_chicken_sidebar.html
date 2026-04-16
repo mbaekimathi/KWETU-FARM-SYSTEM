@@ -1,0 +1,115 @@
+{# Chicken farm sidebar — set farm_chicken_nav_active before include:
+   management | health | upcoming | weight | health-analytics | flock |
+   production | production-management | production-analytics |
+   feeding | feeding-tracking | feed-analytics | feed-settings | feed-stock | settings | detail | dashboard
+   Optional: farm_chicken_sidebar_top_extra, farm_chicken_sidebar_extra
+#}
+{% import 'includes/farm_nav_sidebar_macros.html' as navm %}
+{% set farm_chicken_nav_active = farm_chicken_nav_active|default('') %}
+{% set chicken_p = '/manager/farm/chicken-' if user.role == 'manager' else '/admin/farm/chicken-' %}
+{% set dash_href = '/manager/dashboard' if user.role == 'manager' else '/admin/dashboard' %}
+
+    <aside id="sidebar" class="farm-chicken-sidebar sidebar fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 -translate-x-full transform border-r border-gray-200 bg-white shadow-lg transition-transform duration-300 ease-in-out dark:border-gray-700 dark:bg-gray-800 md:translate-x-0" aria-label="Chicken farm navigation">
+        <div class="flex h-full min-h-0 flex-col">
+            {% set chicken_sidebar_banner_title = 'Chicken farm' %}
+            {% set chicken_sidebar_banner_sub = 'Poultry suite' %}
+            {% include 'includes/farm_chicken_sidebar_banner_inner.html' %}
+
+            <nav class="farm-chicken-nav scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-4" aria-label="Section links">
+                {% if farm_chicken_sidebar_top_extra is defined and farm_chicken_sidebar_top_extra %}
+                <div class="farm-chicken-sidebar__top-slot mb-1 rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-900/60">
+                    {{ farm_chicken_sidebar_top_extra }}
+                </div>
+                {% endif %}
+
+                <div class="farm-chicken-nav__section space-y-1">
+                    <p class="farm-chicken-nav__label">Overview</p>
+                    {% call navm.farm_flat_nav_row(dash_href, 'Dashboard', farm_chicken_nav_active == 'dashboard') %}
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    {% endcall %}
+                    {% call navm.farm_flat_nav_row(chicken_p ~ 'management', 'Chicken management', farm_chicken_nav_active == 'management') %}
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    {% endcall %}
+                </div>
+
+                <div class="farm-chicken-nav__section space-y-1">
+                    <p class="farm-chicken-nav__label">Health</p>
+                    <div class="ml-3 space-y-1 border-l-2 border-pink-200 pl-3 dark:border-pink-700/50">
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'health', 'Health overview', farm_chicken_nav_active == 'health') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'upcoming-medications', 'Upcoming medications', farm_chicken_nav_active == 'upcoming') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'weight-check', 'Weight check', farm_chicken_nav_active == 'weight') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2a2 2 0 11-4 0V5a2 2 0 00-2 2v8a2 2 0 002 2h4a2 2 0 002-2V7a2 2 0 00-2-2h-4z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'health-analytics', 'Health analytics', farm_chicken_nav_active == 'health-analytics') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                        {% endcall %}
+                    </div>
+                </div>
+
+                <div class="farm-chicken-nav__section space-y-1">
+                    <p class="farm-chicken-nav__label">Flocks</p>
+                    {% call navm.farm_flat_nav_row(chicken_p ~ 'flock-management', 'Batch & flock management', farm_chicken_nav_active == 'flock') %}
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    {% endcall %}
+                </div>
+
+                <div class="farm-chicken-nav__section space-y-1">
+                    <p class="farm-chicken-nav__label">Production</p>
+                    <div class="ml-3 space-y-1 border-l-2 border-pink-200 pl-3 dark:border-pink-700/50">
+                        {% call navm.farm_flat_nav_register_production_row(farm_chicken_nav_active == 'production') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'production-management', 'Production management', farm_chicken_nav_active == 'production-management') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'production-analytics', 'Production analytics', farm_chicken_nav_active == 'production-analytics') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        {% endcall %}
+                    </div>
+                </div>
+
+                <div class="farm-chicken-nav__section space-y-1">
+                    <p class="farm-chicken-nav__label">Feeding</p>
+                    <div class="ml-3 space-y-1 border-l-2 border-pink-200 pl-3 dark:border-pink-700/50">
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'feeding-management', 'Feeding management', farm_chicken_nav_active == 'feeding') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'feeding-tracking', 'Feeding tracking', farm_chicken_nav_active == 'feeding-tracking') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'feed-analytics', 'Feed analytics', farm_chicken_nav_active == 'feed-analytics') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'feed-settings', 'Feed settings', farm_chicken_nav_active == 'feed-settings') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        {% endcall %}
+                        {% call navm.farm_flat_nav_row(chicken_p ~ 'feed-stock-management', 'Feed stock', farm_chicken_nav_active == 'feed-stock') %}
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        {% endcall %}
+                    </div>
+                </div>
+
+                <div class="farm-chicken-nav__section space-y-1">
+                    <p class="farm-chicken-nav__label">System</p>
+                    {% call navm.farm_flat_nav_row(chicken_p ~ 'settings', 'Chicken settings', farm_chicken_nav_active == 'settings') %}
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    {% endcall %}
+                </div>
+            </nav>
+
+            {% if farm_chicken_sidebar_extra is defined and farm_chicken_sidebar_extra %}
+            <div class="farm-chicken-sidebar__actions shrink-0 border-t border-gray-200 bg-pink-50/40 px-3 py-3 dark:border-gray-700 dark:bg-gray-900/50">
+                {{ farm_chicken_sidebar_extra }}
+            </div>
+            {% endif %}
+
+            {% include 'includes/farm_chicken_sidebar_footer_help.html' %}
+        </div>
+    </aside>
+    <button type="button" id="sidebar-toggle-btn" class="farm-sidebar-toggle-btn fixed left-3 top-20 z-50 md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-lg transition-all duration-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" aria-label="Open sidebar" title="Toggle sidebar">
+        <i class="fas fa-bars text-sm" aria-hidden="true"></i>
+    </button>

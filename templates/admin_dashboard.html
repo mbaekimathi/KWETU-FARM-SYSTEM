@@ -3,292 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - PigFarm Pro | Kwetufarm</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'inter': ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        'agri-emerald': {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            200: '#a7f3d0',
-                            300: '#6ee7b7',
-                            400: '#34d399',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
-                            800: '#065f46',
-                            900: '#064e3b',
-                        }
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.5s ease-in-out',
-                        'slide-up': 'slideUp 0.3s ease-out',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .glass-effect {
-            backdrop-filter: blur(16px);
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .dark .glass-effect {
-            background: rgba(17, 24, 39, 0.8);
-            border: 1px solid rgba(75, 85, 99, 0.3);
-        }
-
-        .sidebar {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .card-hover {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .card-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-
-        .gradient-bg {
-            background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
-        }
-
-        .text-gradient {
-            background: linear-gradient(135deg, #10b981, #059669);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-    </style>
+    <title>Dashboard - Modern Animal Farm | Kwetufarm</title>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-300 font-inter">
-    <!-- Modern Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-slate-200/50 dark:border-slate-700/50">
-        <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-            <!-- Left Section: Mobile Menu + Logo -->
-            <div class="flex items-center space-x-4">
-                <!-- Mobile Menu Button -->
-                <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                    <svg class="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-                
-                <!-- AgriTech Logo -->
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center shadow-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-                        </svg>
-                    </div>
-                    <div class="hidden sm:block">
-                        <h1 class="text-xl font-bold text-gradient">PigFarm Pro</h1>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Kwetufarm · Live data</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Live date & time -->
-            <div class="hidden md:flex flex-col items-end">
-                <span id="live-time" class="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums"></span>
-                <span id="live-date" class="text-xs text-slate-500 dark:text-slate-400">{{ dashboard_data.today_date }}</span>
-            </div>
-            <!-- Right Section: Notifications, Theme Toggle, User Profile -->
-            <div class="flex items-center space-x-3">
-                {% include 'includes/notification_dropdown.html' %}
-                <!-- Theme Toggle -->
-                <button id="theme-toggle" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                    <svg id="sun-icon" class="w-5 h-5 text-slate-600 dark:text-slate-300 hidden" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
-                    </svg>
-                    <svg id="moon-icon" class="w-5 h-5 text-slate-600 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                    </svg>
-                </button>
-                
-                <!-- User Profile -->
-                <div class="relative">
-                    <button id="user-dropdown-btn" class="flex items-center space-x-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                        <div class="w-8 h-8 gradient-bg rounded-full flex items-center justify-center shadow-md">
-                            <span class="text-white font-semibold text-sm">{{ user.name.split()[0][0] + user.name.split()[-1][0] if user.name.split()|length > 1 else user.name[0] }}</span>
-                        </div>
-                        <div class="hidden sm:block text-left">
-                            <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ user.name }}</div>
-                            <div class="text-xs text-slate-600 dark:text-slate-400">{{ user.role.title() }}</div>
-                        </div>
-                        <svg class="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-                    
-                    <!-- Dropdown Menu -->
-                    <div id="user-dropdown" class="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 hidden animate-slide-up">
-                        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-12 h-12 gradient-bg rounded-full flex items-center justify-center">
-                                    <span class="text-white font-semibold">{{ user.name.split()[0][0] + user.name.split()[-1][0] if user.name.split()|length > 1 else user.name[0] }}</span>
-                                </div>
-                                <div>
-                                    <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ user.name }}</div>
-                                    <div class="text-xs text-slate-600 dark:text-slate-400">{{ user.email }}</div>
-                                    <div class="text-xs text-agri-emerald-600 dark:text-agri-emerald-400 font-medium">{{ user.role.title() }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="py-2">
-                            <a href="/profile" class="flex items-center px-6 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                                My Profile
-                            </a>
-                            <a href="/settings" class="flex items-center px-6 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                </svg>
-                                Account Settings
-                            </a>
-                            <a href="/app-settings" class="flex items-center px-6 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
-                                </svg>
-                                App Settings
-                            </a>
-                            <hr class="my-2 border-slate-200 dark:border-slate-700">
-                            <button id="logout-btn" class="w-full flex items-center px-6 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
-                                Sign Out
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Modern Collapsible Sidebar -->
-    <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50 z-40 transform -translate-x-full lg:translate-x-0 transition-all duration-300 ease-out sidebar">
-        <div class="flex flex-col h-full">
-            <!-- Sidebar Header -->
-            <div class="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-700/50">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center shadow-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ user.role.title() }} Panel</h2>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Farm Management</p>
-                    </div>
-                </div>
-                <button id="close-sidebar" class="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                    <svg class="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Navigation Menu -->
-            <nav class="flex-1 p-4 space-y-1">
-                <!-- Dashboard -->
-                <a href="{% if user.role == 'manager' %}/manager/dashboard{% else %}/admin/dashboard{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 bg-agri-emerald-50 dark:bg-agri-emerald-900/20 rounded-xl border-l-4 border-agri-emerald-500 transition-all duration-200 hover:bg-agri-emerald-100 dark:hover:bg-agri-emerald-900/30">
-                    <svg class="w-5 h-5 mr-3 text-agri-emerald-600 dark:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z"></path>
-                    </svg>
-                    <span class="font-medium">Dashboard</span>
-                </a>
-                
-                <!-- Role View -->
-                <a href="{% if user.role == 'manager' %}/manager/role-view{% else %}/admin/role-view{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <svg class="w-5 h-5 mr-3 group-hover:text-agri-emerald-600 dark:group-hover:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                    <span class="font-medium">Role View</span>
-                </a>
-                
-                <!-- Human Resource Management -->
-                <a href="{% if user.role == 'manager' %}/manager/human-resource{% else %}/admin/human-resource{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <svg class="w-5 h-5 mr-3 group-hover:text-agri-emerald-600 dark:group-hover:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                    </svg>
-                    <span class="font-medium">Human Resource Management</span>
-                </a>
-                
-                <!-- Farm Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm-management{% else %}/admin/farm-management{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <svg class="w-5 h-5 mr-3 group-hover:text-agri-emerald-600 dark:group-hover:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                    </svg>
-                    <span class="font-medium">Farm Management</span>
-                </a>
-                
-                <!-- Stock Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/stock-management{% else %}/admin/farm/stock-management{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <svg class="w-5 h-5 mr-3 group-hover:text-agri-emerald-600 dark:group-hover:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8 4-8-4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                    </svg>
-                    <span class="font-medium">Stock Management</span>
-                </a>
-                
-                <!-- Analytics Management -->
-                <a href="{% if user.role == 'manager' %}/manager/analytics{% else %}/admin/analytics{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <svg class="w-5 h-5 mr-3 group-hover:text-agri-emerald-600 dark:group-hover:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                    <span class="font-medium">Analytics Management</span>
-                </a>
-                
-                <!-- System Settings -->
-                <a href="{% if user.role == 'manager' %}/manager/settings{% else %}/admin/settings{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <svg class="w-5 h-5 mr-3 group-hover:text-agri-emerald-600 dark:group-hover:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    <span class="font-medium">System Settings</span>
-                </a>
-            </nav>
-            
-            <!-- Sidebar Footer -->
-            <div class="p-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                <div class="text-center">
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">PigFarm Pro</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Kwetufarm</p>
-                </div>
-            </div>
-        </div>
-    </aside>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Dashboard' %}
+{% set farm_shell_icon_class = 'fas fa-chart-pie' %}
+{% set farm_sidebar_banner_title = 'Dashboard' %}
+{% set farm_sidebar_banner_sub = 'Live overview' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_admin_main_hub.html' %}
+{% set farm_sidebar_aria_label = 'Main app navigation' %}
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
     <!-- Main Content -->
-    <div class="pt-16 lg:pl-72 min-h-screen bg-slate-50 dark:bg-slate-900">
+    <main class="pt-16 md:pl-64 min-h-screen bg-slate-50 dark:bg-slate-900">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <!-- Dashboard Header -->
             <div class="mb-6 animate-fade-in">
@@ -308,7 +38,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                             Analytics
                         </a>
-                        <button onclick="window.location.reload()" class="px-4 py-2 bg-agri-emerald-600 hover:bg-agri-emerald-700 text-white rounded-xl transition-all duration-200 shadow inline-flex items-center gap-2" title="Refresh data">
+                        <button onclick="window.location.reload()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all duration-200 shadow inline-flex items-center gap-2" title="Refresh data">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             Refresh
                         </button>
@@ -487,8 +217,8 @@
                             <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboard_data.totals.total_animals }}</p>
                             <p class="text-xs text-slate-500 dark:text-slate-400">Pigs + Cows + Chickens</p>
                         </div>
-                        <div class="w-12 h-12 bg-agri-emerald-100 dark:bg-agri-emerald-900/30 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-agri-emerald-600 dark:text-agri-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                             </svg>
                         </div>
@@ -595,31 +325,41 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Modern Footer -->
-    <footer class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <footer class="bg-slate-200/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-300/70 dark:border-slate-700/80 mt-16 shadow-[0_-6px_20px_-18px_rgba(15,23,42,0.35)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
             <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="flex items-center space-x-3 mb-4 md:mb-0">
-                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center shadow-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center space-x-3 mb-2 md:mb-0">
+                    <div class="w-8 h-8 bg-gradient-to-br from-emerald-600 via-teal-600 to-slate-700 rounded-lg flex items-center justify-center shadow-md">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
                         </svg>
                     </div>
-                    <div>
-                        <p class="text-sm font-semibold text-slate-900 dark:text-white">PigFarm Pro</p>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Kwetufarm · Smart Farm Management</p>
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+                        <span class="inline-flex items-center gap-1">
+                            <i class="fas fa-building text-[10px] text-emerald-600 dark:text-emerald-400" aria-hidden="true"></i>
+                            <span class="font-semibold text-slate-900 dark:text-white">ModernFarm Pro</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                            <i class="fas fa-code-branch text-[10px] text-sky-600 dark:text-sky-400" aria-hidden="true"></i>
+                            <span>Version {{ app_version_label }}</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                            <i class="fas fa-bolt text-[10px] text-violet-600 dark:text-violet-400" aria-hidden="true"></i>
+                            <span>Powered by JOT TECH</span>
+                        </span>
                     </div>
                 </div>
-                <div class="flex items-center space-x-6">
-                    <a href="/privacy" class="text-sm text-slate-600 dark:text-slate-400 hover:text-agri-emerald-600 dark:hover:text-agri-emerald-400 transition-colors">Privacy Policy</a>
-                    <a href="/terms" class="text-sm text-slate-600 dark:text-slate-400 hover:text-agri-emerald-600 dark:hover:text-agri-emerald-400 transition-colors">Terms of Service</a>
-                    <a href="/support" class="text-sm text-slate-600 dark:text-slate-400 hover:text-agri-emerald-600 dark:hover:text-agri-emerald-400 transition-colors">Support</a>
+                <div class="flex items-center space-x-4">
+                    <a href="/privacy" class="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Privacy Policy</a>
+                    <a href="/terms" class="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Terms of Service</a>
+                    <a href="/support" class="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Support</a>
                 </div>
             </div>
-            <div class="mt-6 pt-6 border-t border-slate-200/50 dark:border-slate-700/50 text-center">
-                <p class="text-xs text-slate-500 dark:text-slate-400">© 2025 PigFarm Pro · Kwetufarm. Live data as of today.</p>
+            <div class="mt-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/70 text-center">
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">© 2025 Kwetufarm. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -629,63 +369,75 @@
         const themeToggle = document.getElementById('theme-toggle');
         const sunIcon = document.getElementById('sun-icon');
         const moonIcon = document.getElementById('moon-icon');
-        
-        // Check for saved theme preference or default to light mode
+
         const currentTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.classList.toggle('dark', currentTheme === 'dark');
         updateThemeIcon();
-        
-        themeToggle.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            const isDark = document.documentElement.classList.contains('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            updateThemeIcon();
-        });
-        
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                const isDark = document.documentElement.classList.contains('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                updateThemeIcon();
+            });
+        }
+
         function updateThemeIcon() {
+            if (!sunIcon || !moonIcon) return;
             const isDark = document.documentElement.classList.contains('dark');
             sunIcon.classList.toggle('hidden', isDark);
             moonIcon.classList.toggle('hidden', !isDark);
         }
 
-        // Enhanced User Dropdown with Better UX
         const userDropdownBtn = document.getElementById('user-dropdown-btn');
         const userDropdown = document.getElementById('user-dropdown');
-        
-        userDropdownBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            userDropdown.classList.toggle('hidden');
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!userDropdownBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-                userDropdown.classList.add('hidden');
-            }
-        });
 
-        // Enhanced Mobile Sidebar with Better Animations
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const closeSidebarBtn = document.getElementById('close-sidebar');
-        const sidebar = document.getElementById('sidebar');
-        
-        mobileMenuBtn.addEventListener('click', () => {
-            sidebar.classList.remove('-translate-x-full');
-            sidebar.classList.add('animate-slide-up');
-        });
-        
-        closeSidebarBtn.addEventListener('click', () => {
-            sidebar.classList.add('-translate-x-full');
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth < 1024) {
-                if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-                    sidebar.classList.add('-translate-x-full');
+        if (userDropdownBtn && userDropdown) {
+            userDropdownBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                if (!userDropdownBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
                 }
+            });
+        }
+
+        function setupMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            const closeSidebarBtn = document.getElementById('close-sidebar');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+            if (!sidebar || !mobileOverlay) return;
+
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                mobileOverlay.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
             }
-        });
+
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    sidebar.classList.remove('-translate-x-full');
+                    mobileOverlay.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                });
+            }
+            if (closeSidebarBtn) {
+                closeSidebarBtn.addEventListener('click', closeSidebar);
+            }
+            mobileOverlay.addEventListener('click', closeSidebar);
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 768) closeSidebar();
+            });
+            sidebar.querySelectorAll('a').forEach((link) => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 768) closeSidebar();
+                });
+            });
+        }
 
         // Process feeding (stock out and mark as fed)
         async function processFeeding(feedId, farmId) {
@@ -735,8 +487,8 @@
         // Expose processFeeding globally for dashboard notification cards
         window.processFeeding = processFeeding;
 
-        // Logout functionality with better error handling
-        document.getElementById('logout-btn').addEventListener('click', async function() {
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.addEventListener('click', async function() {
             try {
                 const response = await fetch('/api/logout', {
                     method: 'POST',
@@ -757,18 +509,8 @@
             }
         });
 
-        // Enhanced Animations and Interactions
-        // Live clock in header
-        function updateLiveTime() {
-            const el = document.getElementById('live-time');
-            if (!el) return;
-            const now = new Date();
-            el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-        }
-        updateLiveTime();
-        setInterval(updateLiveTime, 1000);
-
         document.addEventListener('DOMContentLoaded', function() {
+            setupMobileMenu();
             // Department Notifications card: click to open header notification popup
             const deptNotificationsTrigger = document.getElementById('department-notifications-trigger');
             if (deptNotificationsTrigger) {
@@ -809,7 +551,7 @@
             const buttons = document.querySelectorAll('button');
             buttons.forEach(button => {
                 button.addEventListener('click', function() {
-                    if (this.classList.contains('bg-agri-emerald-600')) {
+                    if (this.classList.contains('bg-emerald-600')) {
                         this.style.transform = 'scale(0.95)';
                         setTimeout(() => {
                             this.style.transform = 'scale(1)';
@@ -819,20 +561,8 @@
             });
         });
 
-        // Responsive behavior for sidebar
-        function handleResize() {
-            if (window.innerWidth >= 1024) {
-                sidebar.classList.remove('-translate-x-full');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-            }
-        }
-
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Call on load
-
         // Add smooth scrolling for better UX
         document.documentElement.style.scrollBehavior = 'smooth';
     </script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

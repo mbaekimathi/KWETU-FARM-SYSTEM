@@ -5,11 +5,72 @@ from datetime import datetime, timedelta
 import hashlib
 import secrets
 import socket
+import subprocess
 
 import db_migrations
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-production-secret-key-change-this')
+
+
+def get_git_version_label():
+    """Return a simple, readable app version."""
+    try:
+        repo_root = os.path.dirname(os.path.abspath(__file__))
+        latest_tag = subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            cwd=repo_root,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        if latest_tag:
+            return latest_tag
+    except Exception:
+        pass
+
+    try:
+        repo_root = os.path.dirname(os.path.abspath(__file__))
+        short_sha = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=repo_root,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        return f"v1.0-{short_sha}"
+    except Exception:
+        return "v1.0"
+
+
+def build_profile_image_url(profile_image):
+    """Normalize employee profile image to a usable URL."""
+    if not profile_image:
+        return None
+    if isinstance(profile_image, str) and (
+        profile_image.startswith("http://")
+        or profile_image.startswith("https://")
+        or profile_image.startswith("/")
+    ):
+        return profile_image
+    return url_for("static", filename=f"uploads/employees/{profile_image}")
+
+
+def get_current_employee_profile_image():
+    """Fetch the latest profile image for the logged-in employee."""
+    employee_id = session.get("employee_id")
+    if not employee_id:
+        return None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT profile_image FROM employees WHERE id = %s LIMIT 1", (employee_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not row:
+            return None
+        return build_profile_image_url(row.get("profile_image"))
+    except Exception:
+        return None
 
 # Database configuration
 # Auto-detect environment and use appropriate database settings
@@ -704,7 +765,7 @@ def create_database_and_tables():
                 boar_id INT NOT NULL,
                 mating_date DATE NOT NULL,
                 expected_due_date DATE,
-                status ENUM('served', 'pregnant', 'cancelled', 'completed') DEFAULT 'served',
+                status ENUM('served', 'pregnant', 'failed', 'cancelled', 'completed') DEFAULT 'served',
                 notes TEXT,
                 created_by INT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -720,10 +781,10 @@ def create_database_and_tables():
         try:
             cursor.execute("SHOW COLUMNS FROM breeding_records WHERE Field = 'status'")
             column_info = cursor.fetchone()
-            if column_info and 'completed' not in column_info['Type']:
+            if column_info and ('completed' not in column_info['Type'] or 'failed' not in column_info['Type']):
                 # Update the enum to include new values
-                cursor.execute("ALTER TABLE breeding_records MODIFY COLUMN status ENUM('served', 'pregnant', 'cancelled', 'completed') DEFAULT 'served'")
-                print("Updated breeding_records status enum to include 'completed'")
+                cursor.execute("ALTER TABLE breeding_records MODIFY COLUMN status ENUM('served', 'pregnant', 'failed', 'cancelled', 'completed') DEFAULT 'served'")
+                print("Updated breeding_records status enum to include 'failed' and 'completed'")
         except Exception as e:
                             print(f"Warning: Could not check/update breeding_records status enum: {e}")
 
@@ -1763,7 +1824,11 @@ def inject_role_url():
             if role == 'manager' and path.startswith('/admin/'):
                 return path.replace('/admin/', '/manager/', 1)
         return path
-    return dict(role_url=role_url)
+    return dict(
+        role_url=role_url,
+        app_version_label=get_git_version_label(),
+        current_user_profile_image=get_current_employee_profile_image(),
+    )
 
 @app.route('/')
 def landing():
@@ -8076,6 +8141,21 @@ def admin_farm_breeding_management():
     
     return render_template('admin_farm_breeding_management.html', user=user_data)
 
+@app.route('/admin/farm/sow/<int:sow_id>/analytics')
+def admin_farm_sow_analytics(sow_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_sow_analytics.html', user=user_data, sow_id=sow_id)
+
 @app.route('/admin/farm/health-management')
 def admin_farm_health_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -12520,13 +12600,24 @@ def update_employee():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
-        employee_id = data.get('employee_id')
-        full_name = data.get('full_name')
-        email = data.get('email')
-        phone = data.get('phone')
-        role = data.get('role')
-        password = data.get('password')
+        # Support both JSON and multipart/form-data so profile image can be uploaded.
+        if request.is_json:
+            data = request.get_json() or {}
+            employee_id = data.get('employee_id')
+            full_name = data.get('full_name')
+            email = data.get('email')
+            phone = data.get('phone')
+            role = data.get('role')
+            password = data.get('password')
+            profile_image_file = None
+        else:
+            employee_id = request.form.get('employee_id')
+            full_name = request.form.get('full_name')
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+            role = request.form.get('role')
+            password = request.form.get('password')
+            profile_image_file = request.files.get('profile_image')
         
         # Validate password if provided (backend validation for security)
         if password and password.strip():
@@ -12536,23 +12627,48 @@ def update_employee():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Build update query based on whether password is provided
-        # Only update password if it's not None, not empty string, and not just whitespace
+        image_filename = None
+        if profile_image_file and profile_image_file.filename:
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            file_extension = profile_image_file.filename.rsplit('.', 1)[1].lower() if '.' in profile_image_file.filename else ''
+            if file_extension not in allowed_extensions:
+                return jsonify({'error': 'Invalid profile image type. Allowed: png, jpg, jpeg, gif, webp'}), 400
+            upload_dir = 'static/uploads/employees'
+            os.makedirs(upload_dir, exist_ok=True)
+            image_filename = f"{secrets.token_hex(16)}.{file_extension}"
+            profile_image_file.save(os.path.join(upload_dir, image_filename))
+
+        # Build update query based on whether password/image are provided
         if password and password.strip():
             hashed_password = hash_password(password)
-            cursor.execute("""
-                UPDATE employees 
-                SET full_name = %s, email = %s, phone = %s, role = %s, password = %s 
-                WHERE id = %s
-            """, (full_name, email, phone, role, hashed_password, employee_id))
+            if image_filename:
+                cursor.execute("""
+                    UPDATE employees 
+                    SET full_name = %s, email = %s, phone = %s, role = %s, password = %s, profile_image = %s
+                    WHERE id = %s
+                """, (full_name, email, phone, role, hashed_password, image_filename, employee_id))
+            else:
+                cursor.execute("""
+                    UPDATE employees 
+                    SET full_name = %s, email = %s, phone = %s, role = %s, password = %s 
+                    WHERE id = %s
+                """, (full_name, email, phone, role, hashed_password, employee_id))
             update_message = 'Employee details and password updated successfully'
         else:
-            cursor.execute("""
-                UPDATE employees 
-                SET full_name = %s, email = %s, phone = %s, role = %s 
-                WHERE id = %s
-            """, (full_name, email, phone, role, employee_id))
-            update_message = 'Employee details updated successfully'
+            if image_filename:
+                cursor.execute("""
+                    UPDATE employees 
+                    SET full_name = %s, email = %s, phone = %s, role = %s, profile_image = %s
+                    WHERE id = %s
+                """, (full_name, email, phone, role, image_filename, employee_id))
+                update_message = 'Employee details and profile image updated successfully'
+            else:
+                cursor.execute("""
+                    UPDATE employees 
+                    SET full_name = %s, email = %s, phone = %s, role = %s 
+                    WHERE id = %s
+                """, (full_name, email, phone, role, employee_id))
+                update_message = 'Employee details updated successfully'
         
         conn.commit()
         
@@ -14169,16 +14285,34 @@ def get_available_sows():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get sows that are available for breeding
+        # Get sows that are available for breeding, including breeding history metrics
         cursor.execute("""
-            SELECT p.id, p.tag_id, p.breed, p.age_days, f.farm_name
+            SELECT
+                p.id,
+                p.tag_id,
+                p.breed,
+                p.age_days,
+                p.status as health_status,
+                f.farm_name,
+                MAX(br.mating_date) as last_breeding_date,
+                (
+                    SELECT br2.status
+                    FROM breeding_records br2
+                    WHERE br2.sow_id = p.id
+                    ORDER BY br2.mating_date DESC, br2.id DESC
+                    LIMIT 1
+                ) as last_breeding_status,
+                COALESCE(SUM(CASE WHEN br.status IN ('completed', 'farrowed') THEN 1 ELSE 0 END), 0) as successful_breedings,
+                COALESCE(SUM(CASE WHEN br.status = 'failed' THEN 1 ELSE 0 END), 0) as failed_breedings
             FROM pigs p 
             LEFT JOIN farms f ON p.farm_id = f.id 
+            LEFT JOIN breeding_records br ON br.sow_id = p.id
             WHERE p.gender = 'female' 
             AND p.pig_type = 'grown_pig' 
             AND p.purpose = 'breeding' 
             AND p.breeding_status = 'available'
             AND p.status = 'active'
+            GROUP BY p.id, p.tag_id, p.breed, p.age_days, p.status, f.farm_name
             ORDER BY p.tag_id DESC
         """)
         sows = cursor.fetchall()
@@ -14194,6 +14328,108 @@ def get_available_sows():
     except Exception as e:
         print(f"Error getting available sows: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/breeding/sow/<int:sow_id>/analytics', methods=['GET'])
+def get_sow_breeding_analytics(sow_id):
+    """Get breeding and litter analytics for one sow."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                p.id,
+                p.tag_id,
+                p.breed,
+                p.age_days,
+                p.status as health_status,
+                p.breeding_status,
+                f.farm_name
+            FROM pigs p
+            LEFT JOIN farms f ON p.farm_id = f.id
+            WHERE p.id = %s AND p.gender = 'female'
+        """, (sow_id,))
+        sow = cursor.fetchone()
+
+        if not sow:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Sow not found'})
+
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_breedings,
+                COALESCE(SUM(CASE WHEN status IN ('completed', 'farrowed') THEN 1 ELSE 0 END), 0) as successful_breedings,
+                COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed_breedings,
+                COALESCE(SUM(CASE WHEN status IN ('served', 'pregnant') THEN 1 ELSE 0 END), 0) as active_breedings,
+                MAX(mating_date) as last_breeding_date
+            FROM breeding_records
+            WHERE sow_id = %s
+        """, (sow_id,))
+        breeding_summary = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT
+                id,
+                boar_id,
+                mating_date,
+                expected_due_date,
+                status,
+                notes,
+                created_at
+            FROM breeding_records
+            WHERE sow_id = %s
+            ORDER BY mating_date DESC, id DESC
+        """, (sow_id,))
+        breeding_records = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_litters,
+                COALESCE(SUM(total_piglets), 0) as total_piglets,
+                COALESCE(SUM(alive_piglets), 0) as alive_piglets,
+                COALESCE(SUM(still_births), 0) as still_births,
+                ROUND(COALESCE(AVG(alive_piglets), 0), 2) as avg_alive_per_litter,
+                MAX(farrowing_date) as last_farrowing_date
+            FROM litters
+            WHERE sow_id = %s
+        """, (sow_id,))
+        litter_summary = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT
+                id,
+                litter_id,
+                farrowing_date,
+                total_piglets,
+                alive_piglets,
+                still_births,
+                status,
+                weaning_date,
+                notes
+            FROM litters
+            WHERE sow_id = %s
+            ORDER BY farrowing_date DESC, id DESC
+        """, (sow_id,))
+        litters = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'sow': sow,
+            'breeding_summary': breeding_summary,
+            'breeding_records': breeding_records,
+            'litter_summary': litter_summary,
+            'litters': litters
+        })
+    except Exception as e:
+        print(f"Error getting sow breeding analytics: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to load sow analytics: {str(e)}'})
 
 @app.route('/api/breeding/completed-cycles', methods=['GET'])
 def get_completed_breeding_cycles():
@@ -14371,25 +14607,31 @@ def get_breeding_records():
         
         # Get all breeding records with pig and farm information
         cursor.execute("""
-            SELECT br.*, 
-                   sow.tag_id as sow_tag_id, sow.breed as sow_breed, sow.breeding_status,
+            SELECT br.*,
+                   sow.tag_id as sow_tag_id, sow.breed as sow_breed, sow.breeding_status as sow_breeding_status,
                    boar.tag_id as boar_tag_id, boar.breed as boar_breed,
-                   e.full_name as created_by_name
+                   e.full_name as created_by_name,
+                   EXISTS(
+                       SELECT 1
+                       FROM farrowing_records fr
+                       JOIN litters l ON l.farrowing_record_id = fr.id
+                       WHERE fr.breeding_id = br.id
+                   ) AS has_registered_litter
             FROM breeding_records br
             LEFT JOIN pigs sow ON br.sow_id = sow.id
             LEFT JOIN pigs boar ON br.boar_id = boar.id
             LEFT JOIN employees e ON br.created_by = e.id
-            ORDER BY sow.tag_id DESC, boar.tag_id DESC, br.created_at DESC
+            ORDER BY br.created_at DESC, br.id DESC
         """)
         records = cursor.fetchall()
         
-        # Process records using actual breeding status from pigs table
+        # Process records using breeding record status (per-cycle unique state)
         from datetime import datetime
         today = datetime.now().date()
         
         # Auto-update breeding statuses based on time
         for record in records:
-            if record['mating_date'] and record['breeding_status'] == 'served':
+            if record['mating_date'] and record['status'] == 'served':
                 mating_date = record['mating_date']
                 days_since_mating = (today - mating_date).days
                 
@@ -14400,15 +14642,22 @@ def get_breeding_records():
                         SET breeding_status = 'pregnant' 
                         WHERE id = %s
                     """, (record['sow_id'],))
-                    record['breeding_status'] = 'pregnant'
+                    cursor.execute("""
+                        UPDATE breeding_records
+                        SET status = 'pregnant', updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (record['id'],))
+                    record['status'] = 'pregnant'
         
         processed_records = []
         for record in records:
             record_dict = dict(record)
             
-            # Use the actual breeding_status from the pigs table
-            breeding_status = record['breeding_status']
+            # Keep status isolated to this breeding record
+            breeding_status = record['status']
             record_dict['breeding_status'] = breeding_status
+            record_dict['breeding_ref'] = f"BR-{int(record['id']):05d}"
+            record_dict['has_registered_litter'] = bool(record.get('has_registered_litter'))
             
             # Calculate days to farrowing (pregnancy is 114 days)
             if record['mating_date']:
@@ -14469,7 +14718,7 @@ def get_breeding_records():
 
 @app.route('/api/breeding/cancel/<int:breeding_id>', methods=['POST'])
 def cancel_breeding(breeding_id):
-    """Cancel a breeding record (within 93 days to farrowing)"""
+    """Cancel a breeding record and mark it as failed (within 25 days)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -14500,14 +14749,23 @@ def cancel_breeding(breeding_id):
         if days_since_mating > 25:  # More than 25 days since mating = pregnant
             return jsonify({'success': False, 'message': 'Cannot cancel breeding after 25 days from mating'})
         
-        # Move breeding record to failed_conceptions table
+        # Record failed conception history
         cursor.execute("""
             INSERT INTO failed_conceptions (sow_id, boar_id, mating_date, failure_date, failure_reason, notes, created_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (record['sow_id'], record['boar_id'], record['mating_date'], datetime.now().date(), reason, record['notes'] or '', session['employee_id']))
         
-        # Remove the breeding record from breeding_records table
-        cursor.execute("DELETE FROM breeding_records WHERE id = %s", (breeding_id,))
+        # Keep the breeding record and mark the cycle as failed
+        cursor.execute("""
+            UPDATE breeding_records
+            SET status = 'failed',
+                notes = CASE
+                    WHEN notes IS NULL OR notes = '' THEN %s
+                    ELSE CONCAT(notes, '\n', %s)
+                END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (f"Failure reason: {reason}", f"Failure reason: {reason}", breeding_id))
         
         # Update sow's breeding status back to available
         cursor.execute("""
@@ -14526,7 +14784,7 @@ def cancel_breeding(breeding_id):
         
         return jsonify({
             'success': True,
-            'message': 'Breeding record cancelled successfully'
+            'message': 'Breeding record cancelled and marked as failed successfully'
         })
         
     except Exception as e:
@@ -14537,7 +14795,7 @@ def cancel_breeding(breeding_id):
 
 @app.route('/api/breeding/failed-conceptions', methods=['GET'])
 def get_failed_conceptions():
-    """Get all failed conception records"""
+    """Get all failed breeding records from breeding_records status."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -14545,17 +14803,32 @@ def get_failed_conceptions():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get all failed conception records with pig and farm information
+        # Fetch failed records directly from breeding_records (single source of truth)
         cursor.execute("""
-            SELECT fc.*, 
-                   sow.tag_id as sow_tag_id, sow.breed as sow_breed,
-                   boar.tag_id as boar_tag_id, boar.breed as boar_breed,
-                   e.full_name as created_by_name
-            FROM failed_conceptions fc
-            LEFT JOIN pigs sow ON fc.sow_id = sow.id
-            LEFT JOIN pigs boar ON fc.boar_id = boar.id
-            LEFT JOIN employees e ON fc.created_by = e.id
-            ORDER BY fc.created_at DESC
+            SELECT
+                br.id,
+                br.sow_id,
+                br.boar_id,
+                br.mating_date,
+                DATE(br.updated_at) as failure_date,
+                CASE
+                    WHEN br.notes LIKE '%%Failure reason:%%' THEN
+                        SUBSTRING_INDEX(br.notes, 'Failure reason:', -1)
+                    ELSE 'Not conceived after serving'
+                END as failure_reason,
+                br.notes,
+                br.created_by,
+                br.created_at,
+                br.updated_at,
+                sow.tag_id as sow_tag_id, sow.breed as sow_breed,
+                boar.tag_id as boar_tag_id, boar.breed as boar_breed,
+                e.full_name as created_by_name
+            FROM breeding_records br
+            LEFT JOIN pigs sow ON br.sow_id = sow.id
+            LEFT JOIN pigs boar ON br.boar_id = boar.id
+            LEFT JOIN employees e ON br.created_by = e.id
+            WHERE br.status = 'failed'
+            ORDER BY br.updated_at DESC, br.id DESC
         """)
         records = cursor.fetchall()
         
@@ -14596,23 +14869,29 @@ def edit_breeding_record(breeding_id):
             WHERE id = %s
         """, (mating_date, expected_due_date, breeding_status, breeding_id))
         
-        # Update sow status based on breeding status
-        if breeding_status == 'cancelled':
+        # Update sow breeding_status based on breeding status
+        if breeding_status in ['cancelled', 'failed']:
             cursor.execute("""
                 UPDATE pigs 
-                SET status = 'available' 
+                SET breeding_status = 'available' 
                 WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
             """, (breeding_id,))
         elif breeding_status in ['served', 'pregnant']:
             cursor.execute("""
                 UPDATE pigs 
-                SET status = 'breeding' 
+                SET breeding_status = %s
+                WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
+            """, (breeding_status, breeding_id))
+        elif breeding_status == 'farrowed':
+            cursor.execute("""
+                UPDATE pigs
+                SET breeding_status = 'farrowed'
                 WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
             """, (breeding_id,))
         elif breeding_status == 'completed':
             cursor.execute("""
                 UPDATE pigs 
-                SET status = 'available' 
+                SET breeding_status = 'available' 
                 WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
             """, (breeding_id,))
         
@@ -14639,6 +14918,8 @@ def delete_breeding_record(breeding_id):
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -14655,10 +14936,10 @@ def delete_breeding_record(breeding_id):
         if not record:
             return jsonify({'success': False, 'message': 'Breeding record not found'})
         
-        # Update sow status to available
+        # Update sow breeding status to available
         cursor.execute("""
             UPDATE pigs 
-            SET status = 'available' 
+            SET breeding_status = 'available' 
             WHERE id = %s
         """, (record['sow_id'],))
         
@@ -14669,24 +14950,23 @@ def delete_breeding_record(breeding_id):
             WHERE fr.breeding_id = %s
         """, (breeding_id,))
         print(f"Deleted litters for breeding record {breeding_id}")
+
+        # Delete related farrowing activities first (they reference farrowing_records)
+        cursor.execute("""
+            DELETE fa FROM farrowing_activities fa
+            JOIN farrowing_records fr ON fa.farrowing_record_id = fr.id
+            WHERE fr.breeding_id = %s
+        """, (breeding_id,))
+        print(f"Deleted farrowing activities for breeding record {breeding_id}")
         
         # Delete related farrowing records (they reference breeding_records)
         cursor.execute("DELETE FROM farrowing_records WHERE breeding_id = %s", (breeding_id,))
         print(f"Deleted farrowing records for breeding record {breeding_id}")
-        
-        # Temporarily disable foreign key checks
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-        
-        try:
-            # Delete breeding record
-            cursor.execute("DELETE FROM breeding_records WHERE id = %s", (breeding_id,))
-        finally:
-            # Always re-enable foreign key checks, even if an error occurs
-            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+
+        # Delete breeding record
+        cursor.execute("DELETE FROM breeding_records WHERE id = %s", (breeding_id,))
         
         conn.commit()
-        cursor.close()
-        conn.close()
         
         # Log activity
         log_activity(session['employee_id'], 'BREEDING_DELETE', 
@@ -14698,8 +14978,15 @@ def delete_breeding_record(breeding_id):
         })
         
     except Exception as e:
+        if conn:
+            conn.rollback()
         print(f"Error deleting breeding record: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to delete breeding record: {str(e)}'})
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 @app.route('/api/breeding/completed-farrowings', methods=['GET'])
 def get_completed_farrowings():
@@ -15101,6 +15388,7 @@ def get_completed_farrowings():
                            fr.created_by, fr.created_at, fr.updated_at,
                            br.mating_date,
                            sow.tag_id as sow_tag_id, sow.breed as sow_breed,
+                           sow.breeding_status as sow_breeding_status, sow.status as sow_status,
                            boar.tag_id as boar_tag_id, boar.breed as boar_breed,
                            e.full_name as created_by_name,
                            l.litter_id, l.total_piglets, l.alive_piglets as litter_alive_piglets, l.still_births as litter_still_births,
@@ -15280,6 +15568,31 @@ def register_farrowing(breeding_id):
         breeding_record = cursor.fetchone()
         if not breeding_record:
             return jsonify({'success': False, 'message': 'Breeding record not found'})
+
+        # Prevent duplicate farrowing/litter registration per breeding cycle
+        cursor.execute("""
+            SELECT fr.id
+            FROM farrowing_records fr
+            WHERE fr.breeding_id = %s
+            LIMIT 1
+        """, (breeding_id,))
+        existing_farrowing = cursor.fetchone()
+        if existing_farrowing:
+            cursor.execute("""
+                SELECT id
+                FROM litters
+                WHERE farrowing_record_id = %s
+                LIMIT 1
+            """, (existing_farrowing['id'],))
+            if cursor.fetchone():
+                return jsonify({
+                    'success': False,
+                    'message': 'Litter already registered for this breeding record'
+                })
+            return jsonify({
+                'success': False,
+                'message': 'Farrowing already exists for this breeding record'
+            })
         
         # Insert farrowing record
         cursor.execute("""
@@ -15315,13 +15628,13 @@ def register_farrowing(breeding_id):
                 ) VALUES (%s, %s, %s, %s)
             """, (farrowing_id, activity_name, due_day, due_date))
         
-        # Update breeding record status to completed
-        print(f"Updating breeding record {breeding_id} status to 'completed'")
+        # Mark this breeding cycle as farrowed after successful litter creation
+        print(f"Updating breeding record {breeding_id} status to 'farrowed'")
         cursor.execute("""
             UPDATE breeding_records 
-            SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+            SET status = 'farrowed', completed_date = %s, updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
-        """, (breeding_id,))
+        """, (farrowing_date, breeding_id))
         
         # Create litter record
         litter_id = generate_litter_id()
@@ -19375,6 +19688,43 @@ def get_all_litters():
         print(f"Error getting all litters: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to get all litters: {str(e)}'})
 
+@app.route('/api/litter/purchased', methods=['GET'])
+def get_purchased_litters():
+    """Get all purchased litters recorded in pig inventory."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                p.id,
+                p.tag_id,
+                p.breed,
+                p.gender,
+                p.purpose,
+                p.purchase_date,
+                p.age_days,
+                p.status,
+                p.created_at
+            FROM pigs p
+            WHERE p.pig_type = 'litter'
+              AND p.pig_source = 'purchased'
+            ORDER BY COALESCE(p.purchase_date, DATE(p.created_at)) DESC
+        """)
+
+        litters = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'litters': litters})
+    except Exception as e:
+        print(f"Error getting purchased litters: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to get purchased litters: {str(e)}'})
+
 @app.route('/api/animal/<int:animal_id>/weights', methods=['GET'])
 def get_animal_weights(animal_id):
     """Get weight records for a specific animal"""
@@ -22660,6 +23010,30 @@ def admin_farm_litters():
     
     return render_template('admin_farm_litters.html')
 
+@app.route('/admin/farm/weaned-litters')
+def admin_farm_weaned_litters():
+    """Weaned litters page with born vs purchased split."""
+    if 'employee_id' not in session:
+        return redirect(url_for('employee_login'))
+
+    if session.get('employee_role') not in ['administrator', 'manager']:
+        flash('Access denied. Administrator or Manager privileges required.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session.get('employee_status', 'active'),
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_weaned_litters.html', user=user_data)
+
+@app.route('/manager/farm/weaned-litters')
+def manager_farm_weaned_litters():
+    """Manager alias for weaned litters page."""
+    return admin_farm_weaned_litters()
+
 @app.route('/admin/farm/failed-conceptions')
 def failed_conceptions_page():
     """Failed Conceptions page - Failed breeding attempts only"""
@@ -22758,8 +23132,14 @@ def register_cows_page():
     if session.get('employee_role') not in ['administrator', 'manager']:
         flash('Access denied. Administrator or Manager privileges required.', 'error')
         return redirect(url_for('admin_dashboard'))
-    
-    return render_template('admin_farm_register_cows.html')
+
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_register_cows.html', user=user_data)
 
 @app.route('/admin/farm/cow-milk')
 def cow_milk_page():
@@ -22770,8 +23150,14 @@ def cow_milk_page():
     if session.get('employee_role') not in ['administrator', 'manager']:
         flash('Access denied. Administrator or Manager privileges required.', 'error')
         return redirect(url_for('admin_dashboard'))
-    
-    return render_template('admin_farm_cow_milk.html')
+
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_cow_milk.html', user=user_data)
 
 @app.route('/admin/farm/milk-production-analytics')
 def milk_production_analytics_page():
@@ -22782,8 +23168,14 @@ def milk_production_analytics_page():
     if session.get('employee_role') not in ['administrator', 'manager']:
         flash('Access denied. Administrator or Manager privileges required.', 'error')
         return redirect(url_for('admin_dashboard'))
-    
-    return render_template('admin_farm_milk_production_analytics.html')
+
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_milk_production_analytics.html', user=user_data)
 
 @app.route('/admin/farm/milk-quality-records')
 def milk_quality_records_page():
@@ -22794,8 +23186,14 @@ def milk_quality_records_page():
     if session.get('employee_role') not in ['administrator', 'manager']:
         flash('Access denied. Administrator or Manager privileges required.', 'error')
         return redirect(url_for('admin_dashboard'))
-    
-    return render_template('admin_farm_milk_quality_records.html')
+
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_milk_quality_records.html', user=user_data)
 
 @app.route('/admin/farm/cow/<int:cow_id>')
 def cow_detail_page(cow_id):
@@ -22905,8 +23303,16 @@ def cow_breeding_page():
     if session.get('employee_role') not in ['administrator', 'manager']:
         flash('Access denied. Administrator or Manager privileges required.', 'error')
         return redirect(url_for('admin_dashboard'))
-    
-    return render_template('admin_farm_cow_breeding.html')
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session.get('employee_name', 'User'),
+        'role': session.get('employee_role', 'employee'),
+        'status': session.get('employee_status', 'active'),
+        'email': f"{session.get('employee_name', 'user').lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_cow_breeding.html', user=user_data)
 
 @app.route('/admin/farm/chicken-weight-check')
 def admin_farm_chicken_weight_check():

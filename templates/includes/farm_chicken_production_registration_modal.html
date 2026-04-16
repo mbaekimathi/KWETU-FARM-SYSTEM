@@ -1,0 +1,155 @@
+{# Shared chicken production registration modal — pair with farm_chicken_production_registration_modal_script.html #}
+    <div id="production-registration-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-up">
+            <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-chicken-yellow-500 rounded-xl flex items-center justify-center">
+                        <span class="text-white text-lg">📝</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Register Production</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Record new production activity</p>
+                    </div>
+                </div>
+                <button type="button" id="close-production-modal" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <svg class="w-6 h-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="production-form" class="p-6" data-register-url="{{ url_for('admin_farm_chicken_production_register') }}">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Production Type *</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="production_type" value="eggs" class="sr-only" required>
+                                <div class="production-type-card p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:border-chicken-yellow-500 dark:hover:border-chicken-yellow-400 transition-colors">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                            <span class="text-blue-600 dark:text-blue-400 text-lg">🥚</span>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-semibold text-slate-900 dark:text-white">Eggs</h4>
+                                            <p class="text-sm text-slate-600 dark:text-slate-400">Egg production</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="production_type" value="meat" class="sr-only" required>
+                                <div class="production-type-card p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl hover:border-chicken-yellow-500 dark:hover:border-chicken-yellow-400 transition-colors">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                            <span class="text-red-600 dark:text-red-400 text-lg">🍗</span>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-semibold text-slate-900 dark:text-white">Meat</h4>
+                                            <p class="text-sm text-slate-600 dark:text-slate-400">Meat production</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="chicken_category" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chicken Category *</label>
+                        <select id="chicken_category" name="chicken_category" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white" required>
+                            <option value="">Select Category</option>
+                            <option value="broiler">Broiler</option>
+                            <option value="kienyeji">Kienyeji</option>
+                            <option value="layer">Layer</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="chicken_id_search" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chicken ID *</label>
+                        <div class="relative">
+                            <input type="text" id="chicken_id_search" name="chicken_id_search" placeholder="Enter chicken ID digits..." class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white" required>
+                            <div id="chicken_search_results" class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Type to search for active chickens</p>
+                    </div>
+
+                    <div id="eggs_fields" class="hidden">
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700">
+                            <h4 class="font-semibold text-blue-800 dark:text-blue-200 mb-4 flex items-center">
+                                <span class="mr-2">🥚</span>
+                                Egg Production Details
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="egg_count" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of Eggs *</label>
+                                    <input type="number" id="egg_count" name="egg_count" min="1" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white">
+                                </div>
+                                <div>
+                                    <label for="egg_collection_time" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Collection Time *</label>
+                                    <input type="time" id="egg_collection_time" name="egg_collection_time" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="egg_collection_date" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Collection Date *</label>
+                                    <input type="date" id="egg_collection_date" name="egg_collection_date" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="meat_fields" class="hidden">
+                        <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-700">
+                            <h4 class="font-semibold text-red-800 dark:text-red-200 mb-4 flex items-center">
+                                <span class="mr-2">🍗</span>
+                                Meat Production Details
+                            </h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="slaughter_count" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of Chickens Slaughtered *</label>
+                                    <input type="number" id="slaughter_count" name="slaughter_count" min="1" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white">
+                                </div>
+                                <div id="chicken_weights_container"></div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="slaughter_time" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Slaughter Time *</label>
+                                        <input type="time" id="slaughter_time" name="slaughter_time" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white">
+                                    </div>
+                                    <div>
+                                        <label for="slaughter_date" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Slaughter Date *</label>
+                                        <input type="date" id="slaughter_date" name="slaughter_date" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white">
+                                    </div>
+                                </div>
+                                <div id="average_weights" class="bg-slate-50 dark:bg-slate-700 rounded-lg p-4 hidden">
+                                    <h5 class="font-semibold text-slate-900 dark:text-white mb-2">Average Weights</h5>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <span class="text-sm text-slate-600 dark:text-slate-400">Average Alive Weight:</span>
+                                            <span id="avg_alive_weight" class="font-semibold text-slate-900 dark:text-white ml-2">0.00 kg</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm text-slate-600 dark:text-slate-400">Average Dead Weight:</span>
+                                            <span id="avg_dead_weight" class="font-semibold text-slate-900 dark:text-white ml-2">0.00 kg</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Notes (Optional)</label>
+                        <textarea id="notes" name="notes" rows="3" placeholder="Add any additional notes..." class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-chicken-yellow-500 focus:border-chicken-yellow-500 dark:bg-slate-700 dark:text-white"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <button type="button" id="cancel-production" class="px-6 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-3 bg-chicken-yellow-600 hover:bg-chicken-yellow-700 text-white rounded-xl transition-colors shadow-lg hover:shadow-xl">
+                        <span class="mr-2">📝</span>
+                        Register Production
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>

@@ -4,116 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Litters Management - Pig Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    screens: {
-                        'xs': '475px',
-                        'sm': '640px',
-                        'md': '768px',
-                        'lg': '1024px',
-                        'xl': '1280px',
-                        '2xl': '1536px',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .sidebar {
-            transition: transform 0.3s ease-in-out;
-        }
-        .sidebar.closed {
-            transform: translateX(-100%);
-        }
-        @media (min-width: 768px) {
-            .sidebar.closed {
-                transform: translateX(0);
-            }
-        }
-    </style>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
-    <!-- Sidebar -->
-    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-xl transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0">
-        <!-- Sidebar Header -->
-        <div class="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-600">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                    <span class="text-white font-bold text-lg">🐷</span>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold text-white">PigFarm Pro</h1>
-                    <p class="text-xs text-white/80">Litters Management</p>
-                </div>
-            </div>
-            <button id="close-sidebar" class="md:hidden text-white/80 hover:text-white">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Litters' %}
+{% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Breeding' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_hub.html' %}
+{% set pig_nav_active = 'breeding' %}
 
-        <!-- Sidebar Navigation -->
-        <nav class="mt-6 px-3">
-            <div class="space-y-1">
-                <!-- Breeding Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-management{% else %}/admin/farm/breeding-management{% endif %}" class="group flex items-center px-3 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200">
-                    <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                        </svg>
-                    </div>
-                    <span class="text-sm font-medium flex-1">Breeding Management</span>
-                </a>
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-                <!-- Litters (Active) -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/litters{% else %}/admin/farm/litters{% endif %}" class="group flex items-center px-4 py-4 bg-gradient-to-r from-pink-100 via-purple-100 to-blue-100 dark:from-pink-900/40 dark:via-purple-900/40 dark:to-blue-900/40 text-pink-700 dark:text-pink-300 rounded-xl shadow-sm border border-pink-200 dark:border-pink-700/50">
-                    <div class="w-10 h-10 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm text-gray-900 dark:text-white block">Litters</span>
-                        <span class="text-xs text-gray-600 dark:text-gray-400">Piglet Management</span>
-                    </div>
-                </a>
-
-                <!-- Dashboard -->
-                <a href="{% if user.role == 'manager' %}/manager/dashboard{% else %}/admin/dashboard{% endif %}" class="group flex items-center px-3 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200">
-                    <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                        </svg>
-                    </div>
-                    <span class="text-sm font-medium flex-1">Dashboard</span>
-                </a>
-            </div>
-        </nav>
-
-        <!-- Sidebar Footer -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
-                    <span class="text-white font-bold text-sm">👤</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Admin User</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mobile Overlay -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
-
-    <!-- Main Content -->
-    <main class="md:ml-64 pt-18 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+<main class="md:ml-64 pt-18 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
         <div class="p-4 sm:p-6 lg:p-8">
             <!-- Page Header -->
             <div class="mb-8">
@@ -490,5 +395,5 @@
             setupMobileMenu();
         });
     </script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

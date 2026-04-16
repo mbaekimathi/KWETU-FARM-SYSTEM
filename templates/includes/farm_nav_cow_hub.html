@@ -1,0 +1,50 @@
+{# Cow module nav for farm_unified_sidebar. cow_nav_active: hub | register | health | breeding | milk | feeding #}
+{% set cow_nav_active = cow_nav_active|default('hub') %}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% import 'includes/farm_nav_sidebar_macros.html' as navm %}
+{% set app_b = '/manager' if user.role == 'manager' else '/admin' %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Cow module</p>
+                {% if cow_nav_active == 'hub' %}
+                <a href="{{ farm_b }}cow-management" class="farm-nav-link-modern is-active group">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-cow text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="block truncate text-sm font-semibold text-gray-900 dark:text-white">Cow Management</span>
+                        <span class="block truncate text-xs font-medium text-indigo-600 dark:text-indigo-300">Active Page</span>
+                    </div>
+                    <div class="farm-nav-link-modern__pulse ml-2 shrink-0" aria-hidden="true"></div>
+                </a>
+                {% else %}
+                <a href="{{ farm_b }}cow-management" class="farm-nav-link-modern group">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-cow text-sm"></i>
+                    </div>
+                    <span class="farm-nav-link-modern__text min-w-0 flex-1 truncate text-sm font-medium">Cow Management</span>
+                    <i class="fas fa-chevron-right ml-2 shrink-0 text-xs text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-500"></i>
+                </a>
+                {% endif %}
+
+                <div class="farm-nav-sublinks">
+                    <a href="{{ farm_b }}register-cows" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if cow_nav_active == 'register' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="flex-1">Register cows</span>
+                    </a>
+                    <a href="{{ farm_b }}cow-health" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if cow_nav_active == 'health' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="flex-1">Cow health</span>
+                    </a>
+                    <a href="{{ farm_b }}cow-breeding" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if cow_nav_active == 'breeding' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="flex-1">Breeding</span>
+                    </a>
+                    <a href="{{ farm_b }}cow-milk" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if cow_nav_active == 'milk' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="flex-1">Milk production</span>
+                    </a>
+                    <a href="{{ farm_b }}cow-feeding-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if cow_nav_active == 'feeding' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="flex-1">Cow feeding</span>
+                    </a>
+                </div>
+
+                <p class="farm-chicken-nav__label mb-0 mt-3 px-0.5">Farm</p>
+                {% call navm.farm_flat_nav_row(app_b ~ '/farm-management', 'Farm hub', false) %}
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                {% endcall %}

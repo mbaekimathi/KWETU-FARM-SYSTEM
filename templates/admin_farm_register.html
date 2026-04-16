@@ -1,13 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register Farm - Pig Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="bg-gray-50 dark:bg-gray-900">
-    <div class="min-h-screen flex items-center justify-center">
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Farm Register' %}
+{% set farm_shell_icon_class = 'fas fa-clipboard-list' %}
+{% set farm_sidebar_banner_title = 'Farm' %}
+{% set farm_sidebar_banner_sub = 'Register' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_farm_operations_hub.html' %}
+{{% set farm_hub_nav_active = 'management' %}}
+
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+
+<main class="pt-16 md:pl-64 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+<div class="min-h-screen flex items-center justify-center">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 max-w-2xl w-full mx-4">
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -25,5 +38,7 @@
             </div>
         </div>
     </div>
-</body>
+    </div>
+</main>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

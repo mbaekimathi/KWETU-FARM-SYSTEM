@@ -4,39 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Farrowing Activities Settings - Pig Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 shadow-2xl transform -translate-x-full transition-all duration-300 ease-in-out md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
-        <div class="flex flex-col h-full">
-            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-500 to-purple-600">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-4">
-                        <i class="fas fa-sliders-h text-white text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold text-white">Pig Farm Pro</h1>
-                        <p class="text-sm text-white/90 font-medium">Activity Settings</p>
-                    </div>
-                </div>
-            </div>
-            <nav class="mt-8 px-4 space-y-2">
-                <a href="{% if user.role == 'manager' %}/manager/farm/completed-farrowings{% else %}/admin/farm/completed-farrowings{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl">
-                    <i class="fas fa-check-circle mr-4 text-green-500"></i>
-                    <span class="font-semibold text-sm">Completed Farrowings</span>
-                </a>
-                <a href="{% if user.role == 'manager' %}/manager/farm/farrowing-activity-settings{% else %}/admin/farm/farrowing-activity-settings{% endif %}" class="group flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-200 dark:border-indigo-700/50">
-                    <i class="fas fa-sliders-h mr-4"></i>
-                    <span class="font-semibold text-sm">Farrowing Activities Settings</span>
-                </a>
-            </nav>
-        </div>
-    </div>
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden"></div>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Farrowing Settings' %}
+{% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Breeding' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_breeding_management_hub.html' %}
+{% set pig_nav_active = 'breeding' %}
 
-    <main class="md:ml-72 min-h-screen p-6 lg:p-8">
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+
+<main class="md:ml-72 min-h-screen p-6 lg:p-8">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
@@ -173,5 +155,5 @@
 
         loadTemplates();
     </script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

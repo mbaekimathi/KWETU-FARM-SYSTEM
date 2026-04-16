@@ -218,146 +218,11 @@
         }
     </style>
     {% block extra_head %}{% endblock %}
+{% include 'includes/farm_chrome_bundle.html' %}
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 transition-colors duration-300 min-h-screen">
     <!-- Modern Header with Glass Effect -->
-    <header class="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-        <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16 sm:h-20">
-            <!-- Left Section: Mobile Menu + Logo + Page Title -->
-            <div class="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                <!-- Mobile Menu Button -->
-                <button id="mobile-menu-btn" class="lg:hidden p-2.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-110 active:scale-95" aria-label="Toggle menu">
-                    <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-                
-                <!-- Farm Logo and Name -->
-                <div class="flex items-center space-x-3 flex-shrink-0">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 via-green-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-3">
-                        <i class="fas fa-seedling text-white text-base sm:text-xl"></i>
-                    </div>
-                    <div class="hidden sm:block">
-                        <h1 class="text-lg sm:text-xl font-bold gradient-text">Smart Animal Farming</h1>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Employee Portal</p>
-                    </div>
-                </div>
-                
-                <!-- Current Page Indicator -->
-                <div class="hidden lg:flex items-center space-x-2 ml-4 px-4 py-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">
-                    <span class="text-gray-400 dark:text-gray-500">/</span>
-                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{% block page_title %}Dashboard{% endblock %}</span>
-                </div>
-            </div>
-            
-            <!-- Right Section: Time, Theme Toggle, and User Profile -->
-            <div class="flex items-center space-x-2 sm:space-x-4">
-                <!-- Live Time and Date -->
-                <div class="hidden md:block text-right px-3 py-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50">
-                    <div id="live-time" class="text-sm font-bold text-gray-900 dark:text-white">12:00:00 PM</div>
-                    <div id="live-date" class="text-xs text-gray-600 dark:text-gray-400">January 1, 2024</div>
-                </div>
-                
-                <!-- Notification Bell -->
-                <div class="relative">
-                    <button id="notification-btn" class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 flex items-center justify-center" aria-label="Notifications" style="min-width: 40px; min-height: 40px;">
-                        <svg class="w-6 h-6 text-slate-600 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path>
-                        </svg>
-                        <span id="notification-badge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800 hidden flex items-center justify-center">
-                            <span class="text-xs text-white font-bold" id="notification-count"></span>
-                        </span>
-                    </button>
-                    
-                    <!-- Notification Popup -->
-                    <div id="notification-popup" class="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 hidden overflow-hidden z-[100] max-h-[80vh] flex flex-col" style="top: 100%; margin-top: 8px;">
-                        <!-- Header -->
-                        <div class="px-5 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 flex items-center justify-between">
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center">
-                                <i class="fas fa-bell mr-2 text-blue-500"></i>
-                                Feeding Notifications
-                            </h3>
-                            <button id="close-notifications" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- Notifications List -->
-                        <div id="notifications-list" class="overflow-y-auto flex-1 p-4">
-                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <i class="fas fa-spinner fa-spin text-2xl mb-3 text-blue-500"></i>
-                                <p class="text-sm font-medium">Loading notifications...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Theme Toggle -->
-                <button id="theme-toggle" class="p-2.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-110 active:scale-95" aria-label="Toggle theme">
-                    <svg id="sun-icon" class="w-5 h-5 text-gray-700 dark:text-gray-300 hidden" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
-                    </svg>
-                    <svg id="moon-icon" class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                    </svg>
-                </button>
-                
-                <!-- User Profile Dropdown -->
-                <div class="relative">
-                    <button id="user-dropdown-btn" class="flex items-center space-x-2 sm:space-x-3 p-2 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105 active:scale-95" aria-label="User menu">
-                        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white/50 dark:ring-gray-700/50">
-                            <span class="text-white font-bold text-sm sm:text-base">{{ session.employee_name[0] if session.employee_name else 'E' }}</span>
-                        </div>
-                        <div class="hidden sm:block text-left">
-                            <div class="text-sm font-bold text-gray-900 dark:text-white">{{ session.employee_name or 'Employee' }}</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-400">{{ session.employee_role or 'Employee' }}</div>
-                        </div>
-                        <svg class="w-4 h-4 text-gray-600 dark:text-gray-300 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-                    
-                    <!-- Dropdown Menu with Animation -->
-                    <div id="user-dropdown" class="absolute right-0 mt-2 w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 hidden animate-scale-in overflow-hidden">
-                        <!-- User Info Section -->
-                        <div class="px-5 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white/50 dark:ring-gray-700/50">
-                                    <span class="text-white font-bold text-lg">{{ session.employee_name[0] if session.employee_name else 'E' }}</span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ session.employee_name or 'Employee' }}</div>
-                                    <div class="text-xs text-gray-600 dark:text-gray-400 truncate">{{ session.employee_email or 'employee@farm.com' }}</div>
-                                    <div class="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1">{{ session.employee_role or 'Employee' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Menu Items -->
-                        <div class="py-2">
-                            <a href="/employee/profile" class="flex items-center px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group">
-                                <i class="fas fa-user w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
-                                My Profile
-                            </a>
-                            <a href="/employee/settings" class="flex items-center px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group">
-                                <i class="fas fa-cog w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
-                                Account Settings
-                            </a>
-                            <a href="/employee/preferences" class="flex items-center px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group">
-                                <i class="fas fa-sliders-h w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
-                                Preferences
-                            </a>
-                            <hr class="my-2 border-gray-200 dark:border-gray-700">
-                            <button id="logout-btn" class="w-full flex items-center px-5 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 dark:hover:from-red-900/20 dark:hover:to-pink-900/20 transition-all duration-200 group">
-                                <i class="fas fa-sign-out-alt w-5 h-5 mr-3 group-hover:scale-110 transition-transform"></i>
-                                Sign Out
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+    {% include 'includes/farm_shell_header.html' %}
 
     <!-- Admin Preview Banner -->
     <div id="admin-preview-banner" class="fixed top-16 sm:top-20 left-0 right-0 z-40 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white py-2.5 px-4 shadow-lg hidden animate-slide-in" style="display: none;">
@@ -495,29 +360,7 @@
     </main>
 
     <!-- Modern Footer (aligns with main content when sidebar visible) -->
-    <footer class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-700/50 mt-auto lg:ml-72 transition-[margin] duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 via-green-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                        <i class="fas fa-seedling text-white text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-gray-800 dark:text-white">Smart Animal Farming</p>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Employee Management System</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-6">
-                    <a href="/privacy" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors hover:underline">Privacy Policy</a>
-                    <a href="/terms" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors hover:underline">Terms of Service</a>
-                    <a href="/support" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors hover:underline">Support</a>
-                </div>
-            </div>
-            <div class="mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50 text-center">
-                <p class="text-xs text-gray-500 dark:text-gray-400">© 2024 Smart Animal Farming. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+    {% include 'includes/farm_shell_footer.html' %}
 
     <!-- Overlay for mobile sidebar -->
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden lg:hidden transition-opacity duration-300"></div>

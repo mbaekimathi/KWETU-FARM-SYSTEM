@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Litters - Pig Farm Management System</title>
+    {% include 'includes/farm_hub_shell_head_fragment.html' %}
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900">
+{% set farm_shell_breadcrumb_current = 'Litters' %}
+{% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Breeding' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_breeding_management_hub.html' %}
+
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+
+<main class="md:ml-64 pt-20 min-h-screen">
+    <div class="p-4 sm:p-6 lg:p-8 space-y-6">
+        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Litters</h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                All litter records, separated by status: unweaned and weaned.
+            </p>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Unweaned Litters</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-700/40">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Litter ID</th>
+                            <th class="px-4 py-3 text-left">Sow</th>
+                            <th class="px-4 py-3 text-left">Farrowing Date</th>
+                            <th class="px-4 py-3 text-left">Total Piglets</th>
+                            <th class="px-4 py-3 text-left">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unweaned-litters-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Weaned Litters</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-700/40">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Litter ID</th>
+                            <th class="px-4 py-3 text-left">Sow</th>
+                            <th class="px-4 py-3 text-left">Farrowing Date</th>
+                            <th class="px-4 py-3 text-left">Total Piglets</th>
+                            <th class="px-4 py-3 text-left">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weaned-litters-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+async function loadLittersData() {
+    try {
+        const [unweanedRes, weanedRes] = await Promise.all([
+            fetch('/api/farrowing/active-litters'),
+            fetch('/api/farrowing/weaned-litters')
+        ]);
+
+        const unweanedData = await unweanedRes.json();
+        const weanedData = await weanedRes.json();
+
+        const unweanedBody = document.getElementById('unweaned-litters-body');
+        const weanedBody = document.getElementById('weaned-litters-body');
+        unweanedBody.innerHTML = '';
+        weanedBody.innerHTML = '';
+
+        const unweanedLitters = (unweanedData.litters || []).sort((a, b) => {
+            const ad = new Date(a.farrowing_date || 0);
+            const bd = new Date(b.farrowing_date || 0);
+            return bd - ad;
+        });
+
+        if (!unweanedLitters.length) {
+            unweanedBody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-gray-500 dark:text-gray-400">No unweaned litters found.</td></tr>';
+        } else {
+            unweanedLitters.forEach((row) => {
+                unweanedBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td class="px-4 py-3">${row.litter_id || '-'}</td>
+                        <td class="px-4 py-3">${row.sow_tag_id || '-'}</td>
+                        <td class="px-4 py-3">${row.farrowing_date || '-'}</td>
+                        <td class="px-4 py-3">${row.total_piglets ?? '-'}</td>
+                        <td class="px-4 py-3 capitalize">${row.status || '-'}</td>
+                    </tr>
+                `);
+            });
+        }
+
+        const weanedLitters = (weanedData.litters || []).sort((a, b) => {
+            const ad = new Date(a.weaning_date || a.farrowing_date || 0);
+            const bd = new Date(b.weaning_date || b.farrowing_date || 0);
+            return bd - ad;
+        });
+
+        if (!weanedLitters.length) {
+            weanedBody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-gray-500 dark:text-gray-400">No weaned litters found.</td></tr>';
+        } else {
+            weanedLitters.forEach((row) => {
+                weanedBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td class="px-4 py-3">${row.litter_id || '-'}</td>
+                        <td class="px-4 py-3">${row.sow_tag_id || '-'}</td>
+                        <td class="px-4 py-3">${row.farrowing_date || '-'}</td>
+                        <td class="px-4 py-3">${row.total_piglets ?? '-'}</td>
+                        <td class="px-4 py-3 capitalize">${row.status || '-'}</td>
+                    </tr>
+                `);
+            });
+        }
+    } catch (err) {
+        console.error('Failed to load litters page data', err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadLittersData);
+</script>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
+</html>

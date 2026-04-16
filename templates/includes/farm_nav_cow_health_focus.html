@@ -1,0 +1,27 @@
+{# Focused cow-health sidebar links. #}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set _vaccination_href = farm_b ~ 'cow-vaccination-tracking' %}
+{% set _weight_href = farm_b ~ 'cow-weight-assessment' %}
+{% set _path = request.path.rstrip('/') %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Cow health tools</p>
+
+                <a href="{{ _vaccination_href }}" class="farm-nav-link-modern group {% if _path == _vaccination_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-syringe text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Cow Vaccination</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">Track cow vaccines &amp; schedule</span>
+                    </div>
+                </a>
+
+                <a href="{{ _weight_href }}" class="farm-nav-link-modern group {% if _path == _weight_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-weight-hanging text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Cow Weight</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">Record &amp; view cow weights</span>
+                    </div>
+                </a>

@@ -4,503 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Breeding Management - Pig Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                    screens: {
-                        'xs': '475px',
-                        'sm': '640px',
-                        'md': '768px',
-                        'lg': '1024px',
-                        'xl': '1280px',
-                        '2xl': '1536px',
-                    },
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        },
-                        secondary: {
-                            50: '#fdf4ff',
-                            100: '#fae8ff',
-                            200: '#f5d0fe',
-                            300: '#f0abfc',
-                            400: '#e879f9',
-                            500: '#d946ef',
-                            600: '#c026d3',
-                            700: '#a21caf',
-                            800: '#86198f',
-                            900: '#701a75',
-                        },
-                        accent: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            200: '#bbf7d0',
-                            300: '#86efac',
-                            400: '#4ade80',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                            900: '#14532d',
-                        }
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.5s ease-in-out',
-                        'slide-up': 'slideUp 0.3s ease-out',
-                        'slide-down': 'slideDown 0.3s ease-out',
-                        'scale-in': 'scaleIn 0.2s ease-out',
-                        'bounce-subtle': 'bounceSubtle 0.6s ease-out',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'float': 'float 6s ease-in-out infinite',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        slideUp: {
-                            '0%': { transform: 'translateY(10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        slideDown: {
-                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        scaleIn: {
-                            '0%': { transform: 'scale(0.95)', opacity: '0' },
-                            '100%': { transform: 'scale(1)', opacity: '1' },
-                        },
-                        bounceSubtle: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-4px)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .sidebar {
-            transition: transform 0.3s ease-in-out;
-        }
-        .sidebar.closed {
-            transform: translateX(-100%);
-        }
-        @media (min-width: 768px) {
-            .sidebar.closed {
-                transform: translateX(0);
-            }
-        }
-        
-        /* Custom animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-        }
-        
-        @keyframes bounce {
-            0%, 20%, 53%, 80%, 100% {
-                transform: translate3d(0,0,0);
-            }
-            40%, 43% {
-                transform: translate3d(0, -8px, 0);
-            }
-            70% {
-                transform: translate3d(0, -4px, 0);
-            }
-            90% {
-                transform: translate3d(0, -2px, 0);
-            }
-        }
-        
-        .animate-fadeInUp {
-            animation: fadeInUp 0.6s ease-out forwards;
-        }
-        
-        .animate-slideInRight {
-            animation: slideInRight 0.6s ease-out forwards;
-        }
-        
-        .animate-bounce {
-            animation: bounce 1s infinite;
-        }
-        
-        /* Enhanced hover effects */
-        .group:hover .group-hover\:scale-110 {
-            transform: scale(1.1);
-        }
-        
-        .group:hover .group-hover\:rotate-180 {
-            transform: rotate(180deg);
-        }
-        
-        /* Progress bar animation */
-        .progress-bar {
-            transition: width 1s ease-in-out;
-        }
-        
-        /* Glass morphism effect */
-        .glass {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(45deg, #f59e0b, #ef4444);
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(45deg, #d97706, #dc2626);
-        }
-        
-        /* Custom scrollbar for sidebar */
-        .scrollbar-thin {
-            scrollbar-width: thin;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.3);
-            border-radius: 2px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: rgba(156, 163, 175, 0.5);
-        }
-        
-        .dark .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: rgba(75, 85, 99, 0.3);
-        }
-        
-        .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: rgba(75, 85, 99, 0.5);
-        }
-        
-        /* Enhanced sidebar animations */
-        .sidebar-link {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .sidebar-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        
-        .sidebar-link:hover::before {
-            left: 100%;
-        }
-        
-        /* Mobile optimizations */
-        @media (max-width: 640px) {
-            .group {
-                padding: 0.75rem;
-            }
-            
-            .text-3xl {
-                font-size: 1.5rem;
-            }
-            
-            .text-4xl {
-                font-size: 1.875rem;
-            }
-            
-            .text-2xl {
-                font-size: 1.25rem;
-            }
-            
-            /* Ensure proper spacing on mobile */
-            .space-y-3 > * + * {
-                margin-top: 0.5rem;
-            }
-            
-            .space-y-4 > * + * {
-                margin-top: 0.75rem;
-            }
-            
-            /* Better button sizing on mobile */
-            .px-3 {
-                padding-left: 0.5rem;
-                padding-right: 0.5rem;
-            }
-            
-            .py-2 {
-                padding-top: 0.375rem;
-                padding-bottom: 0.375rem;
-            }
-            
-            /* Mobile sidebar improvements */
-            #sidebar {
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
-            }
-        }
-        
-        /* Responsive sidebar width */
-        @media (min-width: 768px) {
-            #sidebar {
-                width: 16rem; /* 256px - consistent width */
-            }
-        }
-        
-        /* Extra small screens */
-        @media (max-width: 480px) {
-            .group {
-                padding: 0.5rem;
-            }
-            
-            .text-2xl {
-                font-size: 1.125rem;
-            }
-            
-            .text-3xl {
-                font-size: 1.25rem;
-            }
-            
-            .text-4xl {
-                font-size: 1.5rem;
-            }
-            
-            /* Stack navigation buttons vertically on very small screens */
-            .flex-col {
-                flex-direction: column;
-            }
-            
-            .space-x-2 > * + * {
-                margin-left: 0;
-                margin-top: 0.5rem;
-            }
-        }
-        
-        /* Tablet optimizations */
-        @media (min-width: 641px) and (max-width: 1024px) {
-            .group {
-                padding: 1rem;
-            }
-            
-            .text-3xl {
-                font-size: 1.75rem;
-            }
-            
-            .text-4xl {
-                font-size: 2rem;
-            }
-        }
-        
-        /* Large screen optimizations */
-        @media (min-width: 1280px) {
-            .group {
-                padding: 1.5rem;
-            }
-        }
-        
-        /* Ultra-wide screen optimizations */
-        @media (min-width: 1536px) {
-            .group {
-                padding: 2rem;
-            }
-        }
-        
-        /* Dark mode enhancements */
-        .dark .glass {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Loading skeleton */
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-        }
-        
-        @keyframes loading {
-            0% {
-                background-position: 200% 0;
-            }
-            100% {
-                background-position: -200% 0;
-            }
-        }
-        
-        .dark .skeleton {
-            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
-            background-size: 200% 100%;
-        }
-    </style>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
-    <!-- Sidebar -->
-    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 shadow-2xl transform -translate-x-full transition-all duration-300 ease-in-out md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
-        <!-- Sidebar Header -->
-        <div class="flex items-center justify-between h-20 px-6 bg-gradient-to-br from-pink-600 via-purple-700 to-blue-800 shadow-lg">
-                <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
-                    <i class="fas fa-heart text-white text-xl"></i>
-                        </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white tracking-tight">PigFarm Pro</h1>
-                    <p class="text-sm text-white/90 font-medium">Breeding Management</p>
-                    </div>
-                    </div>
-            <button id="close-sidebar" class="md:hidden text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200" aria-label="Close sidebar">
-                <i class="fas fa-times text-lg"></i>
-                </button>
-                            </div>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Breeding Management' %}
+{% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Breeding' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_breeding_management_hub.html' %}
+{% set pig_nav_active = 'breeding' %}
 
-        <!-- Sidebar Navigation -->
-        <nav class="mt-8 px-4">
-            <div class="space-y-2">
-                <!-- Dashboard -->
-                <a href="{% if user.role == 'manager' %}/manager/dashboard{% else %}/admin/dashboard{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-chart-line text-gray-600 dark:text-gray-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Dashboard</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Overview</p>
-                    </div>
-                </a>
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-                <!-- Breeding Management (Active) -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}management" class="group flex items-center px-4 py-4 bg-gradient-to-r from-pink-50 via-purple-100 to-blue-50 dark:from-pink-900/40 dark:via-purple-900/40 dark:to-blue-900/40 text-pink-700 dark:text-pink-300 rounded-xl shadow-lg border border-pink-200 dark:border-pink-700/50 relative overflow-hidden" role="menuitem" aria-current="page">
-                    <div class="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-purple-500/10"></div>
-                    <div class="w-12 h-12 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg mr-4 group-hover:scale-110 transition-transform duration-200 relative z-10">
-                        <i class="fas fa-heart text-white text-lg"></i>
-                                </div>
-                    <div class="flex-1 relative z-10">
-                        <span class="font-bold text-sm text-gray-900 dark:text-white block">Breeding Management</span>
-                        <span class="text-xs text-pink-600 dark:text-pink-400 font-medium">Active Page</span>
-                                </div>
-                    <div class="w-2 h-2 bg-pink-500 rounded-full animate-pulse-slow"></div>
-                </a>
-
-                <!-- Quick Registration Links -->
-                <div class="ml-6 space-y-2 border-l-2 border-blue-200 dark:border-blue-700/50 pl-4">
-                    <a href="#" onclick="const modal = document.getElementById('new-breeding-modal'); showModal(modal); return false;" class="group flex items-center px-3 py-3 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200 hover:shadow-md" role="menuitem">
-                        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-800/50 rounded-lg flex items-center justify-center mr-3 group-hover:scale-105 transition-transform duration-200">
-                            <i class="fas fa-plus text-blue-600 dark:text-blue-400 text-xs"></i>
-                        </div>
-                        <span class="font-medium text-sm">New Breeding</span>
-                    </a>
-                </div>
-
-                <!-- Breeding Records -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}records" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-clipboard-list text-gray-600 dark:text-gray-400 text-lg"></i>
-                        </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Breeding Records</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Active & Pregnant</p>
-                        </div>
-                </a>
-
-                <!-- Family Tree -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/family-tree{% else %}/admin/farm/family-tree{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-sitemap text-purple-600 dark:text-purple-400 text-lg"></i>
-                        </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Family Tree</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Pedigree View</p>
-                        </div>
-                </a>
-
-                </div>
-            </nav>
-            
-            <!-- Sidebar Footer -->
-        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <i class="fas fa-user text-white text-lg"></i>
-                        </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-gray-900 dark:text-white truncate">Admin User</p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Administrator</p>
-                    <div class="flex items-center mt-1">
-                        <div class="w-2 h-2 bg-accent-500 rounded-full mr-2"></div>
-                        <span class="text-xs text-accent-600 dark:text-accent-400 font-medium">Online</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <!-- Mobile Overlay -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
-
-    <!-- Main Content -->
-    <main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+<main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
         <div class="p-6 lg:p-8">
             <!-- Page Header -->
             <div class="mb-8 animate-fade-in">
@@ -701,7 +219,7 @@
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Breed</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Age (Days)</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Health</th>
-                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Last Breeding</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Breeding History</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Action</th>
                                     </tr>
                                 </thead>
@@ -1157,15 +675,23 @@
         function setupModals() {
             // New Breeding Modal
             const newBreedingBtn = document.getElementById('new-breeding-btn');
+            const sidebarNewBreedingBtn = document.getElementById('sidebar-register-new-breeding');
             const newBreedingModal = document.getElementById('new-breeding-modal');
             const closeNewBreedingBtn = document.getElementById('close-new-breeding-modal');
             const cancelBreedingBtn = document.getElementById('cancel-breeding-btn');
 
-            if (newBreedingBtn && newBreedingModal) {
-                newBreedingBtn.addEventListener('click', (e) => {
+            const openNewBreedingModal = (e) => {
+                if (e) {
                     e.preventDefault();
-                    showModal(newBreedingModal);
-                });
+                }
+                showModal(newBreedingModal);
+            };
+
+            if (newBreedingBtn && newBreedingModal) {
+                newBreedingBtn.addEventListener('click', openNewBreedingModal);
+                if (sidebarNewBreedingBtn) {
+                    sidebarNewBreedingBtn.addEventListener('click', openNewBreedingModal);
+                }
                 if (closeNewBreedingBtn) closeNewBreedingBtn.addEventListener('click', () => hideModal(newBreedingModal));
                 if (cancelBreedingBtn) cancelBreedingBtn.addEventListener('click', () => hideModal(newBreedingModal));
             }
@@ -1424,11 +950,28 @@
                     <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.breed || 'Unknown'}</td>
                     <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.age_days ?? '—'}</td>
                     <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.health_status || 'Healthy'}</td>
-                    <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.last_breeding_date ? new Date(sow.last_breeding_date).toLocaleDateString() : 'Never'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-sm">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                Success: ${Number(sow.successful_breedings || 0)}
+                            </span>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                Failed: ${Number(sow.failed_breedings || 0)}
+                            </span>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${sow.last_breeding_status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : (['completed', 'farrowed'].includes(sow.last_breeding_status) ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300')}">
+                                Last: ${sow.last_breeding_date ? new Date(sow.last_breeding_date).toLocaleDateString() : 'Never'}
+                            </span>
+                        </div>
+                    </td>
                     <td class="px-3 sm:px-4 py-3 text-right">
-                        <button onclick="selectSowForBreeding(${sow.id})" class="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white text-xs font-semibold rounded-md transition-all duration-200">
-                            <i class="fas fa-heart mr-1"></i>Select
-                        </button>
+                        <div class="inline-flex items-center gap-2">
+                            <a href="/admin/farm/sow/${sow.id}/analytics" class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 rounded-md transition-all duration-200" title="View sow analytics">
+                                <i class="fas fa-eye text-xs"></i>
+                            </a>
+                            <button onclick="selectSowForBreeding(${sow.id})" class="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white text-xs font-semibold rounded-md transition-all duration-200">
+                                <i class="fas fa-heart mr-1"></i>Select
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `).join('');
@@ -2550,5 +2093,5 @@
         }
 
     </script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html> 

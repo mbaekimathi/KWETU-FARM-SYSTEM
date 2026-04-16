@@ -1,0 +1,26 @@
+{# Focused cow-vaccination sidebar links. #}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set _tracking_href = farm_b ~ 'cow-vaccination-tracking' %}
+{% set _settings_href = farm_b ~ 'cow-vaccination-settings' %}
+{% set _path = request.path.rstrip('/') %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Cow vaccination</p>
+
+                <a href="{{ _tracking_href }}" class="farm-nav-link-modern group {% if _path == _tracking_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-syringe text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Vaccination Tracking</span>
+                        <span class="block text-xs text-indigo-600 dark:text-indigo-300">Active Page</span>
+                    </div>
+                </a>
+
+                <a href="{{ _settings_href }}" class="farm-nav-link-modern group {% if _path == _settings_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-sliders-h text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Vaccination Settings</span>
+                    </div>
+                </a>

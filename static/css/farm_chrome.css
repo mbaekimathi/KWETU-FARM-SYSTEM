@@ -1,0 +1,1314 @@
+/**
+ * Farm unified shell — same header, sidebar, and footer look for all animal
+ * admin pages. Loaded after Tailwind. Activated when html.farm-unified-shell is set
+ * (see includes/farm_chrome_bundle.html).
+ */
+
+:root {
+  --farm-chrome-header-h: 4rem;
+  --farm-sidebar-w: clamp(16rem, 24vw, 19rem);
+  --farm-chrome-accent-from: #059669;
+  --farm-chrome-accent-to: #4f46e5;
+  --farm-nav-link: rgb(51 65 85);
+  --farm-nav-link-dark: rgb(203 213 225);
+  --farm-nav-muted: rgb(100 116 139);
+  --farm-nav-muted-dark: rgb(148 163 184);
+  --farm-nav-hover-bg: rgb(241 245 249);
+  --farm-nav-hover-bg-dark: rgb(51 65 85 / 0.45);
+  --farm-nav-active-bg: linear-gradient(135deg, rgb(236 253 245), rgb(238 242 255));
+  --farm-nav-active-bg-dark: linear-gradient(
+    135deg,
+    rgb(6 78 59 / 0.35),
+    rgb(49 46 129 / 0.28)
+  );
+  --farm-nav-active-border: rgb(167 243 208);
+  --farm-nav-active-border-dark: rgb(5 150 105 / 0.55);
+  --farm-nav-active-fg: rgb(6 78 59);
+  --farm-nav-active-fg-dark: rgb(209 250 229);
+  --farm-nav-icon-well: rgb(236 253 245);
+  --farm-nav-icon-well-dark: rgb(30 41 59);
+  --farm-nav-icon-fg: rgb(5 150 105);
+  --farm-nav-icon-fg-dark: rgb(52 211 153);
+  --farm-chrome-header-bg: rgba(241, 245, 249, 0.98);
+  --farm-chrome-header-bg-dark: rgba(15, 23, 42, 0.98);
+  --farm-chrome-border: rgb(226 232 240);
+  --farm-chrome-border-dark: rgb(51 65 85);
+  --farm-chrome-sidebar-bg: rgb(240 249 255);
+  --farm-chrome-sidebar-bg-dark: rgb(15 23 42);
+  --farm-chrome-footer-bg: rgb(226 232 240);
+  --farm-chrome-footer-bg-dark: rgb(15 23 42);
+  --farm-body-from: #f8fafc;
+  --farm-body-via: #eef2ff;
+  --farm-body-to: #ecfdf5;
+  --farm-body-from-dark: #0f172a;
+  --farm-body-via-dark: #1e1b4b;
+  --farm-body-to-dark: #064e3b;
+  --farm-chrome-glow: 0 0 0 1px rgb(255 255 255 / 0.2) inset, 0 1px 2px rgb(15 23 42 / 0.06);
+  --farm-chrome-glow-dark: 0 0 0 1px rgb(148 163 184 / 0.08) inset, 0 1px 3px rgb(0 0 0 / 0.4);
+}
+
+.dark {
+  --farm-chrome-border: var(--farm-chrome-border-dark);
+}
+
+html.farm-unified-shell {
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark html.farm-unified-shell {
+  color-scheme: dark;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Base chrome (always): structural alignment                                  */
+/* -------------------------------------------------------------------------- */
+
+body > header.fixed,
+header.fixed.top-0 {
+  height: var(--farm-chrome-header-h) !important;
+  min-height: var(--farm-chrome-header-h) !important;
+  background: var(--farm-chrome-header-bg) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--farm-chrome-border) !important;
+  box-shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06) !important;
+}
+
+.dark body > header.fixed,
+.dark header.fixed.top-0 {
+  background: var(--farm-chrome-header-bg-dark) !important;
+  border-bottom-color: var(--farm-chrome-border-dark) !important;
+}
+
+header.fixed.top-0.glass-effect,
+header.fixed.top-0[class*="glass-effect"] {
+  background: var(--farm-chrome-header-bg) !important;
+  border-bottom: 1px solid var(--farm-chrome-border) !important;
+  box-shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06) !important;
+}
+
+.dark header.fixed.top-0.glass-effect,
+.dark header.fixed.top-0[class*="glass-effect"] {
+  background: var(--farm-chrome-header-bg-dark) !important;
+  border-bottom-color: var(--farm-chrome-border-dark) !important;
+}
+
+body > header.fixed > div,
+header.fixed.top-0 > div {
+  min-height: var(--farm-chrome-header-h);
+}
+
+aside#sidebar,
+#sidebar.sidebar,
+aside.fixed.inset-y-0.left-0[id="sidebar"],
+div#sidebar.fixed.inset-y-0,
+div#sidebar.fixed.left-0 {
+  background: var(--farm-chrome-sidebar-bg) !important;
+  border-right: 1px solid var(--farm-chrome-border) !important;
+  box-shadow: 4px 0 24px -10px rgb(15 23 42 / 0.12) !important;
+}
+
+.dark aside#sidebar,
+.dark #sidebar.sidebar,
+.dark aside.fixed.inset-y-0.left-0[id="sidebar"],
+.dark div#sidebar.fixed.inset-y-0,
+.dark div#sidebar.fixed.left-0 {
+  background: var(--farm-chrome-sidebar-bg-dark) !important;
+  border-right-color: var(--farm-chrome-border-dark) !important;
+}
+
+#sidebar-overlay,
+#mobile-overlay {
+  background-color: rgb(15 23 42 / 0.5) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+body > footer,
+footer.border-t,
+footer[class*="border-t"] {
+  background: var(--farm-chrome-footer-bg) !important;
+  border-top: 1px solid var(--farm-chrome-border) !important;
+}
+
+.dark body > footer,
+.dark footer.border-t,
+.dark footer[class*="border-t"] {
+  background: var(--farm-chrome-footer-bg-dark) !important;
+  border-top-color: var(--farm-chrome-border-dark) !important;
+}
+
+main.pt-16,
+main[class*="pt-16"] {
+  padding-top: var(--farm-chrome-header-h) !important;
+}
+
+@media (max-width: 767px) {
+  body > header.fixed .px-4,
+  header.fixed.top-0 .px-4 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Unified shell redesign (html.farm-unified-shell)                            */
+/* -------------------------------------------------------------------------- */
+
+html.farm-unified-shell body {
+  min-height: 100vh;
+  background: radial-gradient(1200px 600px at 10% -10%, rgb(236 253 245 / 0.85), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgb(238 242 255 / 0.75), transparent 50%),
+    linear-gradient(
+      165deg,
+      var(--farm-body-from) 0%,
+      var(--farm-body-via) 48%,
+      var(--farm-body-to) 100%
+    ) !important;
+}
+
+.dark html.farm-unified-shell body {
+  background: radial-gradient(1000px 480px at 8% -8%, rgb(6 78 59 / 0.22), transparent 52%),
+    radial-gradient(800px 420px at 100% 0%, rgb(49 46 129 / 0.28), transparent 48%),
+    linear-gradient(
+      165deg,
+      var(--farm-body-from-dark) 0%,
+      var(--farm-body-via-dark) 42%,
+      var(--farm-body-to-dark) 100%
+    ) !important;
+}
+
+/* Accent strip under header */
+html.farm-unified-shell body > header.fixed::after,
+html.farm-unified-shell header.fixed.top-0::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--farm-chrome-accent-from),
+    var(--farm-chrome-accent-to)
+  );
+  pointer-events: none;
+}
+
+html.farm-unified-shell body > header.fixed,
+html.farm-unified-shell header.fixed.top-0 {
+  position: fixed !important;
+  border-bottom-width: 1px !important;
+}
+
+/* Brand row: same title styling (override per-page gradients) */
+html.farm-unified-shell header h1 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-clip: unset !important;
+  color: rgb(15 23 42) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+.dark html.farm-unified-shell header h1 {
+  color: rgb(248 250 252) !important;
+}
+
+html.farm-unified-shell header .text-xs,
+html.farm-unified-shell header p.text-xs {
+  color: rgb(100 116 139) !important;
+}
+
+.dark html.farm-unified-shell header .text-xs,
+.dark html.farm-unified-shell header p.text-xs {
+  color: rgb(148 163 184) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Modern surfaces & icons (shared header / footer / chrome controls)         */
+/* -------------------------------------------------------------------------- */
+
+html.farm-unified-shell .farm-chrome-header {
+  overflow: visible !important;
+  background: var(--farm-chrome-header-bg) !important;
+  border-bottom-color: rgb(203 213 225) !important;
+  box-shadow: 0 8px 24px -16px rgb(15 23 42 / 0.2), 0 1px 0 rgb(255 255 255 / 0.75) inset !important;
+}
+
+.dark html.farm-unified-shell .farm-chrome-header {
+  background: var(--farm-chrome-header-bg-dark) !important;
+  border-bottom-color: rgb(51 65 85) !important;
+  box-shadow: 0 10px 28px -14px rgb(0 0 0 / 0.6), 0 1px 0 rgb(148 163 184 / 0.1) inset !important;
+}
+
+html.farm-unified-shell .farm-chrome-logo-tile {
+  position: relative;
+  box-shadow: 0 8px 18px -10px rgb(5 150 105 / 0.5), 0 4px 10px -7px rgb(30 41 59 / 0.24),
+    var(--farm-chrome-glow) !important;
+}
+
+.dark html.farm-unified-shell .farm-chrome-logo-tile {
+  box-shadow: 0 8px 20px -10px rgb(5 150 105 / 0.34), 0 4px 12px -8px rgb(15 23 42 / 0.55),
+    var(--farm-chrome-glow-dark) !important;
+}
+
+html.farm-unified-shell .farm-chrome-logo-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
+  pointer-events: none;
+}
+
+html.farm-unified-shell .farm-chrome-logo-tile .fas,
+html.farm-unified-shell .farm-chrome-logo-tile .fa {
+  line-height: 1;
+}
+
+html.farm-unified-shell .farm-chrome-logo-tile--sm {
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 14px -6px rgb(5 150 105 / 0.45), 0 2px 8px -4px rgb(79 70 229 / 0.25),
+    var(--farm-chrome-glow) !important;
+}
+
+html.farm-unified-shell .farm-chrome-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  color: rgb(71 85 105);
+  background: linear-gradient(165deg, rgb(255 255 255), rgb(248 250 252));
+  border: 1px solid rgb(226 232 240);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.dark html.farm-unified-shell .farm-chrome-icon-btn {
+  color: rgb(203 213 225);
+  background: linear-gradient(165deg, rgb(51 65 85 / 0.55), rgb(30 41 59));
+  border-color: rgb(71 85 105);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+html.farm-unified-shell .farm-chrome-icon-btn:hover {
+  color: rgb(15 23 42);
+  border-color: rgb(203 213 225);
+  box-shadow: 0 4px 14px -6px rgb(15 23 42 / 0.12);
+  transform: translateY(-1px);
+}
+
+.dark html.farm-unified-shell .farm-chrome-icon-btn:hover {
+  color: rgb(248 250 252);
+  border-color: rgb(100 116 139);
+  box-shadow: 0 4px 16px -6px rgb(0 0 0 / 0.45);
+}
+
+html.farm-unified-shell .farm-chrome-theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: rgb(71 85 105);
+  background: linear-gradient(155deg, rgb(255 255 255), rgb(241 245 249));
+  border: 1px solid rgb(226 232 240);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  transition: box-shadow 0.2s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.dark html.farm-unified-shell .farm-chrome-theme-toggle {
+  color: rgb(226 232 240);
+  background: linear-gradient(155deg, rgb(51 65 85 / 0.9), rgb(15 23 42));
+  border-color: rgb(71 85 105);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(148 163 184 / 0.08);
+}
+
+html.farm-unified-shell .farm-chrome-theme-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px -8px rgb(5 150 105 / 0.35), 0 2px 8px -4px rgb(79 70 229 / 0.2),
+    inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+.dark html.farm-unified-shell .farm-chrome-theme-toggle:hover {
+  box-shadow: 0 0 0 1px rgb(52 211 153 / 0.2), 0 8px 22px -8px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(148 163 184 / 0.1);
+}
+
+html.farm-unified-shell .farm-chrome-theme-toggle__sun {
+  stroke: currentColor;
+}
+
+html.farm-unified-shell .farm-chrome-theme-toggle__moon {
+  stroke: currentColor;
+}
+
+html.farm-unified-shell .farm-chrome-breadcrumb {
+  letter-spacing: -0.01em;
+}
+
+html.farm-unified-shell .farm-chrome-dropdown__item svg {
+  opacity: 0.92;
+}
+
+html.farm-unified-shell .farm-chrome-footer {
+  background: var(--farm-chrome-footer-bg) !important;
+  border-top-color: rgb(203 213 225) !important;
+  box-shadow: 0 -6px 18px -14px rgb(15 23 42 / 0.22), 0 -1px 0 rgb(255 255 255 / 0.62) inset;
+}
+
+.dark html.farm-unified-shell .farm-chrome-footer {
+  background: var(--farm-chrome-footer-bg-dark) !important;
+  border-top-color: rgb(51 65 85) !important;
+  box-shadow: 0 -8px 20px -14px rgb(0 0 0 / 0.55), 0 -1px 0 rgb(30 41 59 / 0.92) inset;
+}
+
+html.farm-unified-shell .farm-chrome-notify-head {
+  background: linear-gradient(105deg, rgb(236 253 245 / 0.95), rgb(238 242 255 / 0.9)) !important;
+}
+
+.dark html.farm-unified-shell .farm-chrome-notify-head {
+  background: linear-gradient(105deg, rgb(15 23 42 / 0.98), rgb(30 27 75 / 0.5)) !important;
+}
+
+/* Sidebar width on desktop */
+@media (min-width: 768px) {
+  html.farm-unified-shell #sidebar,
+  html.farm-unified-shell aside#sidebar {
+    width: var(--farm-sidebar-w) !important;
+    max-width: min(var(--farm-sidebar-w), 92vw) !important;
+  }
+
+  /* Align main offset to sidebar only when a sidebar exists */
+  html.farm-unified-shell body:has(#sidebar) main[class*="md:pl-"],
+  html.farm-unified-shell body:has(#sidebar) main[class*="lg:pl-"] {
+    padding-left: var(--farm-sidebar-w) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  html.farm-unified-shell #sidebar,
+  html.farm-unified-shell aside#sidebar {
+    width: min(90vw, 20rem) !important;
+    max-width: 90vw !important;
+  }
+}
+
+/* Sidebar brand row (first panel inside the inner flex column) */
+html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child,
+html.farm-unified-shell #sidebar > div[class*="flex"][class*="flex-col"] > div:first-child {
+  position: relative !important;
+  min-height: 4.5rem;
+  padding: 1rem 1.25rem !important;
+  border-bottom: 1px solid var(--farm-chrome-border) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(236 253 245),
+    rgb(238 242 255)
+  ) !important;
+}
+
+.dark html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child,
+.dark html.farm-unified-shell #sidebar > div[class*="flex"][class*="flex-col"] > div:first-child {
+  border-bottom-color: var(--farm-chrome-border-dark) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(6 78 59 / 0.35),
+    rgb(49 46 129 / 0.35)
+  ) !important;
+}
+
+/* Cow sidebar: remove stacked orange overlay so the unified strip shows */
+html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child > .absolute.inset-0 {
+  display: none !important;
+}
+
+html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child h2,
+html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child .text-orange-100 {
+  color: rgb(15 23 42) !important;
+}
+
+.dark html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child h2,
+.dark html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child .text-orange-100 {
+  color: rgb(248 250 252) !important;
+}
+
+html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child i.text-white,
+html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child .fa-cow {
+  color: rgb(5 150 105) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sidebar navigation — unified look (pig / cow / chicken + nested sub-links) */
+/* -------------------------------------------------------------------------- */
+
+html.farm-unified-shell #sidebar nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
+  padding: 0.75rem 0.5rem 1rem !important;
+  background: linear-gradient(180deg, rgb(248 250 252 / 0.96), rgb(241 245 249 / 0.96)) !important;
+  border-top: 1px solid rgb(226 232 240) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav {
+  background: linear-gradient(180deg, rgb(30 41 59 / 0.98), rgb(15 23 42 / 0.98)) !important;
+  border-top-color: rgb(71 85 105) !important;
+}
+
+/* Strong visible sidebar zone so users can see sidebar reach */
+html.farm-unified-shell #sidebar,
+html.farm-unified-shell aside#sidebar {
+  background: linear-gradient(180deg, rgb(255 255 255), rgb(248 250 252)) !important;
+  box-shadow: 8px 0 28px -14px rgb(15 23 42 / 0.28), inset -1px 0 0 rgb(226 232 240 / 0.9) !important;
+}
+
+.dark html.farm-unified-shell #sidebar,
+.dark html.farm-unified-shell aside#sidebar {
+  background: linear-gradient(180deg, rgb(30 41 59), rgb(15 23 42)) !important;
+  box-shadow: 10px 0 30px -16px rgb(0 0 0 / 0.6), inset -1px 0 0 rgb(71 85 105 / 0.9) !important;
+}
+
+/* Colored edge strip to clearly mark sidebar boundary */
+html.farm-unified-shell #sidebar::after,
+html.farm-unified-shell aside#sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, rgb(16 185 129), rgb(79 70 229));
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.dark html.farm-unified-shell #sidebar::after,
+.dark html.farm-unified-shell aside#sidebar::after {
+  background: linear-gradient(180deg, rgb(52 211 153), rgb(129 140 248));
+  opacity: 0.95;
+}
+
+html.farm-unified-shell #sidebar nav a[href],
+html.farm-unified-shell #sidebar nav button:not(#close-sidebar),
+html.farm-unified-shell #sidebar a[role="menuitem"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.625rem !important;
+  width: 100% !important;
+  text-align: left !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0.125rem 0 !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.25rem !important;
+  color: var(--farm-nav-link) !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  transform: none !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href],
+.dark html.farm-unified-shell #sidebar nav button:not(#close-sidebar),
+.dark html.farm-unified-shell #sidebar a[role="menuitem"] {
+  color: var(--farm-nav-link-dark) !important;
+}
+
+html.farm-unified-shell #sidebar nav a[href]:hover,
+html.farm-unified-shell #sidebar nav button:not(#close-sidebar):hover,
+html.farm-unified-shell #sidebar a[role="menuitem"]:hover {
+  background-color: var(--farm-nav-hover-bg) !important;
+  background-image: none !important;
+  color: var(--farm-nav-link) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href]:hover,
+.dark html.farm-unified-shell #sidebar nav button:not(#close-sidebar):hover,
+.dark html.farm-unified-shell #sidebar a[role="menuitem"]:hover {
+  background-color: var(--farm-nav-hover-bg-dark) !important;
+  color: var(--farm-nav-link-dark) !important;
+}
+
+/* Primary “active” row (gradient / heavy border / chicken highlight) */
+html.farm-unified-shell #sidebar nav a[href][class*="bg-gradient-to-r"],
+html.farm-unified-shell #sidebar nav a[href][class*="shadow-lg"][class*="border"],
+html.farm-unified-shell #sidebar nav a[href][class*="border-chicken-yellow"],
+html.farm-unified-shell #sidebar nav a[href][class*="bg-chicken-yellow-50"] {
+  background: var(--farm-nav-active-bg) !important;
+  border-color: var(--farm-nav-active-border) !important;
+  color: var(--farm-nav-active-fg) !important;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.06) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href][class*="bg-gradient-to-r"],
+.dark html.farm-unified-shell #sidebar nav a[href][class*="shadow-lg"][class*="border"],
+.dark html.farm-unified-shell #sidebar nav a[href][class*="border-chicken-yellow"],
+.dark html.farm-unified-shell #sidebar nav a[href][class*="bg-chicken-yellow-50"] {
+  background: var(--farm-nav-active-bg-dark) !important;
+  border-color: var(--farm-nav-active-border-dark) !important;
+  color: var(--farm-nav-active-fg-dark) !important;
+}
+
+html.farm-unified-shell #sidebar nav a[href][class*="bg-gradient-to-r"]:hover,
+html.farm-unified-shell #sidebar nav a[href][class*="shadow-lg"][class*="border"]:hover {
+  filter: brightness(0.98);
+}
+
+/* Remove “Active Page” subline for a cleaner, consistent row height */
+html.farm-unified-shell #sidebar nav a > div.min-w-0 > p.text-xs {
+  display: none !important;
+}
+
+/* Optional pulse dot on active — subtle accent */
+html.farm-unified-shell #sidebar nav a .rounded-full.w-3.h-3 {
+  background-color: var(--farm-chrome-accent-from) !important;
+  animation: none !important;
+  opacity: 0.9;
+}
+
+/* Icon tiles (SVG / FA wrappers) */
+html.farm-unified-shell #sidebar nav a[href] > div.rounded-lg,
+html.farm-unified-shell #sidebar nav a[href] > div.rounded-md,
+html.farm-unified-shell #sidebar nav a[href] > div.rounded-xl,
+html.farm-unified-shell #sidebar nav a[href] > div.rounded-2xl,
+html.farm-unified-shell #sidebar nav button > div.rounded-lg,
+html.farm-unified-shell #sidebar nav button > div.rounded-md,
+html.farm-unified-shell #sidebar nav button > div.rounded-xl {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  min-width: 2.25rem !important;
+  min-height: 2.25rem !important;
+  margin-right: 0 !important;
+  border-radius: 0.625rem !important;
+  background: var(--farm-nav-icon-well) !important;
+  background-image: none !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 1px 3px rgb(15 23 42 / 0.06) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transform: none !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href] > div.rounded-lg,
+.dark html.farm-unified-shell #sidebar nav a[href] > div.rounded-md,
+.dark html.farm-unified-shell #sidebar nav a[href] > div.rounded-xl,
+.dark html.farm-unified-shell #sidebar nav a[href] > div.rounded-2xl,
+.dark html.farm-unified-shell #sidebar nav button > div.rounded-lg,
+.dark html.farm-unified-shell #sidebar nav button > div.rounded-md,
+.dark html.farm-unified-shell #sidebar nav button > div.rounded-xl {
+  background: var(--farm-nav-icon-well-dark) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 4px rgb(0 0 0 / 0.25) !important;
+}
+
+html.farm-unified-shell #sidebar nav a[href] > div svg,
+html.farm-unified-shell #sidebar nav a[href] > div i,
+html.farm-unified-shell #sidebar nav button > div svg,
+html.farm-unified-shell #sidebar nav button > div i {
+  color: var(--farm-nav-icon-fg) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href] > div svg,
+.dark html.farm-unified-shell #sidebar nav a[href] > div i,
+.dark html.farm-unified-shell #sidebar nav button > div svg,
+.dark html.farm-unified-shell #sidebar nav button > div i {
+  color: var(--farm-nav-icon-fg-dark) !important;
+}
+
+html.farm-unified-shell #sidebar nav a[href] > div svg path[stroke],
+html.farm-unified-shell #sidebar nav button > div svg path[stroke] {
+  stroke: currentColor !important;
+}
+
+/* Emoji / text icon column (chicken) */
+html.farm-unified-shell #sidebar nav a[href] > span.text-lg,
+html.farm-unified-shell #sidebar nav a[href] > span.text-sm,
+html.farm-unified-shell #sidebar nav button > span.text-lg {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 0.625rem !important;
+  background: var(--farm-nav-icon-well) !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href] > span.text-lg,
+.dark html.farm-unified-shell #sidebar nav a[href] > span.text-sm,
+.dark html.farm-unified-shell #sidebar nav button > span.text-lg {
+  background: var(--farm-nav-icon-well-dark) !important;
+}
+
+html.farm-unified-shell #sidebar nav a[href] > span.text-lg,
+html.farm-unified-shell #sidebar nav a[href] > span.text-sm,
+html.farm-unified-shell #sidebar nav button > span.text-lg {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px rgb(15 23 42 / 0.05) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href] > span.text-lg,
+.dark html.farm-unified-shell #sidebar nav a[href] > span.text-sm,
+.dark html.farm-unified-shell #sidebar nav button > span.text-lg {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 3px rgb(0 0 0 / 0.2) !important;
+}
+
+/* Second emoji in sub-rows: keep compact */
+html.farm-unified-shell #sidebar nav a[href] > span.text-sm {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Nested link column (pig sub-menu, chicken indented items) */
+html.farm-unified-shell #sidebar nav > div.ml-4,
+html.farm-unified-shell #sidebar nav > div.ml-6,
+html.farm-unified-shell #sidebar nav > div[class*="ml-4"],
+html.farm-unified-shell #sidebar nav > div[class*="ml-6"] {
+  margin-top: 0.25rem !important;
+  margin-left: 0.5rem !important;
+  padding-left: 0.75rem !important;
+  border-left: 2px solid rgb(226 232 240) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav > div.ml-4,
+.dark html.farm-unified-shell #sidebar nav > div.ml-6,
+.dark html.farm-unified-shell #sidebar nav > div[class*="ml-4"],
+.dark html.farm-unified-shell #sidebar nav > div[class*="ml-6"] {
+  border-left-color: rgb(71 85 105) !important;
+}
+
+html.farm-unified-shell #sidebar nav > div[class*="ml-"] a[href] {
+  padding-left: 0.5rem !important;
+  font-size: 0.8125rem !important;
+}
+
+/* Modern sidebar links with animated icon chips */
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
+  position: relative;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.625rem !important;
+  width: 100% !important;
+  padding: 0.7rem 0.75rem !important;
+  border-radius: 0.7rem !important;
+  border: 1px solid rgb(226 232 240 / 0.9) !important;
+  background: rgb(255 255 255 / 0.96) !important;
+  color: rgb(51 65 85) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+    background 0.2s ease !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
+  border-color: rgb(71 85 105) !important;
+  background: rgb(30 41 59 / 0.92) !important;
+  color: rgb(226 232 240) !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3) !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern:hover {
+  transform: translateY(-1px);
+  border-color: rgb(129 140 248 / 0.5) !important;
+  background: rgb(238 242 255 / 0.9) !important;
+  box-shadow: 0 6px 14px -10px rgb(79 70 229 / 0.35) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav .farm-nav-link-modern:hover {
+  border-color: rgb(129 140 248 / 0.55) !important;
+  background: rgb(49 46 129 / 0.38) !important;
+  box-shadow: 0 10px 20px -14px rgb(79 70 229 / 0.42) !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern.is-active {
+  border-color: rgb(99 102 241 / 0.58) !important;
+  background: linear-gradient(135deg, rgb(224 231 255), rgb(199 210 254)) !important;
+  color: rgb(49 46 129) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav .farm-nav-link-modern.is-active {
+  border-color: rgb(129 140 248 / 0.7) !important;
+  background: linear-gradient(135deg, rgb(79 70 229 / 0.5), rgb(30 41 59 / 0.9)) !important;
+  color: rgb(224 231 255) !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  min-width: 2.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgb(203 213 225);
+  background: linear-gradient(155deg, rgb(236 253 245), rgb(224 231 255));
+  color: rgb(5 150 105);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 1px 2px rgb(15 23 42 / 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.dark html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
+  border-color: rgb(100 116 139);
+  background: linear-gradient(155deg, rgb(15 23 42 / 0.95), rgb(49 46 129 / 0.55));
+  color: rgb(110 231 183);
+  box-shadow: inset 0 1px 0 rgb(148 163 184 / 0.15), 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+/* Reusable action row style (used by slaughter and custom sidebars) */
+html.farm-unified-shell .farm-nav-action-row {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  gap: 0.625rem !important;
+  padding: 0.7rem 0.75rem !important;
+  border-radius: 0.7rem !important;
+  border: 1px solid rgb(226 232 240 / 0.9) !important;
+  background: rgb(255 255 255 / 0.96) !important;
+  color: rgb(51 65 85) !important;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+html.farm-unified-shell .farm-nav-action-row:hover {
+  transform: translateY(-1px);
+  border-color: rgb(129 140 248 / 0.5) !important;
+  background: rgb(238 242 255 / 0.9) !important;
+  box-shadow: 0 6px 14px -10px rgb(79 70 229 / 0.35) !important;
+}
+
+html.farm-unified-shell .farm-nav-action-row.is-active {
+  border-color: rgb(99 102 241 / 0.58) !important;
+  background: linear-gradient(135deg, rgb(224 231 255), rgb(199 210 254)) !important;
+  color: rgb(49 46 129) !important;
+}
+
+.dark html.farm-unified-shell .farm-nav-action-row {
+  border-color: rgb(71 85 105) !important;
+  background: rgb(30 41 59 / 0.92) !important;
+  color: rgb(226 232 240) !important;
+}
+
+.dark html.farm-unified-shell .farm-nav-action-row:hover {
+  border-color: rgb(129 140 248 / 0.55) !important;
+  background: rgb(49 46 129 / 0.38) !important;
+}
+
+.dark html.farm-unified-shell .farm-nav-action-row.is-active {
+  border-color: rgb(129 140 248 / 0.7) !important;
+  background: linear-gradient(135deg, rgb(79 70 229 / 0.5), rgb(30 41 59 / 0.9)) !important;
+  color: rgb(224 231 255) !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern:hover .farm-nav-link-modern__icon {
+  transform: scale(1.06);
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__pulse {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: rgb(16 185 129);
+  box-shadow: 0 0 0 0 rgb(16 185 129 / 0.55);
+  animation: farm-nav-pulse 2s infinite;
+}
+
+@keyframes farm-nav-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(16 185 129 / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgb(16 185 129 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(16 185 129 / 0);
+  }
+}
+
+@media (max-width: 640px) {
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
+    padding: 0.58rem 0.65rem !important;
+    font-size: 0.8125rem !important;
+  }
+
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
+    width: 1.95rem;
+    height: 1.95rem;
+    min-width: 1.95rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern,
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon,
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__pulse {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Trailing chevrons */
+html.farm-unified-shell #sidebar nav a[href] svg.ml-2,
+html.farm-unified-shell #sidebar nav a[href] > i.fa-chevron-right,
+html.farm-unified-shell #sidebar nav a[href] > i.fas.fa-chevron-right {
+  color: var(--farm-nav-muted) !important;
+  opacity: 0.85;
+  transform: none !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav a[href] svg.ml-2,
+.dark html.farm-unified-shell #sidebar nav a[href] > i.fa-chevron-right,
+.dark html.farm-unified-shell #sidebar nav a[href] > i.fas.fa-chevron-right {
+  color: var(--farm-nav-muted-dark) !important;
+}
+
+/* Label text inherits row color (overrides per-link Tailwind text-* on spans) */
+html.farm-unified-shell #sidebar nav a[href] span.font-medium,
+html.farm-unified-shell #sidebar nav a[href] span.font-semibold,
+html.farm-unified-shell #sidebar nav a[href] span.flex-1,
+html.farm-unified-shell #sidebar nav button span.font-medium {
+  color: inherit !important;
+}
+
+/* Chicken section headers inside nav (non-link rows) */
+html.farm-unified-shell #sidebar nav > div > div[class*="bg-chicken-yellow-100"] {
+  background: var(--farm-nav-icon-well) !important;
+  border-color: var(--farm-nav-active-border) !important;
+  border-radius: 0.75rem !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav > div > div[class*="bg-chicken-yellow-100"] {
+  background: var(--farm-nav-icon-well-dark) !important;
+  border-color: var(--farm-nav-active-border-dark) !important;
+}
+
+html.farm-unified-shell #sidebar nav > div > div[class*="bg-chicken-yellow-100"] span {
+  color: var(--farm-nav-active-fg) !important;
+}
+
+.dark html.farm-unified-shell #sidebar nav > div > div[class*="bg-chicken-yellow-100"] span {
+  color: var(--farm-nav-active-fg-dark) !important;
+}
+
+/* Footer typography */
+html.farm-unified-shell footer {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  html.farm-unified-shell footer {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+html.farm-unified-shell footer,
+html.farm-unified-shell footer * {
+  font-size: 0.875rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Layout parity: chicken / analytics pages using div or lg: breakpoints       */
+/* -------------------------------------------------------------------------- */
+
+html.farm-unified-shell body.chicken-pattern {
+  background-image: none !important;
+}
+
+/* Main content when templates use a wrapper div instead of <main> */
+html.farm-unified-shell body:has(#sidebar) div.pt-16[class*="lg:pl-"],
+html.farm-unified-shell body:has(#sidebar) div.pt-16[class*="md:pl-"] {
+  padding-top: var(--farm-chrome-header-h) !important;
+}
+
+@media (min-width: 768px) {
+  html.farm-unified-shell body:has(#sidebar) div.pt-16[class*="lg:pl-"],
+  html.farm-unified-shell body:has(#sidebar) div.pt-16[class*="md:pl-"] {
+    padding-left: var(--farm-sidebar-w) !important;
+  }
+
+  html.farm-unified-shell body:has(#sidebar) main[class*="lg:ml-"],
+  html.farm-unified-shell body:has(#sidebar) main[class*="lg:pl-"] {
+    margin-left: 0 !important;
+    padding-left: var(--farm-sidebar-w) !important;
+  }
+}
+
+/* Chicken sidebar visible from md like pig/cow */
+@media (min-width: 768px) {
+  html.farm-unified-shell #sidebar.transform[class*="lg:translate-x-0"],
+  html.farm-unified-shell #sidebar[class*="-translate-x-full"][class*="lg:translate-x-0"] {
+    transform: translateX(0) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  html.farm-unified-shell #sidebar[class*="-translate-x-full"] {
+    transform: translateX(-100%) !important;
+  }
+}
+
+/* Sticky secondary headers (analytics) — match fixed bar height and chrome */
+html.farm-unified-shell header.sticky.top-0 {
+  position: sticky !important;
+  top: 0 !important;
+  min-height: var(--farm-chrome-header-h) !important;
+  background: var(--farm-chrome-header-bg) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--farm-chrome-border) !important;
+  box-shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06) !important;
+}
+
+.dark html.farm-unified-shell header.sticky.top-0 {
+  background: var(--farm-chrome-header-bg-dark) !important;
+  border-bottom-color: var(--farm-chrome-border-dark) !important;
+}
+
+html.farm-unified-shell header.sticky.top-0 h1 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: rgb(15 23 42) !important;
+}
+
+.dark html.farm-unified-shell header.sticky.top-0 h1 {
+  color: rgb(248 250 252) !important;
+}
+
+/* Sidebar first-row controls (e.g. close) remain visible on unified strip */
+html.farm-unified-shell #sidebar:not(.farm-chicken-sidebar) > div.flex.flex-col > div:first-child button {
+  color: rgb(71 85 105) !important;
+}
+
+.dark html.farm-unified-shell #sidebar:not(.farm-chicken-sidebar) > div.flex.flex-col > div:first-child button {
+  color: rgb(203 213 225) !important;
+}
+
+/* ========================================================================== */
+/* Chicken farm sidebar — Tailwind rows in templates; thin scrollbar + labels + slots */
+/* ========================================================================== */
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin,
+html.farm-unified-shell aside.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(156 163 175) transparent;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin::-webkit-scrollbar,
+html.farm-unified-shell aside.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin::-webkit-scrollbar-thumb,
+html.farm-unified-shell aside.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(156 163 175);
+  border-radius: 3px;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin::-webkit-scrollbar-thumb:hover,
+html.farm-unified-shell aside.farm-chicken-sidebar nav.farm-chicken-nav.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128);
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-nav__label,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-nav__label {
+  margin: 0 0 0.25rem 0.25rem;
+  font-size: 0.625rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: rgb(107 114 128) !important;
+}
+
+.dark html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-nav__label,
+.dark html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-nav__label {
+  color: rgb(156 163 175) !important;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__top-slot,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__top-slot {
+  border-color: rgb(229 231 235) !important;
+  background: rgb(249 250 251 / 0.95) !important;
+}
+
+.dark html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__top-slot,
+.dark html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__top-slot {
+  border-color: rgb(55 65 81) !important;
+  background: rgb(17 24 39 / 0.65) !important;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  width: 100% !important;
+  padding: 0.5rem 0.65rem !important;
+  border-radius: 0.625rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  color: rgb(55 65 81) !important;
+  border: 1px solid rgb(229 231 235) !important;
+  background: rgb(255 255 255) !important;
+}
+
+.dark html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a,
+.dark html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a {
+  color: rgb(229 231 235) !important;
+  border-color: rgb(75 85 99) !important;
+  background: rgb(31 41 55 / 0.9) !important;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a:hover,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a:hover {
+  background: rgb(253 242 248) !important;
+  border-color: rgb(251 207 232) !important;
+  color: rgb(157 23 77) !important;
+}
+
+.dark html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a:hover,
+.dark html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__top-slot a:hover {
+  background: rgb(131 24 67 / 0.35) !important;
+  border-color: rgb(157 23 77 / 0.35) !important;
+  color: rgb(251 207 232) !important;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar-action-btn,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar-action-btn,
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__actions button,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__actions button {
+  display: inline-flex !important;
+  width: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  padding: 0.65rem 0.85rem !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  color: rgb(131 24 67) !important;
+  background: linear-gradient(to right, rgb(252 231 243), rgb(243 232 255)) !important;
+  border: 1px solid rgb(244 114 182 / 0.55) !important;
+  box-shadow: 0 4px 6px -1px rgb(219 39 119 / 0.12) !important;
+  cursor: pointer !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.15s ease !important;
+}
+
+.dark html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar-action-btn,
+.dark html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar-action-btn,
+.dark html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__actions button,
+.dark html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__actions button {
+  color: rgb(251 207 232) !important;
+  background: linear-gradient(to right, rgb(131 24 67 / 0.95), rgb(88 28 135 / 0.9)) !important;
+  border-color: rgb(192 38 211 / 0.45) !important;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35) !important;
+}
+
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar-action-btn:hover,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar-action-btn:hover,
+html.farm-unified-shell #sidebar.farm-chicken-sidebar .farm-chicken-sidebar__actions button:hover,
+html.farm-unified-shell aside.farm-chicken-sidebar .farm-chicken-sidebar__actions button:hover {
+  filter: brightness(1.02);
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 8px 16px -4px rgb(219 39 119 / 0.22) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dark mode fix: ensure sidebar styles switch with html.dark                  */
+/* -------------------------------------------------------------------------- */
+
+html.farm-unified-shell.dark #sidebar,
+html.farm-unified-shell.dark aside#sidebar {
+  background: linear-gradient(180deg, rgb(30 41 59), rgb(15 23 42)) !important;
+  border-right-color: var(--farm-chrome-border-dark) !important;
+  box-shadow: 10px 0 30px -16px rgb(0 0 0 / 0.6), inset -1px 0 0 rgb(71 85 105 / 0.9) !important;
+}
+
+html.farm-unified-shell.dark #sidebar::after,
+html.farm-unified-shell.dark aside#sidebar::after {
+  background: linear-gradient(180deg, rgb(52 211 153), rgb(129 140 248));
+  opacity: 0.95;
+}
+
+html.farm-unified-shell.dark #sidebar nav {
+  background: linear-gradient(180deg, rgb(30 41 59 / 0.98), rgb(15 23 42 / 0.98)) !important;
+  border-top-color: rgb(71 85 105) !important;
+}
+
+html.farm-unified-shell.dark #sidebar nav a[href],
+html.farm-unified-shell.dark #sidebar nav button:not(#close-sidebar),
+html.farm-unified-shell.dark #sidebar a[role="menuitem"] {
+  color: var(--farm-nav-link-dark) !important;
+}
+
+html.farm-unified-shell.dark #sidebar nav a[href]:hover,
+html.farm-unified-shell.dark #sidebar nav button:not(#close-sidebar):hover,
+html.farm-unified-shell.dark #sidebar a[role="menuitem"]:hover {
+  background-color: var(--farm-nav-hover-bg-dark) !important;
+  color: var(--farm-nav-link-dark) !important;
+}
+
+html.farm-unified-shell.dark #sidebar nav > div.ml-4,
+html.farm-unified-shell.dark #sidebar nav > div.ml-6,
+html.farm-unified-shell.dark #sidebar nav > div[class*="ml-4"],
+html.farm-unified-shell.dark #sidebar nav > div[class*="ml-6"] {
+  border-left-color: rgb(71 85 105) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dark mode parity: full page/background + header text                        */
+/* -------------------------------------------------------------------------- */
+
+html.farm-unified-shell.dark {
+  color-scheme: dark;
+}
+
+html.farm-unified-shell.dark body {
+  background: radial-gradient(1000px 480px at 8% -8%, rgb(6 78 59 / 0.22), transparent 52%),
+    radial-gradient(800px 420px at 100% 0%, rgb(49 46 129 / 0.28), transparent 48%),
+    linear-gradient(
+      165deg,
+      var(--farm-body-from-dark) 0%,
+      var(--farm-body-via-dark) 42%,
+      var(--farm-body-to-dark) 100%
+    ) !important;
+}
+
+html.farm-unified-shell.dark header h1 {
+  color: rgb(248 250 252) !important;
+}
+
+html.farm-unified-shell.dark header .text-xs,
+html.farm-unified-shell.dark header p.text-xs {
+  color: rgb(148 163 184) !important;
+}
+
+html.farm-unified-shell .farm-sidebar-toggle-btn {
+  box-shadow: 0 8px 24px -12px rgb(15 23 42 / 0.35), 0 1px 2px rgb(15 23 42 / 0.12);
+}
+
+html.farm-unified-shell.dark .farm-sidebar-toggle-btn {
+  box-shadow: 0 10px 28px -14px rgb(0 0 0 / 0.65), 0 1px 0 rgb(148 163 184 / 0.08) inset;
+}
+
+/* Sidebar nav rhythm and hierarchy */
+html.farm-unified-shell #sidebar nav {
+  gap: 0.375rem !important;
+  padding: 0.9rem 0.65rem 1rem !important;
+}
+
+html.farm-unified-shell .farm-chicken-nav__label {
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.35rem !important;
+  padding: 0 0.4rem !important;
+  font-size: 0.66rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  color: rgb(100 116 139) !important;
+}
+
+html.farm-unified-shell.dark .farm-chicken-nav__label {
+  color: rgb(148 163 184) !important;
+}
+
+html.farm-unified-shell .farm-nav-sublinks {
+  margin: 0.25rem 0.15rem 0.5rem 0.45rem !important;
+  padding: 0.35rem 0 0.2rem 0.75rem !important;
+  border-left: 2px solid rgb(226 232 240) !important;
+  display: grid !important;
+  gap: 0.25rem !important;
+}
+
+html.farm-unified-shell.dark .farm-nav-sublinks {
+  border-left-color: rgb(71 85 105) !important;
+}
+
+html.farm-unified-shell .farm-nav-sublink {
+  position: relative;
+  border: 1px solid rgb(226 232 240 / 0.72) !important;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(248 250 252 / 0.94)) !important;
+  border-radius: 0.65rem !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04) !important;
+}
+
+html.farm-unified-shell .farm-nav-sublink:hover {
+  border-color: rgb(129 140 248 / 0.55) !important;
+  background: linear-gradient(145deg, rgb(238 242 255 / 0.92), rgb(224 231 255 / 0.9)) !important;
+}
+
+html.farm-unified-shell.dark .farm-nav-sublink:hover {
+  border-color: rgb(99 102 241 / 0.6) !important;
+  background: linear-gradient(145deg, rgb(49 46 129 / 0.45), rgb(30 41 59 / 0.8)) !important;
+}
+
+html.farm-unified-shell .farm-nav-sublink.is-active {
+  border-color: rgb(99 102 241 / 0.58) !important;
+  background: linear-gradient(135deg, rgb(224 231 255), rgb(199 210 254)) !important;
+  box-shadow: 0 4px 12px -8px rgb(79 70 229 / 0.5) !important;
+}
+
+html.farm-unified-shell.dark .farm-nav-sublink.is-active {
+  border-color: rgb(99 102 241 / 0.55) !important;
+  background: linear-gradient(135deg, rgb(79 70 229 / 0.5), rgb(30 41 59 / 0.9)) !important;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35) !important;
+}
+
+html.farm-unified-shell.dark .farm-nav-sublink {
+  border-color: rgb(71 85 105 / 0.85) !important;
+  background: linear-gradient(145deg, rgb(30 41 59 / 0.9), rgb(15 23 42 / 0.9)) !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28) !important;
+}
+
+/* Prevent link text clipping on medium/small viewports */
+html.farm-unified-shell .farm-nav-link-modern,
+html.farm-unified-shell .farm-nav-sublink {
+  overflow: visible !important;
+}
+
+html.farm-unified-shell .farm-nav-link-modern__text,
+html.farm-unified-shell #sidebar nav a span.flex-1,
+html.farm-unified-shell #sidebar nav button span.flex-1 {
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+@media (max-width: 420px) {
+  html.farm-unified-shell .farm-nav-link-modern {
+    padding: 0.52rem 0.58rem !important;
+    gap: 0.5rem !important;
+  }
+
+  html.farm-unified-shell .farm-nav-link-modern__icon {
+    width: 1.85rem;
+    height: 1.85rem;
+    min-width: 1.85rem;
+  }
+}

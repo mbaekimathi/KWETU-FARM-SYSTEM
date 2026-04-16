@@ -4,326 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Breeding Records - Pig Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                    screens: {
-                        'xs': '475px',
-                        'sm': '640px',
-                        'md': '768px',
-                        'lg': '1024px',
-                        'xl': '1280px',
-                        '2xl': '1536px',
-                    },
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        },
-                        secondary: {
-                            50: '#fdf4ff',
-                            100: '#fae8ff',
-                            200: '#f5d0fe',
-                            300: '#f0abfc',
-                            400: '#e879f9',
-                            500: '#d946ef',
-                            600: '#c026d3',
-                            700: '#a21caf',
-                            800: '#86198f',
-                            900: '#701a75',
-                        },
-                        accent: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            200: '#bbf7d0',
-                            300: '#86efac',
-                            400: '#4ade80',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                            900: '#14532d',
-                        }
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.5s ease-in-out',
-                        'slide-up': 'slideUp 0.3s ease-out',
-                        'slide-down': 'slideDown 0.3s ease-out',
-                        'scale-in': 'scaleIn 0.2s ease-out',
-                        'bounce-subtle': 'bounceSubtle 0.6s ease-out',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        slideUp: {
-                            '0%': { transform: 'translateY(10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        slideDown: {
-                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        scaleIn: {
-                            '0%': { transform: 'scale(0.95)', opacity: '0' },
-                            '100%': { transform: 'scale(1)', opacity: '1' },
-                        },
-                        bounceSubtle: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-4px)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .sidebar {
-            transition: transform 0.3s ease-in-out;
-        }
-        .sidebar.closed {
-            transform: translateX(-100%);
-        }
-        @media (min-width: 768px) {
-            .sidebar.closed {
-                transform: translateX(0);
-            }
-        }
-        
-        /* Custom animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-        }
-        
-        @keyframes bounce {
-            0%, 20%, 53%, 80%, 100% {
-                transform: translate3d(0,0,0);
-            }
-            40%, 43% {
-                transform: translate3d(0, -8px, 0);
-            }
-            70% {
-                transform: translate3d(0, -4px, 0);
-            }
-            90% {
-                transform: translate3d(0, -2px, 0);
-            }
-        }
-        
-        .animate-fadeInUp {
-            animation: fadeInUp 0.6s ease-out forwards;
-        }
-        
-        .animate-slideInRight {
-            animation: slideInRight 0.6s ease-out forwards;
-        }
-        
-        .animate-bounce {
-            animation: bounce 1s infinite;
-        }
-        
-        /* Enhanced hover effects */
-        .group:hover .group-hover\:scale-110 {
-            transform: scale(1.1);
-        }
-        
-        .group:hover .group-hover\:scale-105 {
-            transform: scale(1.05);
-        }
-        
-        .group:hover .group-hover\:translate-x-1 {
-            transform: translateX(0.25rem);
-        }
-        
-        .group:hover .group-hover\:translate-y-1 {
-            transform: translateY(0.25rem);
-        }
-        
-        /* Custom scrollbar */
-        .scrollbar-thin {
-            scrollbar-width: thin;
-            scrollbar-color: rgb(156 163 175) transparent;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background-color: rgb(156 163 175);
-            border-radius: 3px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background-color: rgb(107 114 128);
-        }
-    </style>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
-    <!-- Sidebar -->
-    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 shadow-2xl transform -translate-x-full transition-all duration-300 ease-in-out md:translate-x-0 border-r border-gray-200 dark:border-gray-700">
-        <!-- Sidebar Header -->
-        <div class="flex items-center justify-between h-20 px-6 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 shadow-lg">
-            <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
-                    <i class="fas fa-piggy-bank text-white text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white tracking-tight">PigFarm Pro</h1>
-                    <p class="text-sm text-white/90 font-medium">Breeding Records</p>
-                </div>
-            </div>
-            <button id="close-sidebar" class="md:hidden text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200" aria-label="Close sidebar">
-                <i class="fas fa-times text-lg"></i>
-            </button>
-        </div>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Breeding Records' %}
+{% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Breeding' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_breeding_management_hub.html' %}
+{% set pig_nav_active = 'breeding' %}
 
-        <!-- Sidebar Navigation -->
-        <nav class="mt-8 px-4">
-            <div class="space-y-2">
-                <!-- Breeding Management -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}management" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-heart text-primary-600 dark:text-primary-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Breeding Management</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Manage breeding</p>
-                    </div>
-                </a>
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-                <!-- Breeding Records (Active) -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/breeding-{% else %}/admin/farm/breeding-{% endif %}records" class="group flex items-center px-4 py-4 bg-gradient-to-r from-primary-50 via-primary-100 to-secondary-50 dark:from-primary-900/30 dark:via-primary-800/30 dark:to-secondary-900/30 text-primary-700 dark:text-primary-300 rounded-xl shadow-lg border border-primary-200 dark:border-primary-700/50 relative overflow-hidden" role="menuitem" aria-current="page">
-                    <div class="absolute inset-0 bg-gradient-to-r from-primary-500/10 to-secondary-500/10"></div>
-                    <div class="w-12 h-12 bg-gradient-to-br from-primary-500 via-primary-600 to-secondary-500 rounded-xl flex items-center justify-center shadow-lg mr-4 group-hover:scale-110 transition-transform duration-200 relative z-10">
-                        <i class="fas fa-clipboard-list text-white text-lg"></i>
-                    </div>
-                    <div class="flex-1 relative z-10">
-                        <span class="font-bold text-sm text-gray-900 dark:text-white block">Breeding Records</span>
-                        <span class="text-xs text-primary-600 dark:text-primary-400 font-medium">Active & Pregnant</span>
-                    </div>
-                    <div class="w-2 h-2 bg-accent-500 rounded-full animate-pulse-slow"></div>
-                </a>
-
-                <!-- Completed Farrowings -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/completed-farrowings{% else %}/admin/farm/completed-farrowings{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Completed Farrowings</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Successful Births</p>
-                    </div>
-                </a>
-
-                <!-- Failed Conceptions -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/failed-conceptions{% else %}/admin/farm/failed-conceptions{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-times-circle text-red-600 dark:text-red-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Failed Conceptions</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Failed Attempts</p>
-                    </div>
-                </a>
-
-                <!-- Family Tree -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/family-tree{% else %}/admin/farm/family-tree{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-sitemap text-purple-600 dark:text-purple-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Family Tree</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Pedigree View</p>
-                    </div>
-                </a>
-
-                <!-- Dashboard -->
-                <a href="{% if user.role == 'manager' %}/manager/dashboard{% else %}/admin/dashboard{% endif %}" class="group flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" role="menuitem">
-                    <div class="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                        <i class="fas fa-chart-line text-gray-600 dark:text-gray-400 text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-sm">Dashboard</span>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Overview</p>
-                    </div>
-                </a>
-            </div>
-        </nav>
-
-        <!-- Sidebar Footer -->
-        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <i class="fas fa-user text-white text-lg"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-gray-900 dark:text-white truncate">Admin User</p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">Administrator</p>
-                    <div class="flex items-center mt-1">
-                        <div class="w-2 h-2 bg-accent-500 rounded-full mr-2"></div>
-                        <span class="text-xs text-accent-600 dark:text-accent-400 font-medium">Online</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mobile Overlay -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
-
-    <!-- Main Content -->
-    <main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+<main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
         <div class="p-6 lg:p-8">
             <!-- Page Header -->
             <div class="mb-8 animate-fade-in">
@@ -391,6 +86,13 @@
                         <div>
                             <span class="text-sm text-gray-600 dark:text-gray-400">Due This Week:</span>
                             <span id="due-this-week-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-check-circle text-emerald-500"></i>
+                        <div>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Successful Breedings:</span>
+                            <span id="successful-breedings-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
                         </div>
                     </div>
                 </div>
@@ -481,7 +183,7 @@
         function setupMobileMenu() {
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const sidebar = document.getElementById('sidebar');
-            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const sidebarOverlay = document.getElementById('sidebar-overlay') || document.getElementById('mobile-overlay');
             const closeSidebarBtn = document.getElementById('close-sidebar');
 
             if (mobileMenuBtn) {
@@ -516,12 +218,13 @@
                 const data = await response.json();
                 if (data.success) {
                     const breedingRecords = data.records;
-                    const displayRecords = breedingRecords.filter(r => r.breeding_status === 'pregnant' || r.breeding_status === 'farrowed');
+                    const displayRecords = breedingRecords.filter(r => ['served', 'pregnant', 'farrowed', 'completed', 'failed'].includes(r.breeding_status));
                     
                     // Update the counts in the statistics card (pregnant + farrowed view)
                     document.getElementById('active-breeding-count').textContent = displayRecords.length;
                     document.getElementById('pregnant-sows-count').textContent = displayRecords.filter(r => r.breeding_status === 'pregnant').length;
                     document.getElementById('due-this-week-count').textContent = displayRecords.filter(r => r.breeding_status === 'pregnant' && r.days_to_farrowing !== null && r.days_to_farrowing <= 7).length;
+                    document.getElementById('successful-breedings-count').textContent = displayRecords.filter(r => r.has_registered_litter).length;
                     
                     const container = document.getElementById('breeding-records-container');
                     container.innerHTML = '';
@@ -547,6 +250,7 @@
                             <table class="w-full min-w-full table-fixed">
                                 <thead>
                                     <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Breeding Ref</th>
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sow ID</th>
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Boar ID</th>
                                         <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Served Date</th>
@@ -572,6 +276,11 @@
                                         
                                         return `
                                             <tr class="breeding-record-form border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150">
+                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                                        ${record.breeding_ref || `BR-${record.id}`}
+                                                    </span>
+                                                </td>
                                                 <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
                                                     ${record.sow_tag_id || 'N/A'}
                                                 </td>
@@ -611,7 +320,24 @@
                                                             <i class="fas fa-eye mr-1 sm:mr-2"></i>
                                                             <span class="hidden sm:inline">View</span>
                                                         </button>
-                                                        ${record.days_to_farrowing !== null && record.days_to_farrowing <= 7 ? `
+                                                        <button onclick="showEditBreedingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}', '${record.expected_due_date || ''}', '${record.breeding_status}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200">
+                                                            <i class="fas fa-edit mr-1 sm:mr-2"></i>
+                                                            <span class="hidden sm:inline">Edit</span>
+                                                        </button>
+                                                        <button onclick="showDeleteBreedingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-200">
+                                                            <i class="fas fa-trash mr-1 sm:mr-2"></i>
+                                                            <span class="hidden sm:inline">Delete</span>
+                                                        </button>
+                                                        ${record.can_cancel ? `
+                                                            <button onclick="showCancelBreedingModal(${record.id})" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all duration-200" title="Cancel conception">
+                                                                <i class="fas fa-times mr-1 sm:mr-2"></i>
+                                                                <span class="hidden sm:inline">Cancel</span>
+                                                            </button>
+                                                            <div class="inline-flex items-center justify-center w-24 px-2 py-1 text-[11px] font-semibold rounded-md bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                                                ${record.days_remaining_to_cancel > 0 ? `${record.days_remaining_to_cancel} day${record.days_remaining_to_cancel === 1 ? '' : 's'} left` : 'Last day'}
+                                                            </div>
+                                                        ` : ''}
+                                                        ${record.days_to_farrowing !== null && record.days_to_farrowing <= 7 && !record.has_registered_litter && record.breeding_status === 'pregnant' ? `
                                                             <button onclick="showRegisterFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200">
                                                                 <i class="fas fa-baby mr-1 sm:mr-2"></i>
                                                                 <span class="hidden sm:inline">Register</span>
@@ -641,6 +367,7 @@
                 case 'available': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
                 case 'completed': return 'bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-200';
                 case 'farrowed': return 'bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200';
+                case 'failed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
                 default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
             }
         }
@@ -710,6 +437,7 @@
                 case 'available': return 'fas fa-check-circle text-gray-600';
                 case 'completed': return 'fas fa-check-double text-secondary-600';
                 case 'farrowed': return 'fas fa-baby-carriage text-accent-600';
+                case 'failed': return 'fas fa-times-circle text-red-600';
                 default: return 'fas fa-question-circle text-gray-600';
             }
         }
@@ -721,6 +449,7 @@
                 case 'available': return 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600';
                 case 'completed': return 'from-secondary-100 to-secondary-200 dark:from-secondary-900/30 dark:to-secondary-800/30';
                 case 'farrowed': return 'from-accent-100 to-accent-200 dark:from-accent-900/30 dark:to-accent-800/30';
+                case 'failed': return 'from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30';
                 default: return 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600';
             }
         }
@@ -732,6 +461,7 @@
                 case 'available': return 'bg-gray-500';
                 case 'completed': return 'bg-secondary-500';
                 case 'farrowed': return 'bg-accent-500';
+                case 'failed': return 'bg-red-500';
                 default: return 'bg-gray-500';
             }
         }
@@ -1529,5 +1259,5 @@
             }
         }
     </script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

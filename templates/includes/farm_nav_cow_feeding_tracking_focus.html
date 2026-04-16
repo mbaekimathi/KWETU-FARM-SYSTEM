@@ -1,0 +1,41 @@
+{# Focused links for cow feeding tracking page. #}
+{% set _user_role = user.role if user is defined and user and user.role else 'administrator' %}
+{% set _base = '/manager/farm/' if _user_role == 'manager' else '/admin/farm/' %}
+{% set _management_href = _base ~ 'cow-feeding-management' %}
+{% set _tracking_href = _base ~ 'cow-feeding-tracking' %}
+{% set _stock_href = _base ~ 'cow-feed-stock-management' %}
+{% set _analytics_href = _base ~ 'cow-feed-analytics' %}
+{% set _settings_href = _base ~ 'cow-feed-settings' %}
+{% set _path = request.path.rstrip('/') %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Cow feeding</p>
+
+                <a href="{{ _management_href }}" class="farm-nav-link-modern group {% if _path == _management_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Cow Feeding Management</span>
+                    </div>
+                </a>
+
+                <a href="{{ _tracking_href }}" class="farm-nav-link-modern group {% if _path == _tracking_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Feeding Tracking</span>
+                    </div>
+                </a>
+
+                <a href="{{ _stock_href }}" class="farm-nav-link-modern group {% if _path == _stock_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Feed Stock Management</span>
+                    </div>
+                </a>
+
+                <a href="{{ _analytics_href }}" class="farm-nav-link-modern group {% if _path == _analytics_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Feed Analytics</span>
+                    </div>
+                </a>
+
+                <a href="{{ _settings_href }}" class="farm-nav-link-modern group {% if _path == _settings_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Feed Settings</span>
+                    </div>
+                </a>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sow Breeding Analytics - Pig Farm Management System</title>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Sow Breeding Analytics' %}
+{% set farm_shell_icon_class = 'fas fa-chart-line' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Breeding' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_breeding_management_hub.html' %}
+{% set pig_nav_active = 'breeding' %}
+
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+
+<main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+    <div class="p-6 lg:p-8 space-y-6">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Sow Breeding Analytics</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Breeding performance and litter analytics for this sow.</p>
+                </div>
+                <a href="/admin/farm/breeding-management" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back
+                </a>
+            </div>
+        </div>
+
+        <div id="loading-state" class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-3"></div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Loading sow analytics...</p>
+        </div>
+
+        <div id="content" class="hidden space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 p-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Sow Tag</p>
+                        <p id="sow-tag" class="text-lg font-semibold text-gray-900 dark:text-white">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Breed</p>
+                        <p id="sow-breed" class="text-lg font-semibold text-gray-900 dark:text-white">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Farm</p>
+                        <p id="sow-farm" class="text-lg font-semibold text-gray-900 dark:text-white">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Current Breeding Status</p>
+                        <p id="sow-status" class="text-lg font-semibold text-gray-900 dark:text-white">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Total Breedings</p>
+                    <p id="total-breedings" class="text-xl font-bold text-gray-900 dark:text-white">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Successful</p>
+                    <p id="successful-breedings" class="text-xl font-bold text-green-600 dark:text-green-400">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Failed</p>
+                    <p id="failed-breedings" class="text-xl font-bold text-red-600 dark:text-red-400">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Active</p>
+                    <p id="active-breedings" class="text-xl font-bold text-yellow-600 dark:text-yellow-400">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Last Breeding</p>
+                    <p id="last-breeding-date" class="text-sm font-semibold text-gray-900 dark:text-white">Never</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Total Litters</p>
+                    <p id="total-litters" class="text-xl font-bold text-gray-900 dark:text-white">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Total Piglets</p>
+                    <p id="total-piglets" class="text-xl font-bold text-gray-900 dark:text-white">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Alive Piglets</p>
+                    <p id="alive-piglets" class="text-xl font-bold text-green-600 dark:text-green-400">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Still Births</p>
+                    <p id="still-births" class="text-xl font-bold text-red-600 dark:text-red-400">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Avg Alive/Litter</p>
+                    <p id="avg-alive" class="text-xl font-bold text-blue-600 dark:text-blue-400">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Litters</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Litter ID</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Farrowing Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Total</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Alive</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Still Births</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="litters-body" class="divide-y divide-gray-100 dark:divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+const sowId = {{ sow_id }};
+
+function fmtDate(v) {
+    if (!v) return 'Never';
+    return new Date(v).toLocaleDateString();
+}
+
+async function loadSowAnalytics() {
+    try {
+        const res = await fetch(`/api/breeding/sow/${sowId}/analytics`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load');
+
+        const sow = data.sow || {};
+        const bs = data.breeding_summary || {};
+        const ls = data.litter_summary || {};
+        const litters = data.litters || [];
+
+        document.getElementById('sow-tag').textContent = sow.tag_id || '-';
+        document.getElementById('sow-breed').textContent = sow.breed || '-';
+        document.getElementById('sow-farm').textContent = sow.farm_name || '-';
+        document.getElementById('sow-status').textContent = sow.breeding_status || '-';
+
+        document.getElementById('total-breedings').textContent = bs.total_breedings || 0;
+        document.getElementById('successful-breedings').textContent = bs.successful_breedings || 0;
+        document.getElementById('failed-breedings').textContent = bs.failed_breedings || 0;
+        document.getElementById('active-breedings').textContent = bs.active_breedings || 0;
+        document.getElementById('last-breeding-date').textContent = fmtDate(bs.last_breeding_date);
+
+        document.getElementById('total-litters').textContent = ls.total_litters || 0;
+        document.getElementById('total-piglets').textContent = ls.total_piglets || 0;
+        document.getElementById('alive-piglets').textContent = ls.alive_piglets || 0;
+        document.getElementById('still-births').textContent = ls.still_births || 0;
+        document.getElementById('avg-alive').textContent = ls.avg_alive_per_litter || 0;
+
+        const body = document.getElementById('litters-body');
+        if (!litters.length) {
+            body.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No litters found for this sow.</td></tr>';
+        } else {
+            body.innerHTML = litters.map(l => `
+                <tr>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">${l.litter_id || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${fmtDate(l.farrowing_date)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${l.total_piglets ?? 0}</td>
+                    <td class="px-4 py-3 text-sm text-green-700 dark:text-green-300 font-semibold">${l.alive_piglets ?? 0}</td>
+                    <td class="px-4 py-3 text-sm text-red-700 dark:text-red-300 font-semibold">${l.still_births ?? 0}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${l.status || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+    } catch (e) {
+        document.getElementById('loading-state').innerHTML = `<p class="text-sm text-red-600 dark:text-red-400">${e.message || 'Failed to load sow analytics.'}</p>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadSowAnalytics);
+</script>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
+</html>

@@ -1,0 +1,289 @@
+{# Shared farm admin chrome — unified theme for header, sidebar, footer #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/farm_chrome.css') }}">
+<script>
+(function () {
+  document.documentElement.classList.add('farm-unified-shell');
+  var clockTimer = null;
+
+  function isDarkMode() {
+    return document.documentElement.classList.contains('dark');
+  }
+
+  function setDarkMode(enabled) {
+    document.documentElement.classList.toggle('dark', enabled);
+    if (document.body) {
+      document.body.classList.toggle('dark', enabled);
+    }
+    try {
+      localStorage.setItem('theme', enabled ? 'dark' : 'light');
+      localStorage.setItem('darkMode', enabled ? 'true' : 'false');
+      localStorage.setItem('color-theme', enabled ? 'dark' : 'light');
+    } catch (e) {}
+  }
+
+  try {
+    var savedTheme = localStorage.getItem('theme');
+    var savedDarkMode = localStorage.getItem('darkMode');
+    var savedColorTheme = localStorage.getItem('color-theme');
+    var shouldEnableDark =
+      savedTheme === 'dark' ||
+      savedColorTheme === 'dark' ||
+      savedDarkMode === 'true';
+    if (savedTheme === 'light' || savedColorTheme === 'light' || savedDarkMode === 'false') {
+      shouldEnableDark = false;
+    }
+    setDarkMode(shouldEnableDark);
+  } catch (e) {}
+
+  function onReady(callback) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', callback, { once: true });
+      return;
+    }
+    callback();
+  }
+
+  function syncColorScheme() {
+    document.documentElement.style.colorScheme = document.documentElement.classList.contains('dark')
+      ? 'dark'
+      : 'light';
+  }
+  syncColorScheme();
+  try {
+    new MutationObserver(syncColorScheme).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  } catch (e) {}
+
+  function tickClock() {
+    var t = document.getElementById('live-time');
+    var d = document.getElementById('live-date');
+    if (!t || !d) return;
+    var n = new Date();
+    t.textContent = n.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    d.textContent = n.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function syncThemeIconsIn(toggleEl) {
+    if (!toggleEl) return;
+    var sunIcon = toggleEl.querySelector('.farm-chrome-theme-toggle__sun, #sun-icon');
+    var moonIcon = toggleEl.querySelector('.farm-chrome-theme-toggle__moon, #moon-icon');
+    if (!sunIcon || !moonIcon) return;
+    var isDark = isDarkMode();
+    sunIcon.classList.toggle('hidden', !isDark);
+    moonIcon.classList.toggle('hidden', isDark);
+  }
+
+  function syncThemeIcons() {
+    var toggles = document.querySelectorAll('[data-theme-toggle], #theme-toggle');
+    if (!toggles || !toggles.length) return;
+    toggles.forEach(function (toggleEl) {
+      syncThemeIconsIn(toggleEl);
+    });
+  }
+
+  function setupThemeToggle() {
+    if (document.documentElement.dataset.farmThemeBound === '1') {
+      syncThemeIcons();
+      return;
+    }
+    document.documentElement.dataset.farmThemeBound = '1';
+    syncThemeIcons();
+
+    document.addEventListener('click', function (e) {
+      var toggleEl = e.target && e.target.closest && e.target.closest('[data-theme-toggle], #theme-toggle');
+      if (!toggleEl) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') {
+        e.stopImmediatePropagation();
+      }
+      setDarkMode(!isDarkMode());
+      syncColorScheme();
+      syncThemeIcons();
+    }, true);
+  }
+
+  function setupUserDropdown() {
+    if (document.documentElement.dataset.farmUserDropdownBound === '1') return;
+    document.documentElement.dataset.farmUserDropdownBound = '1';
+
+    function getRoot(el) {
+      if (!el || !el.closest) return null;
+      return el.closest('[data-user-dropdown-root]');
+    }
+
+    function getMenu(root) {
+      if (!root) return null;
+      return root.querySelector('[data-user-dropdown-menu]') || root.querySelector('#user-dropdown');
+    }
+
+    function getToggle(root) {
+      if (!root) return null;
+      return root.querySelector('[data-user-dropdown-toggle]') || root.querySelector('#user-dropdown-btn');
+    }
+
+    function closeAllDropdowns() {
+      var menus = document.querySelectorAll('[data-user-dropdown-menu], #user-dropdown');
+      menus.forEach(function (menu) {
+        menu.classList.add('hidden');
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      var toggle = e.target && e.target.closest && e.target.closest('[data-user-dropdown-toggle], #user-dropdown-btn');
+      if (toggle) {
+        var root = getRoot(toggle);
+        var menu = getMenu(root);
+        if (!menu) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') {
+          e.stopImmediatePropagation();
+        }
+        var shouldOpen = menu.classList.contains('hidden');
+        closeAllDropdowns();
+        if (shouldOpen) {
+          menu.classList.remove('hidden');
+        }
+        return;
+      }
+
+      var openMenus = document.querySelectorAll('[data-user-dropdown-menu]:not(.hidden), #user-dropdown:not(.hidden)');
+      var clickedInsideAnyOpenDropdown = false;
+      openMenus.forEach(function (menu) {
+        var root = getRoot(menu);
+        var btn = getToggle(root);
+        if (menu.contains(e.target) || (btn && btn.contains(e.target))) {
+          clickedInsideAnyOpenDropdown = true;
+        }
+      });
+      if (!clickedInsideAnyOpenDropdown) {
+        closeAllDropdowns();
+      }
+    }, true);
+  }
+
+  function setupClock() {
+    tickClock();
+    if (clockTimer) return;
+    clockTimer = setInterval(tickClock, 1000);
+  }
+
+  function setupSidebarToggle() {
+    var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    var sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    var sidebar = document.getElementById('sidebar');
+    var closeSidebarBtn = document.getElementById('close-sidebar');
+    var overlay = document.getElementById('mobile-overlay') || document.getElementById('sidebar-overlay');
+    if (!sidebar || sidebar.dataset.farmSidebarBound === '1') return;
+
+    var desktopBreakpoint = sidebar.className.indexOf('lg:translate-x-0') !== -1 ? 1024 : 768;
+
+    function syncToggleButton(isOpen, isDesktop) {
+      if (!sidebarToggleBtn) return;
+      if (isDesktop) {
+        sidebarToggleBtn.classList.add('hidden');
+        return;
+      }
+      sidebarToggleBtn.classList.remove('hidden');
+      sidebarToggleBtn.setAttribute('aria-label', isOpen ? 'Close sidebar' : 'Open sidebar');
+      sidebarToggleBtn.setAttribute('title', isOpen ? 'Close sidebar' : 'Open sidebar');
+      var icon = sidebarToggleBtn.querySelector('i');
+      if (icon) {
+        icon.className = isOpen ? 'fas fa-times text-sm' : 'fas fa-bars text-sm';
+      }
+    }
+
+    function openSidebar() {
+      sidebar.classList.remove('-translate-x-full');
+      sidebar.classList.add('translate-x-0');
+      if (overlay) overlay.classList.remove('hidden');
+      syncToggleButton(true, false);
+    }
+
+    function closeSidebar() {
+      sidebar.classList.add('-translate-x-full');
+      sidebar.classList.remove('translate-x-0');
+      if (overlay) overlay.classList.add('hidden');
+      syncToggleButton(false, false);
+    }
+
+    function syncSidebarForViewport() {
+      var isDesktop = window.innerWidth >= desktopBreakpoint;
+      if (isDesktop) {
+        if (overlay) overlay.classList.add('hidden');
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        syncToggleButton(true, true);
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+        syncToggleButton(false, false);
+      }
+    }
+
+    sidebar.dataset.farmSidebarBound = '1';
+    if (mobileMenuBtn) {
+      mobileMenuBtn.dataset.farmSidebarBound = '1';
+      mobileMenuBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (sidebar.classList.contains('-translate-x-full')) openSidebar();
+        else closeSidebar();
+      });
+    }
+
+    if (sidebarToggleBtn) {
+      sidebarToggleBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (sidebar.classList.contains('-translate-x-full')) openSidebar();
+        else closeSidebar();
+      });
+    }
+
+    if (closeSidebarBtn) {
+      closeSidebarBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        closeSidebar();
+      });
+    }
+
+    if (overlay) {
+      overlay.addEventListener('click', function () {
+        closeSidebar();
+      });
+    }
+
+    sidebar.addEventListener('click', function (e) {
+      var navTarget = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!navTarget) return;
+      if (window.innerWidth < desktopBreakpoint) closeSidebar();
+    });
+
+    window.addEventListener('resize', syncSidebarForViewport);
+    syncSidebarForViewport();
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest('[data-farm-api-logout]');
+    if (!el) return;
+    e.preventDefault();
+    fetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.success && data.redirect) window.location.href = data.redirect;
+        else window.location.href = '/';
+      })
+      .catch(function () { window.location.href = '/'; });
+  });
+
+  onReady(function () {
+    setupThemeToggle();
+    setupUserDropdown();
+    setupSidebarToggle();
+    setupClock();
+    syncThemeIcons();
+  });
+})();
+</script>

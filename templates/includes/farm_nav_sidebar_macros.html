@@ -1,0 +1,39 @@
+{# Flat sidebar rows — same active/inactive pattern as pig management (pink / purple / blue). #}
+{% macro farm_flat_nav_row(href, label, active=false) -%}
+    {% if active %}
+    <a href="{{ href }}" class="farm-nav-link-modern is-active group">
+        <div class="farm-nav-link-modern__icon [&>svg]:h-5 [&>svg]:w-5">{{ caller() }}</div>
+        <div class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold text-gray-900 dark:text-white">{{ label }}</span>
+            <span class="block truncate text-xs font-medium text-indigo-600 dark:text-indigo-300">Active Page</span>
+        </div>
+        <div class="farm-nav-link-modern__pulse ml-2 shrink-0" aria-hidden="true"></div>
+    </a>
+    {% else %}
+    <a href="{{ href }}" class="farm-nav-link-modern group">
+        <div class="farm-nav-link-modern__icon [&>svg]:h-4 [&>svg]:w-4">{{ caller() }}</div>
+        <span class="farm-nav-link-modern__text min-w-0 truncate text-sm font-medium">{{ label }}</span>
+        <svg class="ml-2 h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+    </a>
+    {% endif %}
+{%- endmacro %}
+
+{# Register production — opens shared modal (openChickenProductionRegistrationModal) instead of navigating. #}
+{% macro farm_flat_nav_register_production_row(active=false) -%}
+    {% if active %}
+    <button type="button" onclick="if (typeof openChickenProductionRegistrationModal === 'function') openChickenProductionRegistrationModal();" class="farm-nav-link-modern is-active group flex w-full text-left">
+        <div class="farm-nav-link-modern__icon [&>svg]:h-5 [&>svg]:w-5">{{ caller() }}</div>
+        <div class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold text-gray-900 dark:text-white">Register production</span>
+            <span class="block truncate text-xs font-medium text-indigo-600 dark:text-indigo-300">Active Page</span>
+        </div>
+        <div class="farm-nav-link-modern__pulse ml-2 shrink-0" aria-hidden="true"></div>
+    </button>
+    {% else %}
+    <button type="button" onclick="if (typeof openChickenProductionRegistrationModal === 'function') openChickenProductionRegistrationModal();" class="farm-nav-link-modern group flex w-full text-left">
+        <div class="farm-nav-link-modern__icon [&>svg]:h-4 [&>svg]:w-4">{{ caller() }}</div>
+        <span class="farm-nav-link-modern__text min-w-0 truncate text-sm font-medium">Register production</span>
+        <svg class="ml-2 h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+    </button>
+    {% endif %}
+{%- endmacro %}

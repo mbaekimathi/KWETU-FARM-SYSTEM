@@ -1,0 +1,48 @@
+{# Pig health hub sidebar links only for health-management context. #}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set _medical_tracking_href = farm_b ~ 'vaccination-tracking' %}
+{% set _medical_settings_href = farm_b ~ 'vaccination-settings' %}
+{% set _weight_assessment_href = farm_b ~ 'weight-assessment' %}
+{% set _weight_settings_href = farm_b ~ 'weight-settings' %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Health tools</p>
+
+                <a href="{{ _medical_tracking_href }}" class="farm-nav-link-modern group {% if request.path.rstrip('/') == _medical_tracking_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-syringe text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block truncate text-sm font-semibold">Medical Tracking</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">Track pig vaccines &amp; schedule</span>
+                    </div>
+                </a>
+
+                <a href="{{ _medical_settings_href }}" class="farm-nav-link-modern group {% if request.path.rstrip('/') == _medical_settings_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-sliders-h text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block truncate text-sm font-semibold">Medical Settings</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">Pig schedule &amp; protocols</span>
+                    </div>
+                </a>
+
+                <a href="{{ _weight_assessment_href }}" class="farm-nav-link-modern group {% if request.path.rstrip('/') == _weight_assessment_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-weight-hanging text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block truncate text-sm font-semibold">Pig Weight Assessment</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">Record &amp; view pig weights</span>
+                    </div>
+                </a>
+
+                <a href="{{ _weight_settings_href }}" class="farm-nav-link-modern group {% if request.path.rstrip('/') == _weight_settings_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-balance-scale text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block truncate text-sm font-semibold">Pig Weight Settings</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">Pig categories &amp; target</span>
+                    </div>
+                </a>

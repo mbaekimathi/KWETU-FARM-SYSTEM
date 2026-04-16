@@ -4,174 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Production Records - AgriTech Pro</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-emerald': {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            200: '#a7f3d0',
-                            300: '#6ee7b7',
-                            400: '#34d399',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
-                            800: '#065f46',
-                            900: '#064e3b',
-                        }
-                    },
-                    fontFamily: {
-                        'inter': ['Inter', 'sans-serif'],
-                    },
-                    animation: {
-                        'fadeIn': 'fadeIn 0.5s ease-in-out',
-                        'slideUp': 'slideUp 0.5s ease-out',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'float': 'float 6s ease-in-out infinite',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @keyframes slideUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(20px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
-        }
-        
-        .sidebar {
-            transition: transform 0.3s ease-in-out;
-        }
-        .sidebar.closed {
-            transform: translateX(-100%);
-        }
-        @media (min-width: 768px) {
-            .sidebar.closed {
-                transform: translateX(0);
-            }
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-2px);
-        }
-    </style>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 font-inter transition-colors duration-300">
-    <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-        <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-            <div class="flex items-center space-x-4">
-                <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                    <svg class="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-                
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <span class="text-white font-bold text-lg sm:text-xl">📊</span>
-                    </div>
-                    <div class="hidden sm:block">
-                        <h1 class="text-lg font-bold text-slate-900 dark:text-white">AgriTech Pro</h1>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">Production Records</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-4">
-                <button id="theme-toggle" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                    <svg id="sun-icon" class="w-5 h-5 text-slate-600 dark:text-slate-300 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                    </svg>
-                    <svg id="moon-icon" class="w-5 h-5 text-slate-600 dark:text-slate-300 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-                    </svg>
-                </button>
-                
-                <div class="flex items-center space-x-3">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-sm font-medium text-slate-900 dark:text-white">{{ user.name }}</p>
-                        <p class="text-xs text-slate-600 dark:text-slate-400">{{ user.role }}</p>
-                    </div>
-                    <div class="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
-                        <span class="text-white font-bold text-sm">{{ user.name[0] }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Slaughter Production' %}
+{% set farm_shell_icon_class = 'fas fa-industry' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Slaughter' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_hub.html' %}
+{% set pig_nav_active = 'slaughter' %}
 
-    <!-- Sidebar -->
-    <aside id="sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] bg-white dark:bg-slate-800 border-r border-slate-200/50 dark:border-slate-700/50 shadow-xl z-40 sidebar">
-        <div class="p-6 h-full overflow-y-auto">
-            <!-- Navigation -->
-            <div class="space-y-2">
-                <div class="mb-6">
-                    <h2 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Production Records</h2>
-                    
-                    <div class="space-y-1">
-                        <button onclick="showSlaughterRecords()" id="slaughter-tab" class="w-full flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-all duration-200 group">
-                            <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                                <span class="text-white font-bold text-sm">🥩</span>
-                            </div>
-                            <span class="font-medium">Slaughter Records</span>
-                        </button>
-                        
-                        <button onclick="showDeathRecords()" id="death-tab" class="w-full flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-900/20 hover:text-gray-600 dark:hover:text-gray-400 rounded-xl transition-all duration-200 group">
-                            <div class="w-8 h-8 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                                <span class="text-white font-bold text-sm">💀</span>
-                            </div>
-                            <span class="font-medium">Death Records</span>
-                        </button>
-                        
-                        <button onclick="showSaleRecords()" id="sale-tab" class="w-full flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 rounded-xl transition-all duration-200 group">
-                            <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                                <span class="text-white font-bold text-sm">💰</span>
-                            </div>
-                            <span class="font-medium">Sale Records</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- General Navigation -->
-                <div class="border-t border-slate-200/50 dark:border-slate-700/50 pt-4">
-                    <a href="{% if user.role == 'manager' %}/manager/farm/slaughter{% else %}/admin/farm/slaughter{% endif %}" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all duration-200 group">
-                        <div class="w-8 h-8 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                            <span class="text-white font-bold text-sm">←</span>
-                        </div>
-                        <span class="font-medium">Back to Slaughter</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </aside>
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-    <!-- Mobile Overlay -->
-    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 lg:hidden hidden"></div>
-
-    <!-- Main Content -->
-    <main class="pt-16 lg:pl-72 min-h-screen bg-slate-50 dark:bg-slate-900">
+<main class="min-h-screen bg-slate-50 pt-16 transition-[padding] duration-300 dark:bg-slate-900 md:pl-64">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <!-- Page Header -->
             <div class="mb-6 sm:mb-8 animate-fade-in">
@@ -293,37 +140,61 @@
     </main>
 
     <script>
-        // Theme toggle
+        // Theme toggle (aligned with farm shell / farm_chrome_bundle)
         const themeToggle = document.getElementById('theme-toggle');
         const sunIcon = document.getElementById('sun-icon');
         const moonIcon = document.getElementById('moon-icon');
         const html = document.documentElement;
 
-        themeToggle.addEventListener('click', () => {
-            html.classList.toggle('dark');
+        function viewProdUpdateThemeIcon() {
+            if (!sunIcon || !moonIcon) return;
             const isDark = html.classList.contains('dark');
-            localStorage.setItem('darkMode', isDark);
-        });
-
-        // Load theme preference
-        const savedTheme = localStorage.getItem('darkMode');
-        if (savedTheme === 'true') {
-            html.classList.add('dark');
+            sunIcon.classList.toggle('hidden', !isDark);
+            moonIcon.classList.toggle('hidden', isDark);
         }
 
-        // Mobile menu toggle
+        const savedTheme = localStorage.getItem('theme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : 'light');
+        html.classList.toggle('dark', savedTheme === 'dark');
+        viewProdUpdateThemeIcon();
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                html.classList.toggle('dark');
+                const isDark = html.classList.contains('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+                viewProdUpdateThemeIcon();
+            });
+        }
+
+        // Mobile menu (matches w-64 slaughter sidebar)
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar');
         const sidebar = document.getElementById('sidebar');
         const mobileOverlay = document.getElementById('mobile-overlay');
 
-        mobileMenuBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('closed');
-            mobileOverlay.classList.toggle('hidden');
-        });
+        function viewProdCloseMobileSidebar() {
+            if (sidebar) sidebar.classList.add('-translate-x-full');
+            if (mobileOverlay) mobileOverlay.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+        function viewProdOpenMobileSidebar() {
+            if (sidebar) sidebar.classList.remove('-translate-x-full');
+            if (mobileOverlay) mobileOverlay.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', viewProdOpenMobileSidebar);
+        if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', viewProdCloseMobileSidebar);
+        if (mobileOverlay) mobileOverlay.addEventListener('click', viewProdCloseMobileSidebar);
 
-        mobileOverlay.addEventListener('click', () => {
-            sidebar.classList.add('closed');
-            mobileOverlay.classList.add('hidden');
+        window.addEventListener('resize', function () {
+            if (window.innerWidth >= 768 && sidebar) {
+                sidebar.classList.remove('-translate-x-full');
+                if (mobileOverlay) mobileOverlay.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            } else if (window.innerWidth < 768 && sidebar) {
+                sidebar.classList.add('-translate-x-full');
+            }
         });
 
         // Data storage
@@ -1548,5 +1419,5 @@
             </form>
         </div>
     </div>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

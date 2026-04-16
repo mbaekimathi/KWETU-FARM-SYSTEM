@@ -1,0 +1,67 @@
+{# Shared slaughter sidebar — matches pig / chicken flat nav (w-64, pink macro rows).
+   Set farm_slaughter_sidebar_mode: 'hub' (main slaughter page) | 'records' (view-production).
+   Set farm_slaughter_nav_active: 'slaughter' | 'view-production'
+#}
+{% import 'includes/farm_nav_sidebar_macros.html' as navm %}
+{% set farm_slaughter_sidebar_mode = farm_slaughter_sidebar_mode|default('hub') %}
+{% set farm_slaughter_nav_active = farm_slaughter_nav_active|default('slaughter') %}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set app_b = '/manager' if user.role == 'manager' else '/admin' %}
+
+    <aside id="sidebar" class="farm-slaughter-sidebar sidebar fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 -translate-x-full transform border-r border-gray-200 bg-white shadow-lg transition-transform duration-300 ease-in-out dark:border-gray-700 dark:bg-gray-800 md:translate-x-0" aria-label="Slaughter navigation">
+        <div class="flex h-full min-h-0 flex-col">
+            {% set chicken_sidebar_banner_title = 'Slaughter' %}
+            {% set chicken_sidebar_banner_sub = 'Operations & records' %}
+            {% include 'includes/farm_chicken_sidebar_banner_inner.html' %}
+
+            <nav class="farm-chicken-nav scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-4" aria-label="Slaughter links">
+                {% if farm_slaughter_sidebar_mode == 'records' %}
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Production records</p>
+                <div class="space-y-1">
+                    <button type="button" onclick="showSlaughterRecords()" id="slaughter-tab" class="farm-nav-action-row group text-left">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">🥩</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Slaughter records</span>
+                    </button>
+                    <button type="button" onclick="showDeathRecords()" id="death-tab" class="farm-nav-action-row group text-left">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">💀</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Death records</span>
+                    </button>
+                    <button type="button" onclick="showSaleRecords()" id="sale-tab" class="farm-nav-action-row group text-left">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">💰</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Sale records</span>
+                    </button>
+                </div>
+                <div class="mt-2 border-t border-gray-200 pt-3 dark:border-gray-700">
+                    {% call navm.farm_flat_nav_row(farm_b ~ 'slaughter', 'Back to slaughter hub', false) %}
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    {% endcall %}
+                </div>
+                {% else %}
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Slaughter actions</p>
+                <div class="space-y-1">
+                    <button type="button" onclick="if (typeof openSlaughterModal === 'function') openSlaughterModal();" class="farm-nav-action-row group text-left">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">🥩</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Add Slaughter Record</span>
+                    </button>
+                    <button type="button" onclick="if (typeof openDeathModal === 'function') openDeathModal();" class="farm-nav-action-row group text-left">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">💀</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Add Death Record</span>
+                    </button>
+                    <button type="button" onclick="if (typeof openSaleModal === 'function') openSaleModal();" class="farm-nav-action-row group text-left">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">💰</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Add Sale Record</span>
+                    </button>
+                    <a href="{{ farm_b }}slaughter/view-production" class="farm-nav-action-row group {% if farm_slaughter_nav_active == 'view-production' %}is-active{% endif %}">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">📊</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">View Production Records</span>
+                    </a>
+                </div>
+                {% endif %}
+            </nav>
+
+            {% include 'includes/farm_chicken_sidebar_footer_help.html' %}
+        </div>
+    </aside>
+    <button type="button" id="sidebar-toggle-btn" class="farm-sidebar-toggle-btn fixed left-3 top-20 z-50 md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-lg transition-all duration-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" aria-label="Open sidebar" title="Toggle sidebar">
+        <i class="fas fa-bars text-sm" aria-hidden="true"></i>
+    </button>

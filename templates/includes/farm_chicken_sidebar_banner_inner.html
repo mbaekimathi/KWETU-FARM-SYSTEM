@@ -1,0 +1,21 @@
+{# Same markup as pig management sidebar header (admin_farm_pig_management.html). Set chicken_sidebar_banner_title, chicken_sidebar_banner_sub before include. #}
+{% set _t = chicken_sidebar_banner_title|default('Chicken') %}
+{% set _s = chicken_sidebar_banner_sub|default('Poultry') %}
+            <div class="farm-chicken-sidebar__brand flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 via-purple-500 to-blue-600 shadow-lg">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ _t }}</h2>
+                        <p class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ _s }}</p>
+                    </div>
+                </div>
+                <button type="button" id="close-sidebar" class="group flex-shrink-0 rounded-xl p-2 transition-all duration-300 hover:scale-110 hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden" aria-label="Close menu">
+                    <svg class="h-5 w-5 text-gray-600 transition-transform group-hover:rotate-90 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>

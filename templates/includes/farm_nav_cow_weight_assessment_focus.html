@@ -1,0 +1,14 @@
+{# Focused cow-weight-assessment sidebar links. #}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set _settings_href = farm_b ~ 'cow-weight-settings' %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Cow weight</p>
+
+                <a href="{{ _settings_href }}" class="farm-nav-link-modern group">
+                    <div class="farm-nav-link-modern__icon">
+                        <i class="fas fa-sliders-h text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Weight Settings</span>
+                    </div>
+                </a>

@@ -1,19 +1,21 @@
 {# Admin/manager header notification: button + badge + popup. Requires `user` in context. #}
 <div class="relative">
-    <button id="notification-btn" class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 flex items-center justify-center" aria-label="Notifications" style="min-width: 40px; min-height: 40px;">
-        <svg class="w-6 h-6 text-slate-600 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path>
+    <button id="notification-btn" class="relative flex items-center justify-center p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 farm-chrome-icon-btn" aria-label="Notifications" style="min-width: 40px; min-height: 40px;">
+        <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
         </svg>
         <span id="notification-badge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800 hidden flex items-center justify-center">
             <span class="text-xs text-white font-bold" id="notification-count"></span>
         </span>
     </button>
     <div id="notification-popup" class="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 hidden overflow-hidden z-[100] max-h-[80vh] flex flex-col" style="top: 100%; margin-top: 8px;">
-        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center">
-                <svg class="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path>
-                </svg>
+        <div class="farm-chrome-notify-head px-5 py-4 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="farm-chrome-notify-head__icon flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 dark:bg-emerald-400/10 ring-1 ring-emerald-500/20 dark:ring-emerald-400/15">
+                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5"></path>
+                    </svg>
+                </span>
                 Feeding Notifications
             </h3>
             <button id="close-notifications" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">

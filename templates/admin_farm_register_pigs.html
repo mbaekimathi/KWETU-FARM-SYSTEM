@@ -4,211 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register Pigs - Pig Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                    screens: {
-                        'xs': '475px',
-                        'sm': '640px',
-                        'md': '768px',
-                        'lg': '1024px',
-                        'xl': '1280px',
-                        '2xl': '1536px',
-                    },
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        },
-                        secondary: {
-                            50: '#fdf4ff',
-                            100: '#fae8ff',
-                            200: '#f5d0fe',
-                            300: '#f0abfc',
-                            400: '#e879f9',
-                            500: '#d946ef',
-                            600: '#c026d3',
-                            700: '#a21caf',
-                            800: '#86198f',
-                            900: '#701a75',
-                        },
-                        accent: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            200: '#bbf7d0',
-                            300: '#86efac',
-                            400: '#4ade80',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                            900: '#14532d',
-                        }
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.5s ease-in-out',
-                        'slide-up': 'slideUp 0.3s ease-out',
-                        'slide-down': 'slideDown 0.3s ease-out',
-                        'scale-in': 'scaleIn 0.2s ease-out',
-                        'bounce-subtle': 'bounceSubtle 0.6s ease-out',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'float': 'float 6s ease-in-out infinite',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        slideUp: {
-                            '0%': { transform: 'translateY(10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        slideDown: {
-                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        scaleIn: {
-                            '0%': { transform: 'scale(0.95)', opacity: '0' },
-                            '100%': { transform: 'scale(1)', opacity: '1' },
-                        },
-                        bounceSubtle: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-4px)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        /* Custom scrollbar for sidebar */
-        .scrollbar-thin {
-            scrollbar-width: thin;
-            scrollbar-color: rgb(156 163 175) transparent;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background-color: rgb(156 163 175);
-            border-radius: 3px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background-color: rgb(107 114 128);
-        }
-    </style>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
-        <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-                <div class="flex items-center space-x-4">
-                <a href="{% if user.role == 'manager' %}/manager/farm-management{% else %}/admin/farm-management{% endif %}" class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200">
-                    <i class="fas fa-arrow-left text-lg"></i>
-                </a>
-                
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <i class="fas fa-piggy-bank text-white text-sm sm:text-lg"></i>
-                    </div>
-                    <div class="hidden sm:block">
-                        <h1 class="text-lg font-bold text-gray-900 dark:text-white">PigFarm Pro</h1>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Meru Farm Management</p>
-                    </div>
-                </div>
-                
-                <div class="hidden lg:flex items-center space-x-2 ml-6">
-                    <span class="text-gray-400 dark:text-gray-500">/</span>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Farm Management</span>
-                    <span class="text-gray-400 dark:text-gray-500">/</span>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Register Pigs</span>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-3 sm:space-x-4">
-                <button id="open-sidebar" class="md:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200" aria-label="Open sidebar">
-                    <i class="fas fa-bars text-lg"></i>
-                </button>
-                {% include 'includes/notification_dropdown.html' %}
-                <div class="hidden sm:block text-right">
-                    <div id="live-time" class="text-sm font-medium text-gray-900 dark:text-white">12:00:00 PM</div>
-                    <div id="live-date" class="text-xs text-gray-600 dark:text-gray-400">January 1, 2024</div>
-                </div>
-                
-                <button id="theme-toggle" class="group p-3 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Toggle theme">
-                    <i class="fas fa-moon text-lg group-hover:scale-110 transition-transform duration-300"></i>
-                </button>
-                
-            </div>
-        </div>
-    </header>
+{% set farm_shell_breadcrumb_current = 'Register Pigs' %}
+{% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Registration' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_hub.html' %}
+{% set pig_nav_active = 'register' %}
 
-    <!-- Sidebar -->
-    <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-lg">
-        <div class="flex flex-col h-full">
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Pig Management</h2>
-                    <button id="close-sidebar" class="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin">
-                <a href="{% if user.role == 'manager' %}/manager/farm/register-pigs{% else %}/admin/farm/register-pigs{% endif %}" class="group flex items-center px-3 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg">
-                    <div class="w-6 h-6 bg-blue-100 dark:bg-blue-800/50 rounded-md flex items-center justify-center mr-3">
-                        <i class="fas fa-piggy-bank text-xs"></i>
-                    </div>
-                    <span class="text-sm font-medium flex-1">Register Pig</span>
-                </a>
-                <a href="{% if user.role == 'manager' %}/manager/farm/register-pigs?registration=batch{% else %}/admin/farm/register-pigs?registration=batch{% endif %}" class="group flex items-center px-3 py-3 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200">
-                    <div class="w-6 h-6 bg-purple-100 dark:bg-purple-800/50 rounded-md flex items-center justify-center mr-3">
-                        <i class="fas fa-layer-group text-xs"></i>
-                    </div>
-                    <span class="text-sm font-medium flex-1">Register Litter (B...)</span>
-                </a>
-                <a href="{% if user.role == 'manager' %}/manager/farm/register-batch{% else %}/admin/farm/register-batch{% endif %}" class="group flex items-center px-3 py-3 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all duration-200">
-                    <div class="w-6 h-6 bg-amber-100 dark:bg-amber-800/50 rounded-md flex items-center justify-center mr-3">
-                        <i class="fas fa-object-group text-xs"></i>
-                    </div>
-                    <span class="text-sm font-medium flex-1">Register Batch</span>
-                </a>
-                <a href="{% if user.role == 'manager' %}/manager/farm/pig-management{% else %}/admin/farm/pig-management{% endif %}" class="group flex items-center px-3 py-3 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-all duration-200">
-                    <div class="w-6 h-6 bg-pink-100 dark:bg-pink-800/50 rounded-md flex items-center justify-center mr-3">
-                        <i class="fas fa-list text-xs"></i>
-                    </div>
-                    <span class="text-sm font-medium flex-1">Pig Management</span>
-                </a>
-            </nav>
-        </div>
-    </aside>
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-    <!-- Main Content -->
-    <main class="pt-16 md:pl-72 min-h-screen">
+<main class="pt-16 md:pl-64 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <!-- Page Header -->
             <div class="mb-8 animate-slide-up">
@@ -1177,5 +987,5 @@
             }, 5000);
         }
     </script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

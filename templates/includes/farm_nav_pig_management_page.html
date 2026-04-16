@@ -1,0 +1,31 @@
+{# Dedicated premium sidebar links for pig management page. #}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set _path = request.path.rstrip('/') %}
+
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Core operations</p>
+                <div class="farm-nav-sublinks">
+                    <a href="{{ farm_b }}register-pigs" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'register-pigs').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">➕</span>
+                        <span class="flex-1">Register Pigs</span>
+                    </a>
+                    <a href="{{ farm_b }}breeding-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'breeding-management').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">🧬</span>
+                        <span class="flex-1">Breeding Management</span>
+                    </a>
+                    <a href="{{ farm_b }}health-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'health-management').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">💉</span>
+                        <span class="flex-1">Health Management</span>
+                    </a>
+                    <a href="{{ farm_b }}location" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'location').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">📍</span>
+                        <span class="flex-1">Location Management</span>
+                    </a>
+                    <a href="{{ farm_b }}pig-feeding-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'pig-feeding-management').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">🌾</span>
+                        <span class="flex-1">Pig Feeding</span>
+                    </a>
+                    <a href="{{ farm_b }}slaughter" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'slaughter').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">🥩</span>
+                        <span class="flex-1">Slaughter Management</span>
+                    </a>
+                </div>

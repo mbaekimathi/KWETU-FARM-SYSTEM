@@ -1,0 +1,52 @@
+{# Breeding-only sidebar links for breeding management page #}
+{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set path = request.path|default('') %}
+{% set active_records = path.endswith('/breeding-records') %}
+{% set active_completed = path.endswith('/completed-farrowings') %}
+{% set active_weaned = path.endswith('/weaned-litters') %}
+{% set active_failed = path.endswith('/failed-conceptions') %}
+{% set active_tree = path.endswith('/family-tree') %}
+{% set active_settings = path.endswith('/farrowing-activity-settings') %}
+
+<p class="farm-chicken-nav__label mb-0 px-0.5">Breeding links</p>
+
+<button
+    id="sidebar-register-new-breeding"
+    type="button"
+    class="farm-nav-link-modern"
+>
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-plus-circle"></i></span>
+    <span class="farm-nav-link-modern__text text-left">Register new breeding</span>
+    <span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>
+</button>
+
+<a href="{{ farm_b }}breeding-records" class="farm-nav-link-modern{% if active_records %} is-active{% endif %}">
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-notes-medical"></i></span>
+    <span class="farm-nav-link-modern__text">Active breeding</span>
+    {% if active_records %}<span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>{% endif %}
+</a>
+<a href="{{ farm_b }}completed-farrowings" class="farm-nav-link-modern{% if active_completed %} is-active{% endif %}">
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-baby"></i></span>
+    <span class="farm-nav-link-modern__text">Unweaned litters (completed breeding)</span>
+    {% if active_completed %}<span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>{% endif %}
+</a>
+<a href="{{ farm_b }}weaned-litters" class="farm-nav-link-modern{% if active_weaned %} is-active{% endif %}">
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-seedling"></i></span>
+    <span class="farm-nav-link-modern__text">Weaned litters</span>
+    {% if active_weaned %}<span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>{% endif %}
+</a>
+<a href="{{ farm_b }}failed-conceptions" class="farm-nav-link-modern{% if active_failed %} is-active{% endif %}">
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-heart-broken"></i></span>
+    <span class="farm-nav-link-modern__text">Failed conceptions</span>
+    {% if active_failed %}<span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>{% endif %}
+</a>
+<a href="{{ farm_b }}family-tree" class="farm-nav-link-modern{% if active_tree %} is-active{% endif %}">
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-sitemap"></i></span>
+    <span class="farm-nav-link-modern__text">Family tree</span>
+    {% if active_tree %}<span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>{% endif %}
+</a>
+<a href="{{ farm_b }}farrowing-activity-settings" class="farm-nav-link-modern{% if active_settings %} is-active{% endif %}">
+    <span class="farm-nav-link-modern__icon"><i class="fas fa-sliders-h"></i></span>
+    <span class="farm-nav-link-modern__text">Farrowing activity settings</span>
+    {% if active_settings %}<span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>{% endif %}
+</a>

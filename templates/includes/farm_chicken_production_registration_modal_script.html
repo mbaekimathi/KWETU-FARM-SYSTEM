@@ -1,0 +1,285 @@
+<script>
+(function () {
+    if (window.__chickenProductionRegistrationModalBound) return;
+    window.__chickenProductionRegistrationModalBound = true;
+
+    function getRegisterUrl() {
+        var form = document.getElementById('production-form');
+        if (!form) return '/admin/farm/chicken-production-register';
+        return form.getAttribute('data-register-url') || '/admin/farm/chicken-production-register';
+    }
+
+    function openChickenProductionRegistrationModal() {
+        var productionModal = document.getElementById('production-registration-modal');
+        if (!productionModal) return;
+        productionModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeChickenProductionRegistrationModal() {
+        var productionModal = document.getElementById('production-registration-modal');
+        var productionForm = document.getElementById('production-form');
+        if (!productionModal) return;
+        productionModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        if (productionForm) {
+            productionForm.reset();
+            hideAllFields();
+        }
+    }
+
+    window.openChickenProductionRegistrationModal = openChickenProductionRegistrationModal;
+    window.closeChickenProductionRegistrationModal = closeChickenProductionRegistrationModal;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var productionModal = document.getElementById('production-registration-modal');
+        var productionForm = document.getElementById('production-form');
+        if (!productionModal || !productionForm) return;
+
+        var registerProductionBtn = document.getElementById('register-production-btn');
+        var closeProductionModal = document.getElementById('close-production-modal');
+        var cancelProduction = document.getElementById('cancel-production');
+
+        if (registerProductionBtn) {
+            registerProductionBtn.addEventListener('click', function () {
+                openChickenProductionRegistrationModal();
+            });
+        }
+        if (closeProductionModal) closeProductionModal.addEventListener('click', closeChickenProductionRegistrationModal);
+        if (cancelProduction) cancelProduction.addEventListener('click', closeChickenProductionRegistrationModal);
+
+        productionModal.addEventListener('click', function (e) {
+            if (e.target === productionModal) closeChickenProductionRegistrationModal();
+        });
+
+        var productionTypeRadios = document.querySelectorAll('input[name="production_type"]');
+        var eggsFields = document.getElementById('eggs_fields');
+        var meatFields = document.getElementById('meat_fields');
+
+        function hideAllFields() {
+            if (eggsFields) eggsFields.classList.add('hidden');
+            if (meatFields) meatFields.classList.add('hidden');
+        }
+
+        productionTypeRadios.forEach(function (radio) {
+            radio.addEventListener('change', function (e) {
+                hideAllFields();
+                if (e.target.value === 'eggs' && eggsFields) eggsFields.classList.remove('hidden');
+                else if (e.target.value === 'meat' && meatFields) meatFields.classList.remove('hidden');
+            });
+        });
+
+        var chickenIdSearch = document.getElementById('chicken_id_search');
+        var chickenCategory = document.getElementById('chicken_category');
+        var searchResults = document.getElementById('chicken_search_results');
+        var searchTimeout;
+
+        if (chickenIdSearch && searchResults) {
+            chickenIdSearch.addEventListener('input', function (e) {
+                clearTimeout(searchTimeout);
+                var query = e.target.value.trim();
+                if (query.length < 2) {
+                    searchResults.classList.add('hidden');
+                    return;
+                }
+                searchTimeout = setTimeout(function () { searchChickens(query); }, 300);
+            });
+        }
+
+        function searchChickens(query) {
+            var category = chickenCategory ? chickenCategory.value : '';
+            if (!category || !searchResults) {
+                if (searchResults) searchResults.classList.add('hidden');
+                return;
+            }
+            searchResults.innerHTML = '<div class="p-4 text-center text-slate-500">Searching...</div>';
+            searchResults.classList.remove('hidden');
+
+            fetch('/api/chickens/search?category=' + encodeURIComponent(category) + '&query=' + encodeURIComponent(query), {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.error) throw new Error(data.error);
+                    displaySearchResults(data);
+                })
+                .catch(function (error) {
+                    searchResults.innerHTML =
+                        '<div class="p-4 text-center"><div class="text-red-500 mb-2">Search Error</div><div class="text-sm text-slate-600 dark:text-slate-400">' +
+                        error.message +
+                        '</div></div>';
+                    searchResults.classList.remove('hidden');
+                });
+        }
+
+        function displaySearchResults(chickens) {
+            if (!searchResults) return;
+            if (!chickens.length) {
+                searchResults.innerHTML = '<div class="p-4 text-center text-slate-500 dark:text-slate-400">No chickens found</div>';
+            } else {
+                searchResults.innerHTML = chickens
+                    .map(function (chicken) {
+                        return (
+                            '<div class="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-200 dark:border-slate-600 last:border-b-0" onclick="window.selectChickenForProduction(\'' +
+                            String(chicken.chicken_id).replace(/'/g, "\\'") +
+                            "', '" +
+                            String(chicken.batch_name || '').replace(/'/g, "\\'") +
+                            "', " +
+                            (chicken.quantity || 0) +
+                            ')">' +
+                            '<div class="flex justify-between items-start"><div><div class="font-medium text-slate-900 dark:text-white">' +
+                            chicken.chicken_id +
+                            '</div><div class="text-sm text-slate-600 dark:text-slate-400">' +
+                            chicken.batch_name +
+                            ' - ' +
+                            chicken.breed_name +
+                            '</div></div><div class="text-right"><div class="text-sm font-semibold text-slate-900 dark:text-white">Qty: ' +
+                            (chicken.quantity || 0) +
+                            '</div></div></div></div>'
+                        );
+                    })
+                    .join('');
+            }
+            searchResults.classList.remove('hidden');
+        }
+
+        window.selectChickenForProduction = function (chickenId, batchName, quantity) {
+            if (chickenIdSearch) chickenIdSearch.value = chickenId;
+            if (searchResults) searchResults.classList.add('hidden');
+            window.selectedChickenQuantity = quantity;
+            var meatFieldsEl = document.getElementById('meat_fields');
+            if (meatFieldsEl && !meatFieldsEl.classList.contains('hidden')) {
+                var slaughterCount = document.getElementById('slaughter_count');
+                if (slaughterCount) {
+                    slaughterCount.setAttribute('max', quantity);
+                    slaughterCount.setAttribute('placeholder', 'Max: ' + quantity + ' chickens');
+                    var quantityInfo = document.getElementById('quantity-info');
+                    if (!quantityInfo) {
+                        quantityInfo = document.createElement('div');
+                        quantityInfo.id = 'quantity-info';
+                        quantityInfo.className = 'text-sm text-slate-600 dark:text-slate-400 mt-2';
+                        slaughterCount.parentNode.appendChild(quantityInfo);
+                    }
+                    quantityInfo.textContent = 'Available: ' + quantity + ' chickens';
+                }
+            }
+        };
+
+        document.addEventListener('click', function (e) {
+            if (!chickenIdSearch || !searchResults) return;
+            if (!chickenIdSearch.contains(e.target) && !searchResults.contains(e.target)) searchResults.classList.add('hidden');
+        });
+
+        var slaughterCount = document.getElementById('slaughter_count');
+        var chickenWeightsContainer = document.getElementById('chicken_weights_container');
+        var averageWeights = document.getElementById('average_weights');
+        var avgAliveWeight = document.getElementById('avg_alive_weight');
+        var avgDeadWeight = document.getElementById('avg_dead_weight');
+
+        if (slaughterCount && chickenWeightsContainer) {
+            slaughterCount.addEventListener('input', function (e) {
+                var count = parseInt(e.target.value, 10) || 0;
+                chickenWeightsContainer.innerHTML = '';
+                if (count > 0) {
+                    for (var i = 1; i <= count; i++) {
+                        var weightInput = document.createElement('div');
+                        weightInput.className =
+                            'bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-600';
+                        weightInput.innerHTML =
+                            '<h6 class="font-semibold text-slate-900 dark:text-white mb-3">Chicken ' +
+                            i +
+                            '</h6><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Alive Weight (kg) *</label><input type="number" step="0.001" min="0" class="alive-weight w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" required></div><div><label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dead Weight (kg) *</label><input type="number" step="0.001" min="0" class="dead-weight w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white" required></div></div>';
+                        chickenWeightsContainer.appendChild(weightInput);
+                    }
+                    if (averageWeights) averageWeights.classList.remove('hidden');
+                } else if (averageWeights) averageWeights.classList.add('hidden');
+            });
+        }
+
+        function calculateAverages() {
+            var aliveWeights = document.querySelectorAll('.alive-weight');
+            var deadWeights = document.querySelectorAll('.dead-weight');
+            if (!aliveWeights.length || !avgAliveWeight || !avgDeadWeight) return;
+            var aliveTotal = Array.from(aliveWeights).reduce(function (sum, input) {
+                return sum + (parseFloat(input.value) || 0);
+            }, 0);
+            var deadTotal = Array.from(deadWeights).reduce(function (sum, input) {
+                return sum + (parseFloat(input.value) || 0);
+            }, 0);
+            avgAliveWeight.textContent = (aliveTotal / aliveWeights.length).toFixed(3) + ' kg';
+            avgDeadWeight.textContent = (deadTotal / deadWeights.length).toFixed(3) + ' kg';
+        }
+
+        document.addEventListener('input', function (e) {
+            if (e.target.classList.contains('alive-weight') || e.target.classList.contains('dead-weight')) calculateAverages();
+        });
+
+        productionForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var formData = new FormData(productionForm);
+            var data = Object.fromEntries(formData.entries());
+
+            if (data.production_type === 'meat') {
+                var aliveWeights = Array.from(document.querySelectorAll('.alive-weight')).map(function (input) {
+                    return parseFloat(input.value) || 0;
+                });
+                var deadWeights = Array.from(document.querySelectorAll('.dead-weight')).map(function (input) {
+                    return parseFloat(input.value) || 0;
+                });
+                data.alive_weights = aliveWeights;
+                data.dead_weights = deadWeights;
+                data.avg_alive_weight = aliveWeights.reduce(function (s, w) {
+                    return s + w;
+                }, 0) / aliveWeights.length;
+                data.avg_dead_weight = deadWeights.reduce(function (s, w) {
+                    return s + w;
+                }, 0) / deadWeights.length;
+
+                var sc = parseInt(data.slaughter_count, 10);
+                var availableQuantity = window.selectedChickenQuantity || 0;
+                if (sc > availableQuantity) {
+                    alert('Cannot slaughter ' + sc + ' chickens. Only ' + availableQuantity + ' available.');
+                    return;
+                }
+            }
+
+            fetch(getRegisterUrl(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (result) {
+                    if (result.success) {
+                        alert('Production registered successfully!');
+                        closeChickenProductionRegistrationModal();
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (result.message || 'Unknown'));
+                    }
+                })
+                .catch(function () {
+                    alert('An error occurred while registering production.');
+                });
+        });
+
+        var now = new Date();
+        var today = now.toISOString().split('T')[0];
+        var time = now.toTimeString().split(' ')[0].substring(0, 5);
+        var eggDate = document.getElementById('egg_collection_date');
+        var eggTime = document.getElementById('egg_collection_time');
+        var slDate = document.getElementById('slaughter_date');
+        var slTime = document.getElementById('slaughter_time');
+        if (eggDate) eggDate.value = today;
+        if (eggTime) eggTime.value = time;
+        if (slDate) slDate.value = today;
+        if (slTime) slTime.value = time;
+    });
+})();
+</script>

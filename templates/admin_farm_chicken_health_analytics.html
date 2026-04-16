@@ -1,117 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chicken Health Analytics - Farm Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        'chicken-yellow': {
-                            50: '#fefce8',
-                            100: '#fef3c7',
-                            200: '#fde68a',
-                            300: '#fcd34d',
-                            400: '#fbbf24',
-                            500: '#f59e0b',
-                            600: '#d97706',
-                            700: '#b45309',
-                            800: '#92400e',
-                            900: '#78350f'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .text-gradient {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-    </style>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="h-full bg-slate-50 dark:bg-slate-900">
-    <!-- Sidebar -->
-    <aside class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-800 shadow-xl transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out" id="sidebar">
-        <div class="flex flex-col h-full">
-            <!-- Sidebar Header -->
-            <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-chicken-yellow-500 rounded-xl flex items-center justify-center">
-                        <span class="text-white text-xl">🐔</span>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Chicken Health</h2>
-                        <p class="text-sm text-slate-600 dark:text-slate-400">Health Management</p>
-                    </div>
-                </div>
-                <button id="close-sidebar" class="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200">
-                    <svg class="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Navigation Menu -->
-            <nav class="flex-1 p-4 space-y-1">
-                <!-- Health of Chicken -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-{% else %}/admin/farm/chicken-{% endif %}health" class="flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group">
-                    <span class="text-lg mr-3">🏥</span>
-                    <span class="font-medium">Health of Chicken</span>
-                </a>
-                
-                <!-- Upcoming Medications (Sub-item under Health) -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-{% else %}/admin/farm/chicken-{% endif %}upcoming-medications" class="flex items-center px-8 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all duration-200 ml-4 border-l-2 border-slate-200 dark:border-slate-700">
-                    <span class="text-sm mr-3">💊</span>
-                    <span class="text-sm font-medium">Upcoming Medications</span>
-                </a>
-                
-                <!-- Weight Check (Sub-item under Health) -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-{% else %}/admin/farm/chicken-{% endif %}weight-check" class="flex items-center px-8 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all duration-200 ml-4 border-l-2 border-slate-200 dark:border-slate-700">
-                    <span class="text-sm mr-3">⚖️</span>
-                    <span class="text-sm font-medium">Weight Check</span>
-                </a>
-                
-                <!-- Health Analytics (Sub-item under Health) -->
-                <a href="{% if user.role == 'manager' %}/manager/farm/chicken-{% else %}/admin/farm/chicken-{% endif %}health-analytics" class="flex items-center px-8 py-2 text-slate-600 dark:text-slate-400 bg-chicken-yellow-50 dark:bg-chicken-yellow-900/20 rounded-lg border-l-4 border-chicken-yellow-500 transition-all duration-200 hover:bg-chicken-yellow-100 dark:hover:bg-chicken-yellow-900/30 ml-4">
-                    <span class="text-sm mr-3">📊</span>
-                    <span class="text-sm font-medium">Health Analytics</span>
-                </a>
-            </nav>
-            
-            <!-- Sidebar Footer -->
-            <div class="p-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                <div class="flex items-center space-x-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                    <div class="w-8 h-8 bg-chicken-yellow-500 rounded-full flex items-center justify-center">
-                        <span class="text-white text-sm font-semibold">{{ user.name[0].upper() }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-slate-900 dark:text-white truncate">{{ user.name }}</p>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 truncate">{{ user.role.title() }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </aside>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Chicken Health Analytics' %}
+{% set farm_shell_icon_class = 'fas fa-chart-area' %}
+{% set farm_sidebar_banner_title = 'Chicken hub' %}
+{% set farm_sidebar_banner_sub = 'Health' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_chicken_upcoming_medications_focus.html' %}
+{% set farm_chicken_mgmt_hub_nav_active = 'health' %}
 
-    <!-- Main Content -->
-    <main class="lg:ml-72 p-6">
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+
+<main class="pt-16 md:pl-64 min-h-screen p-6">
         <div class="max-w-7xl mx-auto">
             <!-- Page Header -->
             <div class="mb-8">
@@ -598,35 +505,87 @@
     </div>
 </main>
 
-<!-- Mobile Sidebar Toggle -->
-<button id="sidebar-toggle" class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg">
-    <svg class="w-6 h-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-    </svg>
-</button>
-
 <script>
-    // Sidebar Toggle
     const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const closeSidebar = document.getElementById('close-sidebar');
 
-    sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.remove('-translate-x-full');
-    });
-
-    closeSidebar.addEventListener('click', () => {
-        sidebar.classList.add('-translate-x-full');
-    });
-
-    // Close sidebar when clicking outside on mobile
+    if (mobileMenuBtn && sidebar) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.remove('-translate-x-full');
+        });
+    }
+    if (closeSidebar && sidebar) {
+        closeSidebar.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+        });
+    }
     document.addEventListener('click', (e) => {
-        if (window.innerWidth < 1024) {
-            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+        if (window.innerWidth < 768 && sidebar && mobileMenuBtn) {
+            if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
                 sidebar.classList.add('-translate-x-full');
             }
         }
     });
+    function handleHealthSidebarResize() {
+        if (!sidebar) return;
+        if (window.innerWidth >= 768) {
+            sidebar.classList.remove('-translate-x-full');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+        }
+    }
+    window.addEventListener('resize', handleHealthSidebarResize);
+    handleHealthSidebarResize();
+
+    const themeToggle = document.getElementById('theme-toggle');
+    const sunIcon = document.getElementById('sun-icon');
+    const moonIcon = document.getElementById('moon-icon');
+    const storedTheme = localStorage.getItem('theme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+    function updateThemeIcon() {
+        const isDark = document.documentElement.classList.contains('dark');
+        if (sunIcon && moonIcon) {
+            sunIcon.classList.toggle('hidden', !isDark);
+            moonIcon.classList.toggle('hidden', isDark);
+        }
+    }
+    updateThemeIcon();
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            updateThemeIcon();
+        });
+    }
+    const userDropdownBtn = document.getElementById('user-dropdown-btn');
+    const userDropdown = document.getElementById('user-dropdown');
+    if (userDropdownBtn && userDropdown) {
+        userDropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!userDropdownBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+    }
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) window.location.href = data.redirect;
+            } catch (error) {
+                window.location.href = '/';
+            }
+        });
+    }
 
     // Initialize Charts when page loads
     document.addEventListener('DOMContentLoaded', function() {
@@ -1072,5 +1031,5 @@
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</body>
+    {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>

@@ -1,0 +1,37 @@
+{# Standard farm sidebar shell — matches chicken/pig/slaughter (w-64, banner, footer).
+   Before include set:
+     farm_sidebar_banner_title (required)
+     farm_sidebar_banner_sub (optional)
+     farm_sidebar_nav_partial — path to template fragment with nav rows only (inside scrollable area)
+   Optional: farm_sidebar_aria_label
+#}
+{% set _nav = farm_sidebar_nav_partial|default('includes/farm_nav_farm_operations_hub.html') %}
+{% import 'includes/farm_nav_sidebar_macros.html' as navm %}
+{% set _user_role = user.role if user is defined and user and user.role else 'admin' %}
+{% set _app_b = '/manager' if _user_role == 'manager' else '/admin' %}
+{% set _dash_href = _app_b ~ '/dashboard' %}
+{% set _dash_active = request.path.rstrip('/') == _dash_href.rstrip('/') %}
+    <aside id="sidebar" class="farm-unified-sidebar sidebar fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 -translate-x-full transform border-r border-gray-200 bg-white shadow-lg transition-transform duration-300 ease-in-out dark:border-gray-700 dark:bg-gray-800 md:translate-x-0" aria-label="{{ farm_sidebar_aria_label|default('Farm navigation') }}">
+        <div class="flex h-full min-h-0 flex-col">
+            {% set chicken_sidebar_banner_title = farm_sidebar_banner_title|default('Farm') %}
+            {% set chicken_sidebar_banner_sub = farm_sidebar_banner_sub|default('Operations') %}
+            {% include 'includes/farm_chicken_sidebar_banner_inner.html' %}
+
+            <nav class="farm-chicken-nav flex min-h-0 flex-1 flex-col" aria-label="{{ farm_sidebar_aria_label|default('Farm navigation') }}">
+                <div class="shrink-0 border-b border-gray-200 px-4 pb-3 pt-1 dark:border-gray-700">
+                    {% call navm.farm_flat_nav_row(_dash_href, 'Dashboard', _dash_active) %}
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    {% endcall %}
+                </div>
+
+                <div class="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-4">
+                    {% include _nav %}
+                </div>
+            </nav>
+
+            {% include 'includes/farm_chicken_sidebar_footer_help.html' %}
+        </div>
+    </aside>
+    <button type="button" id="sidebar-toggle-btn" class="farm-sidebar-toggle-btn fixed left-3 top-20 z-50 md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-lg transition-all duration-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" aria-label="Open sidebar" title="Toggle sidebar">
+        <i class="fas fa-bars text-sm" aria-hidden="true"></i>
+    </button>
