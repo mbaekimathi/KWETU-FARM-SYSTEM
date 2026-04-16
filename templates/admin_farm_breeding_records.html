@@ -313,6 +313,10 @@
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     ${displayRecords.map((record, index) => {
                                         const daysLeft = record.days_to_farrowing !== null ? record.days_to_farrowing : (record.expected_due_date ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24)) : null);
+                                        const canShowRegisterFarrowing = record.breeding_status === 'pregnant'
+                                            && daysLeft !== null
+                                            && Number(daysLeft) <= 7
+                                            && !record.has_registered_litter;
                                         let daysLeftToServe = '-';
                                         if (record.breeding_status === 'farrowed') {
                                             if (record.days_left_to_serve !== null && record.days_left_to_serve !== undefined) {
@@ -388,7 +392,7 @@
                                                                 </span>
                                                             </button>
                                                         ` : ''}
-                                                        ${record.days_to_farrowing !== null && record.days_to_farrowing <= 7 && !record.has_farrowing_record && !record.has_registered_litter && record.breeding_status === 'pregnant' ? `
+                                                        ${canShowRegisterFarrowing ? `
                                                             <button onclick="showRegisterFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200">
                                                                 <i class="fas fa-baby mr-1 sm:mr-2"></i>
                                                                 <span class="hidden sm:inline">Register</span>

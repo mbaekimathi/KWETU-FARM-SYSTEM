@@ -15649,7 +15649,8 @@ def register_farrowing(breeding_id):
         if not breeding_record:
             return jsonify({'success': False, 'message': 'Breeding record not found'})
 
-        # Prevent duplicate farrowing/litter registration per breeding cycle
+        # Prevent duplicate litter registration per breeding cycle.
+        # If a farrowing record exists without a litter, allow completion.
         cursor.execute("""
             SELECT fr.id
             FROM farrowing_records fr
@@ -15657,6 +15658,8 @@ def register_farrowing(breeding_id):
             LIMIT 1
         """, (breeding_id,))
         existing_farrowing = cursor.fetchone()
+        farrowing_id = None
+        created_new_farrowing_record = False
         if existing_farrowing:
             cursor.execute("""
                 SELECT id
@@ -15669,52 +15672,68 @@ def register_farrowing(breeding_id):
                     'success': False,
                     'message': 'Litter already registered for this breeding record'
                 })
-            return jsonify({
-                'success': False,
-                'message': 'Farrowing already exists for this breeding record'
-            })
-        
-        # Insert farrowing record
-        cursor.execute("""
-            INSERT INTO farrowing_records (
-                breeding_id, farrowing_date, alive_piglets, still_births, 
-                avg_weight, health_notes, created_by
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            breeding_id, farrowing_date, alive_piglets, still_births,
-            avg_weight, health_notes, session['employee_id']
-        ))
-        
-        farrowing_id = cursor.lastrowid
+            # Reuse and refresh existing farrowing record if litter was never registered.
+            farrowing_id = existing_farrowing['id']
+            cursor.execute("""
+                UPDATE farrowing_records
+                SET farrowing_date = %s,
+                    alive_piglets = %s,
+                    still_births = %s,
+                    avg_weight = %s,
+                    health_notes = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (farrowing_date, alive_piglets, still_births, avg_weight, health_notes, farrowing_id))
+        else:
+            # Insert farrowing record
+            cursor.execute("""
+                INSERT INTO farrowing_records (
+                    breeding_id, farrowing_date, alive_piglets, still_births, 
+                    avg_weight, health_notes, created_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                breeding_id, farrowing_date, alive_piglets, still_births,
+                avg_weight, health_notes, session['employee_id']
+            ))
+            farrowing_id = cursor.lastrowid
+            created_new_farrowing_record = True
         
         # Create farrowing activities with due dates from settings templates
-        combine_same_day_farrowing_templates(cursor)
+        # for new farrowing records, or backfill if none exist.
         cursor.execute("""
-            SELECT due_day, activity_name
-            FROM farrowing_activity_templates
-            WHERE is_active = 1
-            ORDER BY due_day ASC, id ASC
-        """)
-        template_rows = cursor.fetchall() or []
-        activities = [(int(r['due_day']), r['activity_name']) for r in template_rows]
-        
-        for due_day, activity_name in activities:
-            # Convert farrowing_date string to date object for timedelta calculation
-            farrowing_date_obj = datetime.strptime(farrowing_date, '%Y-%m-%d').date()
-            due_date = farrowing_date_obj + timedelta(days=due_day)
+            SELECT COUNT(*) AS activity_count
+            FROM farrowing_activities
+            WHERE farrowing_record_id = %s
+        """, (farrowing_id,))
+        existing_activity_count = int((cursor.fetchone() or {}).get('activity_count') or 0)
+        if created_new_farrowing_record or existing_activity_count == 0:
+            combine_same_day_farrowing_templates(cursor)
             cursor.execute("""
-                INSERT INTO farrowing_activities (
-                    farrowing_record_id, activity_name, due_day, due_date
-                ) VALUES (%s, %s, %s, %s)
-            """, (farrowing_id, activity_name, due_day, due_date))
+                SELECT due_day, activity_name
+                FROM farrowing_activity_templates
+                WHERE is_active = 1
+                ORDER BY due_day ASC, id ASC
+            """)
+            template_rows = cursor.fetchall() or []
+            activities = [(int(r['due_day']), r['activity_name']) for r in template_rows]
+            
+            for due_day, activity_name in activities:
+                # Convert farrowing_date string to date object for timedelta calculation
+                farrowing_date_obj = datetime.strptime(farrowing_date, '%Y-%m-%d').date()
+                due_date = farrowing_date_obj + timedelta(days=due_day)
+                cursor.execute("""
+                    INSERT INTO farrowing_activities (
+                        farrowing_record_id, activity_name, due_day, due_date
+                    ) VALUES (%s, %s, %s, %s)
+                """, (farrowing_id, activity_name, due_day, due_date))
         
         # Mark this breeding cycle as farrowed after successful litter creation
         print(f"Updating breeding record {breeding_id} status to 'farrowed'")
         cursor.execute("""
             UPDATE breeding_records 
-            SET status = 'farrowed', completed_date = %s, updated_at = CURRENT_TIMESTAMP
+            SET status = 'farrowed', updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
-        """, (farrowing_date, breeding_id))
+        """, (breeding_id,))
         
         # Create litter record
         litter_id = generate_litter_id()
