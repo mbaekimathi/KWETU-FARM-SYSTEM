@@ -218,7 +218,7 @@
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Sow Tag</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Breed</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Age (Days)</th>
-                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Health</th>
+                                        <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Breeding status</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Breeding History</th>
                                         <th class="px-3 sm:px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Action</th>
                                     </tr>
@@ -645,8 +645,8 @@
                     sowRows.forEach(row => {
                         const tag = (row.dataset.tagId || '').toLowerCase();
                         const breed = (row.dataset.breed || '').toLowerCase();
-                        const health = (row.dataset.health || '').toLowerCase();
-                        const match = !searchTerm || tag.includes(searchTerm) || breed.includes(searchTerm) || health.includes(searchTerm);
+                        const breedingStatus = (row.dataset.breedingStatus || '').toLowerCase();
+                        const match = !searchTerm || tag.includes(searchTerm) || breed.includes(searchTerm) || breedingStatus.includes(searchTerm);
                         row.style.display = match ? '' : 'none';
                     });
                 });
@@ -932,6 +932,16 @@
             loadCompletedFarrowings();
         }
 
+        function sowBreedingStatusBadge(status) {
+            const s = (status || 'unknown').toLowerCase();
+            const cls = s === 'available' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                s === 'pregnant' ? 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300' :
+                s === 'served' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+            const label = (status || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cls}">${label}</span>`;
+        }
+
         // Display sows in list rows
         function displaySows(sows) {
             const listBody = document.getElementById('sows-list-body');
@@ -955,11 +965,11 @@
             }
             
             listBody.innerHTML = sows.map((sow) => `
-                <tr class="hover:bg-pink-50/60 dark:hover:bg-pink-900/10 transition-colors" data-sow-id="${sow.id}" data-tag-id="${sow.tag_id || ''}" data-breed="${sow.breed || ''}" data-health="${sow.health_status || ''}">
+                <tr class="hover:bg-pink-50/60 dark:hover:bg-pink-900/10 transition-colors" data-sow-id="${sow.id}" data-tag-id="${sow.tag_id || ''}" data-breed="${sow.breed || ''}" data-breeding-status="${(sow.breeding_status || '').toLowerCase()}">
                     <td class="px-3 sm:px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${sow.tag_id || 'Untagged Sow'}</td>
                     <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.breed || 'Unknown'}</td>
                     <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.age_days ?? '—'}</td>
-                    <td class="px-3 sm:px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${sow.health_status || 'Healthy'}</td>
+                    <td class="px-3 sm:px-4 py-3 text-sm">${sowBreedingStatusBadge(sow.breeding_status)}</td>
                     <td class="px-3 sm:px-4 py-3 text-sm">
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
@@ -1093,8 +1103,8 @@
                     sowRows.forEach(row => {
                         const tag = (row.dataset.tagId || '').toLowerCase();
                         const breed = (row.dataset.breed || '').toLowerCase();
-                        const health = (row.dataset.health || '').toLowerCase();
-                        const match = !searchTerm || tag.includes(searchTerm) || breed.includes(searchTerm) || health.includes(searchTerm);
+                        const breedingStatus = (row.dataset.breedingStatus || '').toLowerCase();
+                        const match = !searchTerm || tag.includes(searchTerm) || breed.includes(searchTerm) || breedingStatus.includes(searchTerm);
                         row.style.display = match ? '' : 'none';
                     });
                 });

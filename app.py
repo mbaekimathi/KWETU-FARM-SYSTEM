@@ -14320,7 +14320,7 @@ def get_available_sows():
                 p.tag_id,
                 p.breed,
                 p.age_days,
-                p.status as health_status,
+                p.breeding_status,
                 f.farm_name,
                 MAX(br.mating_date) as last_breeding_date,
                 (
@@ -14340,7 +14340,7 @@ def get_available_sows():
             AND p.purpose = 'breeding' 
             AND p.breeding_status = 'available'
             AND p.status = 'active'
-            GROUP BY p.id, p.tag_id, p.breed, p.age_days, p.status, f.farm_name
+            GROUP BY p.id, p.tag_id, p.breed, p.age_days, p.breeding_status, f.farm_name
             ORDER BY p.tag_id DESC
         """)
         sows = cursor.fetchall()
