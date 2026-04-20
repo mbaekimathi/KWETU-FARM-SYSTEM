@@ -6,175 +6,156 @@
     <title>Family Tree - Pig Farm Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
     <style>
-        /* Family tree visual layout */
-        .tree-container {
-            display: grid;
-            gap: 1.25rem;
+        .ft-hint {
+            font-size: 0.8rem; line-height: 1.4; margin-bottom: 1rem; padding: 0.65rem 0.85rem; border-radius: 0.75rem;
+            background: linear-gradient(135deg, rgb(253 242 248 / 0.9), rgb(239 246 255 / 0.85));
+            color: rgb(71 85 105); border: 1px solid rgb(251 207 232 / 0.8);
+        }
+        .dark .ft-hint {
+            background: linear-gradient(135deg, rgb(131 24 67 / 0.25), rgb(30 58 138 / 0.28));
+            color: rgb(203 213 225); border-color: rgb(244 114 182 / 0.25);
+        }
+        .ft-legend-row {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.65rem;
+            margin-bottom: 1.1rem;
+        }
+        .ft-legend-item {
+            display: inline-flex; align-items: center; gap: 0.45rem;
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+            padding: 0.4rem 0.75rem; border-radius: 999px;
+            box-shadow: 0 2px 8px rgb(15 23 42 / 0.06);
+        }
+        .ft-legend-item--sow { background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #9d174d; border: 1px solid #f472b6; }
+        .dark .ft-legend-item--sow { background: linear-gradient(135deg, rgb(131 24 67 / 0.5), rgb(157 23 77 / 0.35)); color: #fce7f3; border-color: #db2777; }
+        .ft-legend-item--sire { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1d4ed8; border: 1px solid #60a5fa; }
+        .dark .ft-legend-item--sire { background: linear-gradient(135deg, rgb(30 58 138 / 0.55), rgb(29 78 216 / 0.25)); color: #bfdbfe; border-color: #2563eb; }
+        .ft-legend-item--litter { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; border: 1px solid #34d399; }
+        .dark .ft-legend-item--litter { background: linear-gradient(135deg, rgb(6 78 59 / 0.45), rgb(4 120 87 / 0.25)); color: #a7f3d0; border-color: #059669; }
+        .ft-legend-item--fail { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #b91c1c; border: 1px solid #f87171; }
+        .dark .ft-legend-item--fail { background: linear-gradient(135deg, rgb(127 29 29 / 0.45), rgb(185 28 28 / 0.2)); color: #fecaca; border-color: #dc2626; }
+        .ft-legend-dot {
+            width: 1.35rem; height: 1.35rem; border-radius: 999px; display: inline-flex;
+            align-items: center; justify-content: center; font-size: 0.6rem;
+            background: rgb(255 255 255 / 0.65);
         }
 
-        .tree-node {
-            border: 1px solid rgb(229 231 235);
-            border-radius: 1rem;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(249, 250, 251, 0.95));
-            padding: 1rem;
-            box-shadow: 0 8px 24px -18px rgba(15, 23, 42, 0.35);
+        .ft-divide > * + * { margin-top: 1.35rem; padding-top: 1.35rem; border-top: 1px solid rgb(226 232 240 / 0.95); }
+        .dark .ft-divide > * + * { border-top-color: rgb(51 65 85); }
+
+        .ft-sow-tree {
+            border-radius: 1rem; padding: 1rem 1rem 1.1rem; position: relative; overflow: hidden;
+            background: linear-gradient(145deg, rgb(255 255 255) 0%, rgb(253 242 248 / 0.65) 40%, rgb(239 246 255 / 0.5) 100%);
+            border: 1px solid rgb(251 207 232 / 0.85);
+            box-shadow: 0 10px 40px -12px rgb(236 72 153 / 0.35), 0 4px 14px rgb(15 23 42 / 0.06);
+        }
+        .dark .ft-sow-tree {
+            background: linear-gradient(145deg, rgb(15 23 42) 0%, rgb(88 28 135 / 0.22) 45%, rgb(30 58 138 / 0.2) 100%);
+            border-color: rgb(157 23 77 / 0.35);
+            box-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.45);
         }
 
-        .dark .tree-node {
-            border-color: rgb(71 85 105);
-            background: linear-gradient(180deg, rgba(30, 41, 59, 0.86), rgba(15, 23, 42, 0.88));
+        .ft-node { display: flex; align-items: flex-start; gap: 0.85rem; min-width: 0; }
+        .ft-node__glyph {
+            flex-shrink: 0; width: 2.65rem; height: 2.65rem; border-radius: 999px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.95rem; line-height: 1;
+            box-shadow: 0 4px 14px rgb(15 23 42 / 0.12);
+        }
+        .ft-node__glyph--sow {
+            background: linear-gradient(145deg, #f9a8d4, #ec4899); color: white;
+            border: 2px solid rgb(255 255 255 / 0.5); box-shadow: 0 6px 20px rgb(236 72 153 / 0.45);
+        }
+        .dark .ft-node__glyph--sow { border-color: rgb(251 207 232 / 0.25); }
+        .ft-node__glyph--sire {
+            background: linear-gradient(145deg, #93c5fd, #3b82f6); color: white;
+            border: 2px solid rgb(255 255 255 / 0.45); box-shadow: 0 6px 20px rgb(59 130 246 / 0.4);
+        }
+        .dark .ft-node__glyph--sire { border-color: rgb(191 219 254 / 0.2); }
+        .ft-node__glyph--litter {
+            width: 2rem; height: 2rem; font-size: 0.65rem;
+            background: linear-gradient(145deg, #6ee7b7, #10b981); color: white;
+            border: 2px solid rgb(255 255 255 / 0.4); box-shadow: 0 4px 12px rgb(16 185 129 / 0.35);
+        }
+        .dark .ft-node__glyph--litter { border-color: rgb(167 243 208 / 0.2); }
+        .ft-node__glyph--fail {
+            width: 2.25rem; height: 2.25rem; font-size: 0.78rem;
+            background: linear-gradient(145deg, #fca5a5, #ef4444); color: white;
+            border: 2px solid rgb(255 255 255 / 0.4); box-shadow: 0 4px 14px rgb(239 68 68 / 0.4);
         }
 
-        .tree-family-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            margin-bottom: 0.85rem;
+        .ft-trunk {
+            position: relative; margin-left: 1.2rem; padding-left: 1.15rem; margin-top: 0.65rem;
         }
-
-        .tree-family-id {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            border-radius: 999px;
-            border: 1px solid rgb(216 180 254);
-            background: rgb(250 245 255);
-            color: rgb(126 34 206);
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.25rem 0.6rem;
+        .ft-trunk::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 6px;
+            background: linear-gradient(180deg, #ec4899 0%, #8b5cf6 38%, #3b82f6 68%, #10b981 100%);
+            box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
         }
+        .dark .ft-trunk::before { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08); }
 
-        .dark .tree-family-id {
-            border-color: rgb(126 34 206 / 0.65);
-            background: rgb(88 28 135 / 0.3);
-            color: rgb(233 213 255);
+        .ft-branch { position: relative; padding-bottom: 1rem; }
+        .ft-branch:last-child { padding-bottom: 0.2rem; }
+        .ft-branch::before {
+            content: ''; position: absolute; left: -1.08rem; top: 1.2rem;
+            width: 0.85rem; height: 3px; border-radius: 2px;
+            background: linear-gradient(90deg, #a78bfa, #60a5fa);
         }
+        .dark .ft-branch::before { background: linear-gradient(90deg, #7c3aed, #3b82f6); }
 
-        .tree-litter-count {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: rgb(71 85 105);
+        .ft-breeding-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
+        .ft-chip {
+            font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 999px;
+            border: 1px solid transparent;
         }
+        .ft-chip--muted { background: rgb(241 245 249); color: rgb(71 85 105); border-color: rgb(226 232 240); }
+        .dark .ft-chip--muted { background: rgb(30 41 59); color: rgb(203 213 225); border-color: rgb(51 65 85); }
+        .ft-chip--pink { background: rgb(252 231 243); color: rgb(157 23 77); border-color: rgb(251 113 133); }
+        .dark .ft-chip--pink { background: rgb(131 24 67 / 0.45); color: rgb(251 207 232); border-color: rgb(219 39 119 / 0.5); }
+        .ft-chip--blue { background: rgb(219 234 254); color: rgb(29 78 216); border-color: rgb(147 197 253); }
+        .dark .ft-chip--blue { background: rgb(30 58 138 / 0.5); color: rgb(191 219 254); border-color: rgb(59 130 246 / 0.45); }
+        .ft-chip--amber { background: rgb(254 243 199); color: rgb(146 64 14); border-color: rgb(252 211 77); }
+        .dark .ft-chip--amber { background: rgb(120 53 15 / 0.45); color: rgb(254 243 199); border-color: rgb(245 158 11 / 0.45); }
+        .ft-chip--green { background: rgb(209 250 229); color: rgb(6 95 70); border-color: rgb(110 231 183); }
+        .dark .ft-chip--green { background: rgb(6 78 59 / 0.45); color: rgb(167 243 208); border-color: rgb(16 185 129 / 0.45); }
+        .ft-chip--slate { background: rgb(241 245 249); color: rgb(51 65 85); border-color: rgb(203 213 225); }
+        .dark .ft-chip--slate { background: rgb(51 65 85); color: rgb(226 232 240); border-color: rgb(71 85 105); }
+        .ft-chip--red { background: rgb(254 226 226); color: rgb(153 27 27); border-color: rgb(252 165 165); }
+        .dark .ft-chip--red { background: rgb(127 29 29 / 0.45); color: rgb(254 202 202); border-color: rgb(248 113 113 / 0.45); }
 
-        .dark .tree-litter-count {
-            color: rgb(148 163 184);
+        .ft-litter-stack { margin-top: 0.5rem; margin-left: 0.15rem; }
+        .ft-litter-row {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.45rem 0.55rem; margin-bottom: 0.35rem; border-radius: 0.65rem;
+            background: linear-gradient(90deg, rgb(209 250 229 / 0.45), rgb(240 253 244 / 0.35));
+            border: 1px solid rgb(167 243 208 / 0.65);
         }
-
-        .tree-section-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            font-size: 0.72rem;
-            letter-spacing: 0.03em;
-            text-transform: uppercase;
-            font-weight: 700;
-            color: rgb(100 116 139);
-            margin-bottom: 0.55rem;
+        .dark .ft-litter-row {
+            background: linear-gradient(90deg, rgb(6 78 59 / 0.35), rgb(15 23 42 / 0.2));
+            border-color: rgb(52 211 153 / 0.35);
         }
+        .ft-litter-row:last-child { margin-bottom: 0; }
 
-        .dark .tree-section-label {
-            color: rgb(148 163 184);
+        .ft-pill {
+            display: inline-flex; align-items: center; padding: 0.15rem 0.45rem; border-radius: 999px;
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
         }
+        .ft-pill--emerald { background: rgb(6 95 70); color: rgb(209 250 229); }
+        .ft-pill--amber { background: rgb(180 83 9); color: rgb(254 243 199); }
+        .ft-pill--sky { background: rgb(3 105 161); color: rgb(224 242 254); }
+        .ft-pill--rose { background: rgb(190 18 60); color: rgb(255 228 230); }
 
-        .tree-parents {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.75rem;
-            margin-bottom: 1rem;
+        .ft-fail-trunk {
+            margin-top: 0.75rem; margin-left: 1.2rem; padding: 0.65rem 0.75rem; border-radius: 0.75rem;
+            background: linear-gradient(135deg, rgb(254 242 242 / 0.95), rgb(255 255 255));
+            border: 1px dashed rgb(248 113 113); border-left: 4px solid #f87171;
         }
-
-        .tree-parent {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            min-width: 0;
-            border: 1px solid rgb(226 232 240);
-            border-radius: 0.75rem;
-            background: rgb(255 255 255 / 0.8);
-            padding: 0.65rem 0.7rem;
-        }
-
-        .dark .tree-parent {
-            border-color: rgb(71 85 105);
-            background: rgb(30 41 59 / 0.7);
-        }
-
-        .tree-parent--sow {
-            border-color: rgb(251 207 232);
-            background: rgb(253 242 248);
-        }
-
-        .dark .tree-parent--sow {
-            border-color: rgb(190 24 93 / 0.35);
-            background: rgb(80 7 36 / 0.25);
-        }
-
-        .tree-parent--boar {
-            border-color: rgb(191 219 254);
-            background: rgb(239 246 255);
-        }
-
-        .dark .tree-parent--boar {
-            border-color: rgb(37 99 235 / 0.45);
-            background: rgb(30 58 138 / 0.2);
-        }
-
-        .tree-parent--unknown {
-            border-style: dashed;
-            border-color: rgb(203 213 225);
-            background: rgb(248 250 252);
-        }
-
-        .dark .tree-parent--unknown {
-            border-color: rgb(100 116 139);
-            background: rgb(30 41 59 / 0.45);
-        }
-
-        .tree-children-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 0.6rem;
-        }
-
-        .tree-child-wrapper {
-            position: relative;
-        }
-
-        .tree-child {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.5rem;
-            border: 1px solid rgb(226 232 240);
-            border-radius: 0.75rem;
-            background: rgb(255 255 255 / 0.8);
-            padding: 0.5rem 0.6rem;
-        }
-
-        .dark .tree-child {
-            border-color: rgb(71 85 105);
-            background: rgb(30 41 59 / 0.7);
-        }
-
-        @media (max-width: 767px) {
-            .tree-node {
-                padding: 0.75rem;
-            }
-
-            .tree-family-top {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .tree-parents {
-                grid-template-columns: 1fr;
-                gap: 0.5rem;
-            }
+        .dark .ft-fail-trunk {
+            background: linear-gradient(135deg, rgb(127 29 29 / 0.35), rgb(15 23 42 / 0.4));
+            border-color: rgb(239 68 68 / 0.45);
         }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+<body class="min-h-screen bg-gradient-to-br from-fuchsia-50 via-sky-50 to-emerald-50 dark:from-slate-950 dark:via-indigo-950 dark:to-slate-900 transition-colors duration-300">
 {% set farm_shell_breadcrumb_current = 'Family Tree' %}
 {% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
 {% set farm_sidebar_banner_title = 'Pig hub' %}
@@ -187,116 +168,34 @@
     <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
 <main class="pt-16 md:pl-64 min-h-screen">
-        <div class="p-6 lg:p-8">
-            <!-- Page Header -->
-            <div class="mb-8 animate-fade-in">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <!-- Header Background -->
-                    <div class="h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500"></div>
-                    
-                    <div class="p-8">
-                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-sitemap text-white text-2xl"></i>
-                                </div>
-                                <div>
-                                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Family Tree</h1>
-                                    <p class="text-gray-600 dark:text-gray-400 font-medium mt-1">Complete pedigree view of all sows and boars in the farm</p>
-                                    <div class="flex items-center mt-2">
-                                        <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
-                                        <span class="text-sm text-purple-600 dark:text-purple-400 font-medium">Pedigree Management</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-center space-x-4">
-                                <!-- Mobile Menu Button -->
-                                <button id="mobile-menu-btn" class="lg:hidden p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Open menu">
-                                    <i class="fas fa-bars text-lg"></i>
-                                </button>
-                                
-                                <!-- Refresh Button -->
-                                <button onclick="loadFamilyTree()" class="group p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md hover:-translate-y-0.5" aria-label="Refresh data">
-                                    <i class="fas fa-sync-alt text-lg group-hover:rotate-180 transition-transform duration-500"></i>
-                                </button>
-                                
-                                <!-- Dark Mode Toggle -->
-                                <button onclick="toggleDarkMode()" class="p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Toggle dark mode">
-                                    <i class="fas fa-moon dark:hidden text-lg"></i>
-                                    <i class="fas fa-sun hidden dark:block text-lg"></i>
-                                </button>
-                            </div>
-                        </div>
+        <div class="px-4 py-4 sm:px-6 sm:py-5 max-w-4xl mx-auto">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4 pb-4 border-b border-pink-200/60 dark:border-indigo-800/60">
+                <div class="min-w-0">
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-pink-600 via-violet-600 to-sky-600 dark:from-pink-300 dark:via-violet-300 dark:to-sky-300 bg-clip-text text-transparent">Family tree</h1>
+                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">Sow → sire → litters. Quick scan; details stay in breeding records.</p>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-200 border border-pink-200/80 dark:border-pink-800/50 shadow-sm"><i class="fas fa-venus text-[0.65rem] opacity-80"></i><span id="total-sows-count">0</span> sows</span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/50 shadow-sm"><i class="fas fa-mars text-[0.65rem] opacity-80"></i><span id="total-boars-count">0</span> boars</span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm"><i class="fas fa-leaf text-[0.65rem] opacity-80"></i><span id="total-breedings-count">0</span> litters</span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/50 shadow-sm"><i class="fas fa-users text-[0.65rem] opacity-80"></i><span id="active-breeders-count">0</span> breeders</span>
                     </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button id="mobile-menu-btn" class="lg:hidden p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 shadow-md border border-pink-200/50 dark:border-slate-600 hover:bg-pink-50 dark:hover:bg-slate-700" aria-label="Open menu">
+                        <i class="fas fa-bars text-sm"></i>
+                    </button>
+                    <button onclick="loadFamilyTree()" class="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 text-sky-600 dark:text-sky-300 shadow-md border border-sky-200/50 dark:border-slate-600 hover:bg-sky-50 dark:hover:bg-slate-700" aria-label="Refresh" title="Refresh">
+                        <i class="fas fa-sync-alt text-sm"></i>
+                    </button>
+                    <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 text-violet-600 dark:text-violet-300 shadow-md border border-violet-200/50 dark:border-slate-600 hover:bg-violet-50 dark:hover:bg-slate-700" aria-label="Toggle dark mode">
+                        <i class="fas fa-moon dark:hidden text-sm"></i>
+                        <i class="fas fa-sun hidden dark:block text-sm"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Statistics Bar -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-4 sm:gap-6">
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-female text-pink-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Total Sows:</span>
-                            <span id="total-sows-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-male text-blue-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Total Boars:</span>
-                            <span id="total-boars-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-heart text-green-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Active Breeders:</span>
-                            <span id="active-breeders-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-chart-line text-purple-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Total Breedings:</span>
-                            <span id="total-breedings-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Family Tree Content -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden animate-slide-up">
-                <!-- Section Header -->
-                <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-sitemap text-white text-lg"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Breeding Families</h2>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Each family card shows parents and their litters</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-pink-100 to-pink-200 dark:from-pink-900/30 dark:to-pink-800/30 rounded-lg border border-pink-200 dark:border-pink-700">
-                                <div class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
-                                <span class="text-xs sm:text-sm font-semibold text-pink-700 dark:text-pink-300" id="sows-count">0 Sows</span>
-                            </div>
-                            <div class="flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg border border-blue-200 dark:border-blue-700">
-                                <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                <span class="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-300" id="boars-count">0 Boars</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Combined Container -->
-                <div id="pigs-container" class="p-4 sm:p-6">
-                    <!-- All pigs will be loaded here -->
-                </div>
+            <div id="pigs-container" class="min-h-[12rem]">
+                <!-- Lineage trees rendered here -->
             </div>
         </div>
     </main>
@@ -357,20 +256,18 @@
                 
                 if (data.success) {
                     const familyTree = data.family_tree || [];
-                    console.log('Family tree pairs found:', familyTree.length);
+                    console.log('Sows in family tree:', familyTree.length);
                     
-                    // Calculate statistics
                     const uniqueSows = new Set();
                     const uniqueBoars = new Set();
                     let totalLitters = 0;
-                    let totalPiglets = 0;
                     
-                    familyTree.forEach(pair => {
-                        if (pair.sow) uniqueSows.add(pair.sow.id);
-                        if (pair.boar) uniqueBoars.add(pair.boar.id);
-                        totalLitters += pair.litters.length;
-                        pair.litters.forEach(litter => {
-                            totalPiglets += litter.alive_piglets || 0;
+                    familyTree.forEach(sowGroup => {
+                        if (sowGroup.sow) uniqueSows.add(sowGroup.sow.id);
+                        (sowGroup.pairings || []).forEach(pairing => {
+                            if (pairing.boar) uniqueBoars.add(pairing.boar.id);
+                            const lit = pairing.litters || [];
+                            totalLitters += lit.length;
                         });
                     });
                     
@@ -379,8 +276,6 @@
                     document.getElementById('total-boars-count').textContent = uniqueBoars.size;
                     document.getElementById('active-breeders-count').textContent = uniqueSows.size + uniqueBoars.size;
                     document.getElementById('total-breedings-count').textContent = totalLitters;
-                    document.getElementById('sows-count').textContent = `${uniqueSows.size} Sows`;
-                    document.getElementById('boars-count').textContent = `${uniqueBoars.size} Boars`;
                     
                     // Display family tree
                     displayFamilyTree(familyTree);
@@ -427,144 +322,221 @@
             }
         }
 
-        // Display family tree with parent-child relationships as a tree diagram
+        function escapeHtml(s) {
+            if (s == null || s === '') return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatBreedingRecordStatus(st) {
+            if (!st) return '—';
+            const k = String(st).toLowerCase();
+            const map = {
+                served: 'Served', pregnant: 'Pregnant', completed: 'Completed',
+                farrowed: 'Farrowed', failed: 'Failed', cancelled: 'Cancelled'
+            };
+            return map[k] || st;
+        }
+
+        function litterStatusLabel(status) {
+            if (!status) return '—';
+            const k = String(status).toLowerCase();
+            const map = {
+                unweaned: 'Unweaned',
+                weaned: 'Weaned',
+                sold: 'Sold',
+                deceased: 'Deceased',
+                dead: 'Deceased',
+                slaughtered: 'Slaughtered'
+            };
+            return map[k] || (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase());
+        }
+
+        function shortDate(d) {
+            if (d == null || d === '') return '—';
+            const s = String(d);
+            return s.length >= 10 ? s.slice(0, 10) : s;
+        }
+
+        function breedingChipClass(st) {
+            const k = String(st || '').toLowerCase();
+            if (k === 'failed' || k === 'cancelled') return 'ft-chip--red';
+            if (k === 'pregnant') return 'ft-chip--amber';
+            if (k === 'farrowed' || k === 'completed') return 'ft-chip--green';
+            if (k === 'served') return 'ft-chip--pink';
+            return 'ft-chip--blue';
+        }
+
+        function litterPillClass(status) {
+            const k = String(status || '').toLowerCase();
+            if (k === 'weaned') return 'ft-pill--emerald';
+            if (k === 'unweaned') return 'ft-pill--amber';
+            if (k === 'sold' || k === 'slaughtered') return 'ft-pill--sky';
+            if (k === 'deceased' || k === 'dead') return 'ft-pill--rose';
+            return 'ft-pill--emerald';
+        }
+
+        /** Last few matings only — date + status chips */
+        function renderBreedingsList(breedings) {
+            if (!breedings || breedings.length === 0) return '';
+            const max = 3;
+            const slice = breedings.slice(-max);
+            const more = breedings.length > max ? breedings.length - max : 0;
+            return `
+                <div class="ft-breeding-chips" aria-label="Recent matings">
+                    ${slice.map((b) => `
+                        <span class="ft-chip ${breedingChipClass(b.status)}">${shortDate(b.mating_date)} · ${formatBreedingRecordStatus(b.status)}</span>
+                    `).join('')}
+                    ${more ? `<span class="ft-chip ft-chip--muted">+${more} more</span>` : ''}
+                </div>
+            `;
+        }
+
+        function renderUnsuccessfulList(items) {
+            if (!items || items.length === 0) return '';
+            return `
+                <div class="ft-fail-trunk" role="group" aria-label="Unsuccessful breedings">
+                    <div class="ft-node mb-2">
+                        <span class="ft-node__glyph ft-node__glyph--fail" aria-hidden="true"><i class="fas fa-times"></i></span>
+                        <div class="min-w-0 pt-0.5">
+                            <div class="text-sm font-bold text-red-700 dark:text-red-300">No litter from these matings</div>
+                        </div>
+                    </div>
+                    <ul class="space-y-1.5">
+                        ${items.map((u) => {
+                            const boarTag = (u.boar && u.boar.tag_id) ? u.boar.tag_id : '—';
+                            return `
+                                <li class="text-sm flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-slate-800 dark:text-slate-200">
+                                    <span class="font-bold text-red-800 dark:text-red-200">${escapeHtml(u.label || u.status || '—')}</span>
+                                    <span class="text-sky-700 dark:text-sky-300 font-semibold">${escapeHtml(boarTag)}</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(u.mating_date) || ''}</span>
+                                </li>
+                            `;
+                        }).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function renderLitterLeaves(litters) {
+            if (!litters || litters.length === 0) {
+                return `<p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 pl-0.5">No litters on this branch.</p>`;
+            }
+            return `
+                <div class="ft-litter-stack" role="group" aria-label="Litters">
+                    ${litters.map((litter) => {
+                        const alive = litter.alive_piglets != null && litter.total_piglets != null
+                            ? `${litter.alive_piglets}/${litter.total_piglets}`
+                            : '';
+                        return `
+                        <div class="ft-litter-row">
+                            <span class="ft-node__glyph ft-node__glyph--litter" aria-hidden="true"><i class="fas fa-leaf"></i></span>
+                            <div class="min-w-0 flex-1 flex flex-wrap items-center gap-2">
+                                <span class="text-base font-black text-slate-900 dark:text-white tracking-tight">${escapeHtml(litter.litter_id || 'Litter')}</span>
+                                <span class="ft-pill ${litterPillClass(litter.status)}">${litterStatusLabel(litter.status)}</span>
+                                ${alive ? `<span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">${alive} alive</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        // Sow = reference root; each sire (boar) is a branch with its litters
         function displayFamilyTree(familyTree) {
             const container = document.getElementById('pigs-container');
             container.innerHTML = '';
             
             if (familyTree.length === 0) {
                 container.innerHTML = `
-                    <div class="text-center py-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <i class="fas fa-sitemap text-gray-400 text-2xl"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Family Tree Data</h3>
-                        <p class="text-gray-600 dark:text-gray-400">No parent-child relationships found. Register litters to build the family tree.</p>
+                    <div class="py-12 px-4 text-center rounded-2xl border border-dashed border-pink-300/70 dark:border-pink-800/50 bg-white/60 dark:bg-slate-900/40">
+                        <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-400 to-violet-500 text-white shadow-lg mb-3"><i class="fas fa-sitemap text-xl"></i></div>
+                        <p class="font-bold text-slate-800 dark:text-slate-100">Nothing to show yet</p>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Link breedings and litters to sows and boars — your tree will appear here.</p>
                     </div>
                 `;
                 return;
             }
             
-            // Create clearer family card layout
             const treeHTML = `
-                <div class="tree-container space-y-8">
-                    ${familyTree.map((pair, index) => {
-                        const sow = pair.sow;
-                        const boar = pair.boar;
-                        const litters = pair.litters || [];
-                        const familyLabel = sow?.tag_id && boar?.tag_id
-                            ? `${sow.tag_id} x ${boar.tag_id}`
-                            : `${sow?.tag_id || 'Sow'} x ${boar?.tag_id || 'Unknown Boar'}`;
+                <p class="ft-hint"><strong class="text-pink-700 dark:text-pink-300">Top → down:</strong> pink = sow, blue = sire, green = litters. Red block = mating with no litter.</p>
+                <div class="ft-legend-row" role="list" aria-label="Legend">
+                    <span class="ft-legend-item ft-legend-item--sow" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-venus"></i></span> Sow</span>
+                    <span class="ft-legend-item ft-legend-item--sire" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-mars"></i></span> Sire</span>
+                    <span class="ft-legend-item ft-legend-item--litter" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-leaf"></i></span> Litter</span>
+                    <span class="ft-legend-item ft-legend-item--fail" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-times"></i></span> Failed</span>
+                </div>
+                <div class="ft-divide" role="region" aria-label="Sow family trees">
+                    ${familyTree.map((sowGroup, index) => {
+                        const sow = sowGroup.sow;
+                        const pairings = sowGroup.pairings || [];
+                        const unsuccessful = sowGroup.unsuccessful_breedings || [];
+                        const totalLitters = pairings.reduce((n, p) => n + (p.litters || []).length, 0);
+                        const sireCount = pairings.length;
+                        const badCount = unsuccessful.length;
                         
                         return `
-                            <div class="tree-node">
-                                <div class="tree-family-top">
-                                    <span class="tree-family-id">
-                                        <i class="fas fa-sitemap"></i>
-                                        Family ${index + 1}: ${familyLabel}
-                                    </span>
-                                    <span class="tree-litter-count">${litters.length} litter${litters.length === 1 ? '' : 's'}</span>
-                                </div>
-
-                                <div class="tree-section-label">
-                                    <i class="fas fa-user-friends"></i>
-                                    Parents
-                                </div>
-                                <div class="tree-parents">
-                                    <div class="tree-parent tree-parent--sow">
-                                        <div class="w-6 h-6 bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-900/30 dark:to-pink-800/30 rounded flex items-center justify-center flex-shrink-0">
-                                            <i class="fas fa-female text-pink-600 dark:text-pink-400 text-xs"></i>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <div class="text-[11px] text-pink-700 dark:text-pink-300 font-bold uppercase tracking-wide">Sow</div>
-                                            <div class="text-xs font-semibold text-gray-900 dark:text-white truncate">${sow?.tag_id || 'N/A'}</div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${sow.breed || 'Unknown'}</div>
+                            <section class="first:pt-0" role="article" aria-labelledby="ft-sow-${index}">
+                                <div class="ft-sow-tree">
+                                    <div class="ft-node" id="ft-sow-${index}">
+                                        <span class="ft-node__glyph ft-node__glyph--sow" aria-hidden="true"><i class="fas fa-venus"></i></span>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-baseline gap-2">
+                                                <span class="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white tracking-tight">${escapeHtml(sow?.tag_id || 'N/A')}</span>
+                                                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/80 dark:bg-slate-800/90 text-pink-800 dark:text-pink-200 border border-pink-200 dark:border-pink-800/60 shadow-sm">${escapeHtml(sow?.breed || '—')}</span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1.5 mt-2">
+                                                <span class="ft-chip ft-chip--pink">Sow</span>
+                                                <span class="ft-chip ft-chip--muted">${sireCount} sire${sireCount === 1 ? '' : 's'}</span>
+                                                <span class="ft-chip ft-chip--muted">${totalLitters} litter${totalLitters === 1 ? '' : 's'}</span>
+                                                ${badCount ? `<span class="ft-chip ft-chip--red">${badCount} failed</span>` : ''}
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div class="tree-parent ${boar ? 'tree-parent--boar' : 'tree-parent--unknown'}">
-                                        ${boar ? `
-                                            <div class="w-6 h-6 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-male text-blue-600 dark:text-blue-400 text-xs"></i>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <div class="text-[11px] text-blue-700 dark:text-blue-300 font-bold uppercase tracking-wide">Boar</div>
-                                                <div class="text-xs font-semibold text-gray-900 dark:text-white truncate">${boar.tag_id || 'N/A'}</div>
-                                                <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${boar.breed || 'Unknown'}</div>
-                                            </div>
-                                        ` : `
-                                            <div class="w-6 h-6 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-question text-gray-400 text-xs"></i>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <div class="text-[11px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wide">Boar</div>
-                                                <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Unknown</div>
-                                            </div>
-                                        `}
-                                    </div>
-                                </div>
-                                
-                                <div class="tree-section-label">
-                                    <i class="fas fa-baby"></i>
-                                    Litters
-                                </div>
-                                ${litters.length > 0 ? `
-                                    <div class="tree-children-container">
-                                        ${litters.map((litter, litterIndex) => `
-                                            <div class="tree-child-wrapper">
-                                                <div class="tree-child">
-                                                    <div class="w-5 h-5 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded flex items-center justify-center flex-shrink-0">
-                                                        <i class="fas fa-baby text-green-600 dark:text-green-400 text-xs"></i>
-                                                    </div>
+                                    <div class="ft-trunk" aria-label="Branches from this sow">
+                                        ${pairings.map((pairing) => {
+                                        const boar = pairing.boar;
+                                        const litters = pairing.litters || [];
+                                        const breedings = pairing.breedings || [];
+                                        const sireTitle = boar && boar.tag_id
+                                            ? `<span class="text-lg font-black font-mono text-slate-900 dark:text-white">${escapeHtml(boar.tag_id)}</span>${boar.breed ? ' <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-900 dark:text-sky-200 border border-sky-200/80 dark:border-sky-700/50">' + escapeHtml(boar.breed) + '</span>' : ''}`
+                                            : '<span class="text-slate-500 font-medium">Sire not recorded</span>';
+                                        return `
+                                            <div class="ft-branch" role="group">
+                                                <div class="ft-node">
+                                                    <span class="ft-node__glyph ft-node__glyph--sire" aria-hidden="true"><i class="fas fa-mars"></i></span>
                                                     <div class="min-w-0 flex-1">
-                                                        <div class="text-xs font-semibold text-gray-900 dark:text-white">${litter.litter_id || 'N/A'}</div>
-                                                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                                            <span class="text-xs text-gray-600 dark:text-gray-400">${litter.alive_piglets || 0}/${litter.total_piglets || 0}</span>
-                                                            ${litter.avg_weight ? `<span class="text-xs text-gray-500 dark:text-gray-400">• ${litter.avg_weight}kg</span>` : ''}
-                                                            <span class="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${getLitterStatusColor(litter.status)}">
-                                                                ${litter.status ? litter.status.charAt(0).toUpperCase() + litter.status.slice(1).toLowerCase() : 'Unknown'}
-                                                            </span>
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <span class="text-[0.65rem] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">Sire</span>
+                                                            ${sireTitle}
                                                         </div>
+                                                        ${renderBreedingsList(breedings)}
+                                                        ${renderLitterLeaves(litters)}
                                                     </div>
                                                 </div>
                                             </div>
-                                        `).join('')}
+                                        `;
+                                    }).join('')}
+                                        ${pairings.length === 0 && unsuccessful.length === 0 ? `
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 py-1 pl-1">No branches yet — add breedings and litters for this sow.</p>
+                                    ` : ''}
+                                        ${pairings.length === 0 && unsuccessful.length > 0 ? `
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 py-1 pl-1">No recorded sire branches on file — see unsuccessful breedings below.</p>
+                                    ` : ''}
                                     </div>
-                                ` : `
-                                    <div class="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-                                        <i class="fas fa-baby text-xl mb-2 opacity-50"></i>
-                                        <p>No litters</p>
-                                    </div>
-                                `}
-                            </div>
+                                    ${renderUnsuccessfulList(unsuccessful)}
+                                </div>
+                            </section>
                         `;
                     }).join('')}
                 </div>
             `;
             
             container.innerHTML = treeHTML;
-        }
-        
-        // Get litter status color
-        function getLitterStatusColor(status) {
-            if (!status) return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-            
-            const statusLower = status.toLowerCase();
-            switch (statusLower) {
-                case 'unweaned': 
-                    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-                case 'weaned': 
-                    return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-                case 'sold': 
-                    return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-                case 'deceased':
-                case 'dead':
-                    return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-                case 'slaughtered':
-                    return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-                default: 
-                    return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-            }
         }
 
         // Display all pigs (sows and boars combined) - kept for backward compatibility
@@ -707,5 +679,6 @@
             setupMobileMenu();
         });
     </script>
-    {% include 'includes/farm_shell_footer.html' %}\n</body>
+    {% include 'includes/farm_shell_footer.html' %}
+</body>
 </html>

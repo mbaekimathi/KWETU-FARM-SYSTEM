@@ -16119,6 +16119,7 @@ def complete_farrowing_activity(activity_id):
         
         # Check if all activities are completed and update litter status to weaned
         check_and_update_litter_status(activity['farrowing_record_id'])
+        maybe_mark_sow_available_after_farrowing_cycle(activity['farrowing_record_id'])
         
         return jsonify({
             'success': True,
@@ -16161,6 +16162,7 @@ def complete_farrowing_activity_simple(activity_id):
         
         # Check if all activities are completed and update litter status to weaned
         check_and_update_litter_status(activity['farrowing_record_id'])
+        maybe_mark_sow_available_after_farrowing_cycle(activity['farrowing_record_id'])
         
         return jsonify({
             'success': True,
@@ -16264,8 +16266,11 @@ def check_sow_recovery_status(farrowing_id):
             else:
                 trend_direction = 'down'
 
-        # Sow is ready only when all activities are completed by the user.
-        sow_ready = all_activities_completed
+        availability_block_reason = farrowing_cycle_availability_block_reason(cursor, farrowing_id)
+        sow_ready = (
+            farrowing.get('breeding_status') == 'available'
+            or farrowing_cycle_ready_for_sow_available(cursor, farrowing_id)
+        )
         
         cursor.close()
         conn.close()
@@ -16278,6 +16283,7 @@ def check_sow_recovery_status(farrowing_id):
                 'days_until_recovery': max(0, days_until_recovery),
                 'all_activities_completed': all_activities_completed,
                 'sow_ready': sow_ready,
+                'availability_block_reason': availability_block_reason,
                 'sow_tag_id': farrowing['sow_tag_id'],
                 'current_breeding_status': farrowing['breeding_status'],
                 'sow_breed': farrowing['breed'],
@@ -16297,95 +16303,45 @@ def check_sow_recovery_status(farrowing_id):
 
 @app.route('/api/farrowing/mark-sow-available/<int:farrowing_id>', methods=['POST'])
 def mark_sow_available_for_breeding(farrowing_id):
-    """Mark sow as available for next breeding after activity completion"""
+    """Mark sow as available after all farrowing activities (including Weaning) are done and litters are weaned."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
+        check_and_update_litter_status(farrowing_id)
+        maybe_mark_sow_available_after_farrowing_cycle(farrowing_id)
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Get farrowing details
+
         cursor.execute("""
-            SELECT fr.farrowing_date, fr.id, br.sow_id, br.id as breeding_id, p.tag_id as sow_tag_id
+            SELECT p.tag_id AS sow_tag_id, p.breeding_status
             FROM farrowing_records fr
             JOIN breeding_records br ON fr.breeding_id = br.id
             JOIN pigs p ON br.sow_id = p.id
             WHERE fr.id = %s
         """, (farrowing_id,))
-        
-        farrowing = cursor.fetchone()
-        if not farrowing:
+
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
             return jsonify({'success': False, 'message': 'Farrowing record not found'})
-        
-        # Check if all activities are completed
-        cursor.execute("""
-            SELECT COUNT(*) as total_activities,
-                   SUM(CASE WHEN completed = TRUE THEN 1 ELSE 0 END) as completed_activities
-            FROM farrowing_activities 
-            WHERE farrowing_record_id = %s
-        """, (farrowing_id,))
-        
-        activities_result = cursor.fetchone()
-        if activities_result['total_activities'] != activities_result['completed_activities']:
+
+        if row['breeding_status'] == 'available':
+            cursor.close()
+            conn.close()
             return jsonify({
-                'success': False, 
-                'message': 'Cannot mark sow as available until all farrowing activities are completed'
+                'success': True,
+                'message': f'Sow {row["sow_tag_id"]} is available for next breeding.'
             })
 
-        # Check if weaning activity is completed and update litter status
-        cursor.execute("""
-            SELECT fa.*, l.id as litter_id
-            FROM farrowing_activities fa
-            JOIN litters l ON l.farrowing_record_id = fa.farrowing_record_id
-            WHERE fa.farrowing_record_id = %s AND fa.activity_name = 'Weaning'
-        """, (farrowing_id,))
-        
-        weaning_activity = cursor.fetchone()
-        if weaning_activity and weaning_activity['completed']:
-            # Update litter status to weaned
-            cursor.execute("""
-                UPDATE litters 
-                SET status = 'weaned', weaning_date = %s, weaning_weight = %s, updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-            """, (weaning_activity['weaning_date'], weaning_activity['weaning_weight'], weaning_activity['litter_id']))
-            print(f"✅ Updated litter {weaning_activity['litter_id']} status to 'weaned'")
-        else:
-            # Check which activities are not completed
-            cursor.execute("""
-                SELECT activity_name, due_day, due_date
-                FROM farrowing_activities 
-                WHERE farrowing_record_id = %s AND completed = FALSE
-                ORDER BY due_day ASC
-            """, (farrowing_id,))
-            
-            incomplete_activities = cursor.fetchall()
-            if incomplete_activities:
-                incomplete_list = [f"Day {activity['due_day']}: {activity['activity_name']}" for activity in incomplete_activities]
-                return jsonify({
-                    'success': False, 
-                    'message': 'Cannot mark sow as available. Incomplete farrowing activities:',
-                    'incomplete_activities': incomplete_list
-                })
-        
-        # Update sow's breeding status to available
-        cursor.execute("""
-            UPDATE pigs 
-            SET breeding_status = 'available' 
-            WHERE id = %s
-        """, (farrowing['sow_id'],))
-        
-        # Log the successful breeding cycle completion
-        log_activity(session['employee_id'], 'BREEDING_CYCLE_COMPLETED', 
-                    f'Successful breeding cycle completed for sow {farrowing["sow_tag_id"]}. Ready for next breeding.')
-        
-        conn.commit()
+        reason = farrowing_cycle_availability_block_reason(cursor, farrowing_id)
         cursor.close()
         conn.close()
-        
         return jsonify({
-            'success': True,
-            'message': f'Sow {farrowing["sow_tag_id"]} marked as available for next breeding. Successful breeding cycle completed!'
+            'success': False,
+            'message': reason or 'Cannot mark sow as available yet.'
         })
         
     except Exception as e:
@@ -16705,17 +16661,28 @@ def get_family_tree_boars():
         print(f"Error getting family tree boars: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+def _family_tree_breeding_notes_summary(notes):
+    if not notes:
+        return None
+    text = str(notes).strip()
+    if 'Failure reason:' in text:
+        tail = text.split('Failure reason:')[-1].strip()
+        return tail[:280] if tail else None
+    return text[:280] if text else None
+
+
 @app.route('/api/family-tree/relationships', methods=['GET'])
 def get_family_tree_relationships():
-    """Get family tree with parent-child relationships (sows/boars and their litters)"""
+    """Sow-centric tree: litters by sire; breeding attempts per boar; failed/cancelled per sow."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
+        from collections import defaultdict
+
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get all breeding pairs (sow + boar) with their litters
         cursor.execute("""
             SELECT DISTINCT
                 sow.id as sow_id,
@@ -16740,23 +16707,21 @@ def get_family_tree_relationships():
             INNER JOIN pigs sow ON l.sow_id = sow.id
             LEFT JOIN pigs boar ON l.boar_id = boar.id
             WHERE sow.status = 'active'
-            ORDER BY sow.tag_id, l.farrowing_date DESC
+            ORDER BY sow.tag_id, boar.tag_id, l.farrowing_date DESC
         """)
         
         relationships = cursor.fetchall()
         
-        # Organize data by parent pairs
-        family_tree = {}
+        # Sow -> { sow, pairings: { boar_key -> { boar, litters } } }
+        by_sow = {}
         
         for rel in relationships:
             sow_id = rel['sow_id']
             boar_id = rel['boar_id']
+            pair_key = str(boar_id) if boar_id else 'none'
             
-            # Create a unique key for the parent pair
-            pair_key = f"{sow_id}_{boar_id}" if boar_id else f"{sow_id}_none"
-            
-            if pair_key not in family_tree:
-                family_tree[pair_key] = {
+            if sow_id not in by_sow:
+                by_sow[sow_id] = {
                     'sow': {
                         'id': rel['sow_id'],
                         'tag_id': rel['sow_tag_id'],
@@ -16765,6 +16730,11 @@ def get_family_tree_relationships():
                         'age_days': rel['sow_age_days'],
                         'breeding_status': rel['sow_breeding_status']
                     },
+                    'pairings': {}
+                }
+            
+            if pair_key not in by_sow[sow_id]['pairings']:
+                by_sow[sow_id]['pairings'][pair_key] = {
                     'boar': {
                         'id': rel['boar_id'],
                         'tag_id': rel['boar_tag_id'],
@@ -16775,9 +16745,8 @@ def get_family_tree_relationships():
                     'litters': []
                 }
             
-            # Add litter to the parent pair
             if rel['litter_id']:
-                family_tree[pair_key]['litters'].append({
+                litter_payload = {
                     'id': rel['litter_id'],
                     'litter_id': rel['litter_number'],
                     'farrowing_date': str(rel['farrowing_date']) if rel['farrowing_date'] else None,
@@ -16785,10 +16754,129 @@ def get_family_tree_relationships():
                     'alive_piglets': rel['alive_piglets'],
                     'status': rel['litter_status'],
                     'avg_weight': float(rel['avg_weight']) if rel['avg_weight'] else None
+                }
+                existing_ids = {x['id'] for x in by_sow[sow_id]['pairings'][pair_key]['litters']}
+                if rel['litter_id'] not in existing_ids:
+                    by_sow[sow_id]['pairings'][pair_key]['litters'].append(litter_payload)
+
+        # All breeding records for active sows: per-(sow, boar) matings + failed/cancelled per sow
+        cursor.execute("""
+            SELECT
+                br.id,
+                br.sow_id,
+                br.boar_id,
+                br.mating_date,
+                br.expected_due_date,
+                br.status,
+                br.notes,
+                boar.tag_id AS boar_tag_id,
+                boar.breed AS boar_breed
+            FROM breeding_records br
+            INNER JOIN pigs sow ON br.sow_id = sow.id
+            LEFT JOIN pigs boar ON br.boar_id = boar.id
+            WHERE sow.status = 'active'
+            ORDER BY br.sow_id, br.boar_id, br.mating_date DESC
+        """)
+        breeding_rows = cursor.fetchall()
+
+        matings_by_pair = defaultdict(list)
+        unsuccessful_by_sow = defaultdict(list)
+
+        for br in breeding_rows:
+            sow_id = br['sow_id']
+            boar_id = br['boar_id']
+            pair_key = str(boar_id) if boar_id else 'none'
+            st = (br['status'] or '').lower()
+
+            boar_obj = None
+            if boar_id:
+                boar_obj = {
+                    'id': boar_id,
+                    'tag_id': br['boar_tag_id'],
+                    'breed': br['boar_breed']
+                }
+
+            if st in ('failed', 'cancelled'):
+                label = 'Cancelled breeding' if st == 'cancelled' else 'Failed conception'
+                unsuccessful_by_sow[sow_id].append({
+                    'breeding_id': br['id'],
+                    'boar': boar_obj,
+                    'mating_date': str(br['mating_date']) if br['mating_date'] else None,
+                    'status': st,
+                    'label': label,
+                    'summary': _family_tree_breeding_notes_summary(br['notes'])
                 })
-        
-        # Convert to list format
-        family_list = list(family_tree.values())
+            else:
+                matings_by_pair[(sow_id, pair_key)].append({
+                    'breeding_id': br['id'],
+                    'boar': boar_obj,
+                    'mating_date': str(br['mating_date']) if br['mating_date'] else None,
+                    'expected_due_date': str(br['expected_due_date']) if br.get('expected_due_date') else None,
+                    'status': st
+                })
+
+        def sow_row_for_id(sow_id):
+            cursor.execute("""
+                SELECT id, tag_id, breed, birth_date, age_days, breeding_status
+                FROM pigs WHERE id = %s AND status = 'active'
+            """, (sow_id,))
+            r = cursor.fetchone()
+            if not r:
+                return None
+            return {
+                'id': r['id'],
+                'tag_id': r['tag_id'],
+                'breed': r['breed'],
+                'birth_date': str(r['birth_date']) if r['birth_date'] else None,
+                'age_days': r['age_days'],
+                'breeding_status': r['breeding_status']
+            }
+
+        # Include sows that only have unsuccessful breedings (no litters yet)
+        for sid in list(unsuccessful_by_sow.keys()):
+            if sid not in by_sow:
+                srow = sow_row_for_id(sid)
+                if srow:
+                    by_sow[sid] = {'sow': srow, 'pairings': {}}
+
+        # Pairings from breeding_records only (e.g. served/pregnant, no litter registered yet)
+        for (sid, pk), mlist in list(matings_by_pair.items()):
+            if not mlist:
+                continue
+            if sid not in by_sow:
+                srow = sow_row_for_id(sid)
+                if srow:
+                    by_sow[sid] = {'sow': srow, 'pairings': {}}
+            if sid not in by_sow:
+                continue
+            if pk not in by_sow[sid]['pairings']:
+                boar_obj = mlist[0].get('boar')
+                by_sow[sid]['pairings'][pk] = {'boar': boar_obj, 'litters': []}
+
+        family_list = []
+        for sow_id in sorted(by_sow.keys(), key=lambda sid: (by_sow[sid]['sow'].get('tag_id') or '')):
+            pdata = by_sow[sow_id]
+            pairings_out = []
+            for pk, pgroup in sorted(
+                pdata['pairings'].items(),
+                key=lambda kv: (kv[1]['boar'] or {}).get('tag_id') or ''
+            ):
+                breedings = matings_by_pair.get((sow_id, pk), [])
+                pairings_out.append({
+                    'boar': pgroup['boar'],
+                    'breedings': breedings,
+                    'litters': pgroup['litters']
+                })
+            u_sorted = sorted(
+                unsuccessful_by_sow.get(sow_id, []),
+                key=lambda x: x.get('mating_date') or '',
+                reverse=True
+            )
+            family_list.append({
+                'sow': pdata['sow'],
+                'pairings': pairings_out,
+                'unsuccessful_breedings': u_sorted
+            })
         
         cursor.close()
         conn.close()
@@ -16796,7 +16884,7 @@ def get_family_tree_relationships():
         return jsonify({
             'success': True,
             'family_tree': family_list,
-            'total_pairs': len(family_list)
+            'total_sows': len(family_list)
         })
         
     except Exception as e:
@@ -20370,6 +20458,128 @@ def get_litter_activities(litter_id):
     except Exception as e:
         print(f"Error getting litter activities: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to get litter activities: {str(e)}'})
+
+def farrowing_cycle_ready_for_sow_available(cursor, farrowing_record_id):
+    """True when all farrowing activities are done, Weaning is done if on the schedule, and every litter is weaned."""
+    cursor.execute("""
+        SELECT COUNT(*) AS t,
+               COALESCE(SUM(CASE WHEN completed THEN 1 ELSE 0 END), 0) AS d
+        FROM farrowing_activities
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    row = cursor.fetchone()
+    if not row or row['t'] == 0 or row['t'] != row['d']:
+        return False
+
+    cursor.execute("""
+        SELECT COUNT(*) AS wc FROM farrowing_activities
+        WHERE farrowing_record_id = %s AND activity_name = 'Weaning'
+    """, (farrowing_record_id,))
+    if cursor.fetchone()['wc'] > 0:
+        cursor.execute("""
+            SELECT completed FROM farrowing_activities
+            WHERE farrowing_record_id = %s AND activity_name = 'Weaning'
+            LIMIT 1
+        """, (farrowing_record_id,))
+        wrow = cursor.fetchone()
+        if not wrow or not wrow['completed']:
+            return False
+
+    cursor.execute("""
+        SELECT COUNT(*) AS n,
+               COALESCE(SUM(CASE WHEN status = 'weaned' THEN 1 ELSE 0 END), 0) AS w
+        FROM litters
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    lit = cursor.fetchone()
+    if lit['n'] == 0:
+        return False
+    return lit['w'] == lit['n']
+
+
+def farrowing_cycle_availability_block_reason(cursor, farrowing_record_id):
+    """None if ready; otherwise a short message for API responses."""
+    cursor.execute("""
+        SELECT COUNT(*) AS t,
+               COALESCE(SUM(CASE WHEN completed THEN 1 ELSE 0 END), 0) AS d
+        FROM farrowing_activities
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    row = cursor.fetchone()
+    if not row or row['t'] == 0:
+        return 'No farrowing activities are scheduled for this record.'
+    if row['t'] != row['d']:
+        return 'Complete all farrowing activities before the sow can be marked available.'
+
+    cursor.execute("""
+        SELECT COUNT(*) AS wc FROM farrowing_activities
+        WHERE farrowing_record_id = %s AND activity_name = 'Weaning'
+    """, (farrowing_record_id,))
+    if cursor.fetchone()['wc'] > 0:
+        cursor.execute("""
+            SELECT completed FROM farrowing_activities
+            WHERE farrowing_record_id = %s AND activity_name = 'Weaning'
+            LIMIT 1
+        """, (farrowing_record_id,))
+        wrow = cursor.fetchone()
+        if not wrow or not wrow['completed']:
+            return 'Complete the Weaning activity in Farrowing Activities before marking the sow available.'
+
+    cursor.execute("""
+        SELECT COUNT(*) AS n,
+               COALESCE(SUM(CASE WHEN status = 'weaned' THEN 1 ELSE 0 END), 0) AS w
+        FROM litters
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    lit = cursor.fetchone()
+    if lit['n'] == 0:
+        return 'Register the litter for this farrowing before completing the cycle.'
+    if lit['w'] != lit['n']:
+        return 'All litters must be weaned (complete Weaning in Farrowing Activities) before the sow can be marked available.'
+    return None
+
+
+def maybe_mark_sow_available_after_farrowing_cycle(farrowing_record_id):
+    """Set sow from farrowed to available when the farrowing cycle (activities + weaned litters) is complete."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if not farrowing_cycle_ready_for_sow_available(cursor, farrowing_record_id):
+            cursor.close()
+            conn.close()
+            return
+
+        cursor.execute("""
+            SELECT br.sow_id, p.breeding_status, p.tag_id
+            FROM farrowing_records fr
+            JOIN breeding_records br ON fr.breeding_id = br.id
+            JOIN pigs p ON br.sow_id = p.id
+            WHERE fr.id = %s
+        """, (farrowing_record_id,))
+
+        pig_row = cursor.fetchone()
+        if not pig_row or pig_row['breeding_status'] != 'farrowed':
+            cursor.close()
+            conn.close()
+            return
+
+        cursor.execute("""
+            UPDATE pigs
+            SET breeding_status = 'available'
+            WHERE id = %s AND breeding_status = 'farrowed'
+        """, (pig_row['sow_id'],))
+
+        if cursor.rowcount:
+            log_activity(
+                session.get('employee_id', 1),
+                'BREEDING_CYCLE_COMPLETED',
+                f'Sow {pig_row["tag_id"]} set to available: all farrowing activities completed and litter(s) weaned.'
+            )
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error auto-marking sow available after farrowing cycle: {str(e)}")
+
 
 def check_and_trigger_recovery_period(farrowing_record_id):
     """Check if all farrowing activities are completed and trigger 40-day recovery period"""
