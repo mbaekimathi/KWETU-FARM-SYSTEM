@@ -324,15 +324,33 @@
                                             && daysLeft !== null
                                             && Number(daysLeft) <= 7
                                             && !record.has_registered_litter;
+                                        const status = (record.breeding_status || '').toLowerCase();
+                                        const daysSinceMating = record.mating_date
+                                            ? Math.max(0, Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24)))
+                                            : null;
+                                        const currentLitterStatus = (record.current_litter_status || '').toLowerCase();
                                         let daysLeftToServe = '-';
-                                        if (record.breeding_status === 'farrowed') {
-                                            if (record.days_left_to_serve !== null && record.days_left_to_serve !== undefined) {
-                                                daysLeftToServe = Number(record.days_left_to_serve) > 0
-                                                    ? Number(record.days_left_to_serve)
-                                                    : 'Ready';
+                                        let daysLeftToServeClass = 'text-gray-500 dark:text-gray-400';
+
+                                        if (status === 'farrowed') {
+                                            if (currentLitterStatus === 'weaned') {
+                                                daysLeftToServe = 'READY TO SERVE';
+                                                daysLeftToServeClass = 'text-green-600 dark:text-green-400';
                                             } else {
-                                                daysLeftToServe = 'Ready';
+                                                daysLeftToServe = 'WAITING LITTER TO BE WEANED';
+                                                daysLeftToServeClass = 'text-orange-600 dark:text-orange-400';
                                             }
+                                        } else if (status === 'pregnant') {
+                                            if (daysSinceMating !== null && daysSinceMating <= 25) {
+                                                daysLeftToServe = 'JUST SERVED';
+                                                daysLeftToServeClass = 'text-blue-600 dark:text-blue-400';
+                                            } else {
+                                                daysLeftToServe = 'WAITING FARROWING';
+                                                daysLeftToServeClass = 'text-amber-600 dark:text-amber-400';
+                                            }
+                                        } else if (status === 'served') {
+                                            daysLeftToServe = 'SERVICE IN PROCESS';
+                                            daysLeftToServeClass = 'text-indigo-600 dark:text-indigo-400';
                                         }
                                         
                                         return `
@@ -360,8 +378,8 @@
                                                     ` : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>'}
                                                 </td>
                                                 <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
-                                                    ${record.breeding_status === 'farrowed'
-                                                        ? `<span class="text-sm font-semibold ${daysLeftToServe === 'Ready' ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}">${daysLeftToServe}${typeof daysLeftToServe === 'number' ? ' days' : ''}</span>`
+                                                    ${daysLeftToServe !== '-'
+                                                        ? `<span class="text-xs sm:text-sm font-semibold ${daysLeftToServeClass}">${daysLeftToServe}</span>`
                                                         : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>'
                                                     }
                                                 </td>
