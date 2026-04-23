@@ -426,6 +426,9 @@ def _migration_001_sync_columns(cursor):
     ec(cursor, 'farrowing_records', 'weak_piglets', 'INT DEFAULT 0')
     ec(cursor, 'farrowing_records', 'notes', 'TEXT')
     ec(cursor, 'farrowing_records', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
+    # Farrowing edit history (older hosted DBs may miss this column)
+    if db_migrations.ensure_table_exists(cursor, 'farrowing_records_edit_history'):
+        ec(cursor, 'farrowing_records_edit_history', 'field_name', 'VARCHAR(50) NOT NULL', after_column='record_id')
     # Farrowing activities
     ec(cursor, 'farrowing_activities', 'weaning_weight', 'DECIMAL(5,2) NULL')
     ec(cursor, 'farrowing_activities', 'weaning_date', 'DATETIME NULL')
@@ -16474,12 +16477,24 @@ def edit_farrowing_record(farrowing_id):
         """, (farrowing_date, alive_piglets, dead_piglets, weak_piglets, notes, farrowing_id))
         
         # Insert audit history
+        cursor.execute("""
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'farrowing_records_edit_history'
+        """)
+        history_columns = {row['COLUMN_NAME'] for row in (cursor.fetchall() or [])}
+        history_field_column = 'field_name' if 'field_name' in history_columns else (
+            'changed_field' if 'changed_field' in history_columns else None
+        )
+
         for field_name, old_value, new_value in changes:
-            cursor.execute("""
-                INSERT INTO farrowing_records_edit_history 
-                (record_id, field_name, old_value, new_value, edited_by)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (farrowing_id, field_name, old_value, new_value, session['employee_id']))
+            if history_field_column:
+                cursor.execute(f"""
+                    INSERT INTO farrowing_records_edit_history 
+                    (record_id, {history_field_column}, old_value, new_value, edited_by)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (farrowing_id, field_name, old_value, new_value, session['employee_id']))
         
         conn.commit()
         cursor.close()
