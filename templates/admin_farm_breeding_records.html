@@ -219,7 +219,13 @@
                 if (data.success) {
                     const breedingRecords = data.records;
                     const displayRecords = breedingRecords
-                        .filter(r => ['served', 'pregnant', 'farrowed', 'completed', 'failed'].includes(r.breeding_status))
+                        .filter(r => {
+                            if (r.is_failed) return true;
+                            const st = (r.breeding_status || '').toLowerCase();
+                            if (['served', 'pregnant', 'farrowed', 'young'].includes(st)) return true;
+                            if (st === 'available' && (r.has_registered_litter || r.has_farrowing_record)) return true;
+                            return false;
+                        })
                         .sort((a, b) => {
                             const getDaysLeft = (record) => {
                                 if (record.days_to_farrowing !== null && record.days_to_farrowing !== undefined && record.days_to_farrowing !== '') {
@@ -314,6 +320,7 @@
                                     ${displayRecords.map((record, index) => {
                                         const daysLeft = record.days_to_farrowing !== null ? record.days_to_farrowing : (record.expected_due_date ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24)) : null);
                                         const canShowRegisterFarrowing = record.breeding_status === 'pregnant'
+                                            && !record.is_failed
                                             && daysLeft !== null
                                             && Number(daysLeft) <= 7
                                             && !record.has_registered_litter;
@@ -359,8 +366,8 @@
                                                     }
                                                 </td>
                                                 <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
-                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(record.breeding_status)}">
-                                                        ${(record.breeding_status || 'unknown').replace('_', ' ')}
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(recordDisplayStatus(record))}">
+                                                        ${(recordDisplayStatus(record) || 'unknown').replace('_', ' ')}
                                                     </span>
                                                 </td>
                                                 <td class="w-36 px-3 sm:px-4 md:px-6 py-3 sm:py-4 align-top">
@@ -415,6 +422,11 @@
             }
         }
 
+        function recordDisplayStatus(r) {
+            if (r && r.is_failed) return 'failed';
+            return (r && r.breeding_status) ? r.breeding_status : 'unknown';
+        }
+
         function getStatusColor(status) {
             switch (status) {
                 case 'served': return 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200';
@@ -423,6 +435,7 @@
                 case 'completed': return 'bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-200';
                 case 'farrowed': return 'bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200';
                 case 'failed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                case 'young': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
                 default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
             }
         }
@@ -954,8 +967,8 @@
                                         <tr>
                                             <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Breeding Status</td>
                                             <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(record.breeding_status)}">
-                                                    ${record.breeding_status?.toUpperCase() || 'UNKNOWN'}
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(recordDisplayStatus(record))}">
+                                                    ${(recordDisplayStatus(record) || 'unknown').toUpperCase()}
                                                 </span>
                                             </td>
                                         </tr>
@@ -1103,8 +1116,9 @@
                                                 class="w-full px-2 sm:px-4 py-2 sm:py-4 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-gray-300 text-xs sm:text-base lg:text-lg cursor-not-allowed opacity-80">
                                             <option value="served" ${breedingStatus === 'served' ? 'selected' : ''}>Served</option>
                                             <option value="pregnant" ${breedingStatus === 'pregnant' ? 'selected' : ''}>Pregnant</option>
-                                            <option value="cancelled" ${breedingStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-                                            <option value="completed" ${breedingStatus === 'completed' ? 'selected' : ''}>Completed</option>
+                                            <option value="farrowed" ${breedingStatus === 'farrowed' ? 'selected' : ''}>Farrowed</option>
+                                            <option value="available" ${breedingStatus === 'available' ? 'selected' : ''}>Available</option>
+                                            <option value="young" ${breedingStatus === 'young' ? 'selected' : ''}>Young</option>
                                         </select>
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
                                             <i class="fas fa-lock mr-1"></i>Status is locked on this form.

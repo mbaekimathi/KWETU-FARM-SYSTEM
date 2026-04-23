@@ -793,7 +793,6 @@ def create_database_and_tables():
                 boar_id INT NOT NULL,
                 mating_date DATE NOT NULL,
                 expected_due_date DATE,
-                status ENUM('served', 'pregnant', 'failed', 'cancelled', 'completed') DEFAULT 'served',
                 notes TEXT,
                 created_by INT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -804,17 +803,41 @@ def create_database_and_tables():
             )
         """)
         print("Breeding records table checked/created successfully")
-        
-        # Check and update breeding_records status enum if needed
+
+        # Breeding status is stored only on pigs.breeding_status; migrate legacy data then drop column
         try:
             cursor.execute("SHOW COLUMNS FROM breeding_records WHERE Field = 'status'")
-            column_info = cursor.fetchone()
-            if column_info and ('completed' not in column_info['Type'] or 'failed' not in column_info['Type']):
-                # Update the enum to include new values
-                cursor.execute("ALTER TABLE breeding_records MODIFY COLUMN status ENUM('served', 'pregnant', 'failed', 'cancelled', 'completed') DEFAULT 'served'")
-                print("Updated breeding_records status enum to include 'failed' and 'completed'")
+            if cursor.fetchone():
+                try:
+                    cursor.execute("""
+                        INSERT INTO failed_conceptions (
+                            sow_id, boar_id, mating_date, failure_date, failure_reason, notes, created_by
+                        )
+                        SELECT
+                            br.sow_id, br.boar_id, br.mating_date,
+                            COALESCE(DATE(br.updated_at), CURDATE()),
+                            'Migrated from legacy breeding record status',
+                            br.notes, br.created_by
+                        FROM breeding_records br
+                        WHERE br.status = 'failed'
+                          AND NOT EXISTS (
+                              SELECT 1 FROM failed_conceptions fc
+                              WHERE fc.sow_id = br.sow_id
+                                AND fc.mating_date = br.mating_date
+                                AND fc.boar_id = br.boar_id
+                          )
+                    """)
+                    if cursor.rowcount:
+                        print(f"Backfilled {cursor.rowcount} failed_conceptions rows from legacy breeding_records.status")
+                except Exception as mig_e:
+                    print(f"Warning: legacy failed backfill: {mig_e}")
+                try:
+                    cursor.execute("ALTER TABLE breeding_records DROP COLUMN status")
+                    print("Dropped status column from breeding_records (source of truth: pigs.breeding_status)")
+                except Exception as drop_e:
+                    print(f"Warning: Could not drop breeding_records.status: {drop_e}")
         except Exception as e:
-                            print(f"Warning: Could not check/update breeding_records status enum: {e}")
+            print(f"Warning: Could not check breeding_records.status migration: {e}")
 
         # Check and add weaning fields to farrowing_activities table if needed
         try:
@@ -11842,7 +11865,7 @@ def get_feeding_notifications():
             FROM breeding_records br
             JOIN pigs p ON br.sow_id = p.id
             LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE br.status = 'pregnant'
+            WHERE p.breeding_status = 'pregnant'
             AND br.expected_due_date IS NOT NULL
             AND br.expected_due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
             AND p.status = 'active'
@@ -12850,7 +12873,11 @@ def get_farm_statistics():
         health_issues = 0  # Placeholder for now
         
         # Get breeding statistics
-        cursor.execute("SELECT COUNT(*) as total_breeding FROM breeding_records WHERE status = 'served' OR status = 'pregnant'")
+        cursor.execute("""
+            SELECT COUNT(*) as total_breeding FROM pigs
+            WHERE purpose = 'breeding' AND gender = 'female'
+            AND breeding_status IN ('served', 'pregnant')
+        """)
         total_breeding = cursor.fetchone()['total_breeding']
         
         cursor.execute("SELECT COUNT(*) as total_failed FROM failed_conceptions")
@@ -14222,13 +14249,6 @@ def register_litter():
         if not breeding_record:
             return jsonify({'success': False, 'message': 'Breeding record not found for this farrowing'})
         
-        # Update breeding record status to completed
-        cursor.execute("""
-            UPDATE breeding_records 
-            SET status = 'completed', completed_date = %s 
-            WHERE id = %s
-        """, (data['farrowing_date'], breeding_record['breeding_id']))
-        
         # Update sow breeding status back to available
         cursor.execute("""
             UPDATE pigs 
@@ -14277,10 +14297,9 @@ def postpone_litter_registration():
         if not breeding_record:
             return jsonify({'success': False, 'message': 'Breeding record not found for this farrowing'})
         
-        # Update breeding record status to postponed
         cursor.execute("""
             UPDATE breeding_records 
-            SET status = 'postponed', notes = %s 
+            SET notes = %s 
             WHERE id = %s
         """, (data['reason'], breeding_record['breeding_id']))
         
@@ -14322,25 +14341,51 @@ def get_available_sows():
                 p.age_days,
                 p.breeding_status,
                 f.farm_name,
-                MAX(br.mating_date) as last_breeding_date,
+                (SELECT MAX(brm.mating_date) FROM breeding_records brm WHERE brm.sow_id = p.id) as last_breeding_date,
                 (
-                    SELECT br2.status
-                    FROM breeding_records br2
-                    WHERE br2.sow_id = p.id
-                    ORDER BY br2.mating_date DESC, br2.id DESC
-                    LIMIT 1
+                    SELECT
+                        CASE
+                            WHEN (
+                                SELECT bmax.id FROM breeding_records bmax
+                                WHERE bmax.sow_id = p.id
+                                ORDER BY bmax.mating_date DESC, bmax.id DESC LIMIT 1
+                            ) IS NULL THEN NULL
+                            WHEN EXISTS (
+                                SELECT 1 FROM farrowing_records fr
+                                WHERE fr.breeding_id = (
+                                    SELECT bmax.id FROM breeding_records bmax
+                                    WHERE bmax.sow_id = p.id
+                                    ORDER BY bmax.mating_date DESC, bmax.id DESC LIMIT 1
+                                )
+                            ) THEN 'completed'
+                            WHEN EXISTS (
+                                SELECT 1 FROM failed_conceptions fc
+                                WHERE fc.sow_id = p.id
+                                  AND fc.mating_date = (
+                                    SELECT bmax.mating_date FROM breeding_records bmax
+                                    WHERE bmax.sow_id = p.id
+                                    ORDER BY bmax.mating_date DESC, bmax.id DESC LIMIT 1
+                                  )
+                                  AND fc.boar_id = (
+                                    SELECT bmax.boar_id FROM breeding_records bmax
+                                    WHERE bmax.sow_id = p.id
+                                    ORDER BY bmax.mating_date DESC, bmax.id DESC LIMIT 1
+                                  )
+                            ) THEN 'failed'
+                            ELSE 'unknown'
+                        END
                 ) as last_breeding_status,
-                COALESCE(SUM(CASE WHEN br.status IN ('completed', 'farrowed') THEN 1 ELSE 0 END), 0) as successful_breedings,
-                COALESCE(SUM(CASE WHEN br.status = 'failed' THEN 1 ELSE 0 END), 0) as failed_breedings
-            FROM pigs p 
-            LEFT JOIN farms f ON p.farm_id = f.id 
-            LEFT JOIN breeding_records br ON br.sow_id = p.id
-            WHERE p.gender = 'female' 
-            AND p.pig_type = 'grown_pig' 
-            AND p.purpose = 'breeding' 
+                (SELECT COALESCE(COUNT(DISTINCT br2.id), 0) FROM breeding_records br2
+                 INNER JOIN farrowing_records fr ON fr.breeding_id = br2.id
+                 WHERE br2.sow_id = p.id) as successful_breedings,
+                (SELECT COALESCE(COUNT(*), 0) FROM failed_conceptions fcx WHERE fcx.sow_id = p.id) as failed_breedings
+            FROM pigs p
+            LEFT JOIN farms f ON p.farm_id = f.id
+            WHERE p.gender = 'female'
+            AND p.pig_type = 'grown_pig'
+            AND p.purpose = 'breeding'
             AND p.breeding_status = 'available'
             AND p.status = 'active'
-            GROUP BY p.id, p.tag_id, p.breed, p.age_days, p.breeding_status, f.farm_name
             ORDER BY p.tag_id DESC
         """)
         sows = cursor.fetchall()
@@ -14389,28 +14434,39 @@ def get_sow_breeding_analytics(sow_id):
 
         cursor.execute("""
             SELECT
-                COUNT(*) as total_breedings,
-                COALESCE(SUM(CASE WHEN status IN ('completed', 'farrowed') THEN 1 ELSE 0 END), 0) as successful_breedings,
-                COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed_breedings,
-                COALESCE(SUM(CASE WHEN status IN ('served', 'pregnant') THEN 1 ELSE 0 END), 0) as active_breedings,
-                MAX(mating_date) as last_breeding_date
-            FROM breeding_records
-            WHERE sow_id = %s
-        """, (sow_id,))
+                (SELECT COUNT(*) FROM breeding_records WHERE sow_id = %s) as total_breedings,
+                (SELECT COALESCE(COUNT(DISTINCT br.id), 0)
+                 FROM breeding_records br
+                 INNER JOIN farrowing_records fr ON fr.breeding_id = br.id
+                 WHERE br.sow_id = %s) as successful_breedings,
+                (SELECT COALESCE(COUNT(*), 0) FROM failed_conceptions WHERE sow_id = %s) as failed_breedings,
+                (SELECT CASE WHEN p.breeding_status IN ('served', 'pregnant') THEN 1 ELSE 0 END
+                 FROM pigs p WHERE p.id = %s) as active_breedings,
+                (SELECT MAX(mating_date) FROM breeding_records WHERE sow_id = %s) as last_breeding_date
+        """, (sow_id, sow_id, sow_id, sow_id, sow_id))
         breeding_summary = cursor.fetchone()
 
         cursor.execute("""
             SELECT
-                id,
-                boar_id,
-                mating_date,
-                expected_due_date,
-                status,
-                notes,
-                created_at
-            FROM breeding_records
-            WHERE sow_id = %s
-            ORDER BY mating_date DESC, id DESC
+                br.id,
+                br.boar_id,
+                br.mating_date,
+                br.expected_due_date,
+                br.notes,
+                br.created_at,
+                s.breeding_status,
+                EXISTS(
+                    SELECT 1 FROM farrowing_records fr
+                    WHERE fr.breeding_id = br.id
+                ) as has_farrowing,
+                EXISTS(
+                    SELECT 1 FROM failed_conceptions fc
+                    WHERE fc.sow_id = br.sow_id AND fc.mating_date = br.mating_date AND fc.boar_id = br.boar_id
+                ) as is_failed
+            FROM breeding_records br
+            JOIN pigs s ON s.id = br.sow_id
+            WHERE br.sow_id = %s
+            ORDER BY br.mating_date DESC, br.id DESC
         """, (sow_id,))
         breeding_records = cursor.fetchall()
 
@@ -14480,11 +14536,11 @@ def get_completed_breeding_cycles():
             LEFT JOIN pigs sow ON br.sow_id = sow.id
             LEFT JOIN pigs boar ON br.boar_id = boar.id
             LEFT JOIN farms f ON sow.farm_id = f.id
-            WHERE br.status = 'pregnant' 
+            WHERE sow.breeding_status = 'pregnant'
             AND br.expected_due_date <= CURDATE()
             AND br.expected_due_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
             AND NOT EXISTS (
-                SELECT 1 FROM litters l WHERE l.farrowing_record_id = br.id
+                SELECT 1 FROM farrowing_records fr WHERE fr.breeding_id = br.id
             )
             ORDER BY br.expected_due_date ASC
         """)
@@ -14635,7 +14691,8 @@ def get_breeding_records():
         
         # Get all breeding records with pig and farm information
         cursor.execute("""
-            SELECT br.*,
+            SELECT br.id, br.sow_id, br.boar_id, br.mating_date, br.expected_due_date, br.notes,
+                   br.created_by, br.created_at, br.updated_at,
                    sow.tag_id as sow_tag_id, sow.breed as sow_breed, sow.breeding_status as sow_breeding_status,
                    boar.tag_id as boar_tag_id, boar.breed as boar_breed,
                    e.full_name as created_by_name,
@@ -14654,7 +14711,14 @@ def get_breeding_records():
                        FROM farrowing_records fr
                        JOIN litters l ON l.farrowing_record_id = fr.id
                        WHERE fr.breeding_id = br.id
-                   ) AS has_registered_litter
+                   ) AS has_registered_litter,
+                   EXISTS(
+                       SELECT 1
+                       FROM failed_conceptions fc
+                       WHERE fc.sow_id = br.sow_id
+                         AND fc.mating_date = br.mating_date
+                         AND fc.boar_id = br.boar_id
+                   ) AS is_failed
             FROM breeding_records br
             LEFT JOIN pigs sow ON br.sow_id = sow.id
             LEFT JOIN pigs boar ON br.boar_id = boar.id
@@ -14677,33 +14741,32 @@ def get_breeding_records():
         from datetime import datetime
         today = datetime.now().date()
         
-        # Auto-update breeding statuses based on time
+        # Auto-update sow pregnancy state based on time (pigs.breeding_status is the source of truth)
         for record in records:
-            if record['mating_date'] and record['status'] == 'served':
+            st = (record.get('sow_breeding_status') or '').lower()
+            if record['mating_date'] and st == 'served':
                 mating_date = record['mating_date']
                 days_since_mating = (today - mating_date).days
-                
-                # If more than 25 days have passed since mating, update to pregnant
                 if days_since_mating > 25:
                     cursor.execute("""
-                        UPDATE pigs 
-                        SET breeding_status = 'pregnant' 
+                        UPDATE pigs
+                        SET breeding_status = 'pregnant'
                         WHERE id = %s
                     """, (record['sow_id'],))
-                    cursor.execute("""
-                        UPDATE breeding_records
-                        SET status = 'pregnant', updated_at = CURRENT_TIMESTAMP
-                        WHERE id = %s
-                    """, (record['id'],))
-                    record['status'] = 'pregnant'
-        
+                    record['sow_breeding_status'] = 'pregnant'
+
+        conn.commit()
+
         processed_records = []
         for record in records:
             record_dict = dict(record)
-            
-            # Keep status isolated to this breeding record
-            breeding_status = record['status']
+            is_failed = bool(record.get('is_failed'))
+            # Breeding status is always the sow's current pigs.breeding_status (re-fetched in loop for served→pregnant)
+            breeding_status = (record.get('sow_breeding_status') or '') or None
+            if breeding_status:
+                breeding_status = str(breeding_status).lower()
             record_dict['breeding_status'] = breeding_status
+            record_dict['is_failed'] = is_failed
             record_dict['breeding_ref'] = f"BR-{int(record['id']):05d}"
             record_dict['has_farrowing_record'] = bool(record.get('has_farrowing_record'))
             record_dict['has_registered_litter'] = bool(record.get('has_registered_litter'))
@@ -14734,7 +14797,7 @@ def get_breeding_records():
                 # Determine if can cancel based on breeding status and days
                 # Can only cancel within 25 days of mating (served status)
                 days_since_mating = (datetime.now().date() - mating_date).days
-                if breeding_status == 'served' and days_since_mating <= 25:
+                if breeding_status == 'served' and not is_failed and days_since_mating <= 25:
                     record_dict['can_cancel'] = True
                     record_dict['days_remaining_to_cancel'] = 25 - days_since_mating
                 elif breeding_status == 'pregnant':
@@ -14835,11 +14898,9 @@ def cancel_breeding(breeding_id):
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (record['sow_id'], record['boar_id'], record['mating_date'], datetime.now().date(), reason, record['notes'] or '', session['employee_id']))
         
-        # Keep the breeding record and mark the cycle as failed
         cursor.execute("""
             UPDATE breeding_records
-            SET status = 'failed',
-                notes = CASE
+            SET notes = CASE
                     WHEN notes IS NULL OR notes = '' THEN %s
                     ELSE CONCAT(notes, '\n', %s)
                 END,
@@ -14875,7 +14936,7 @@ def cancel_breeding(breeding_id):
 
 @app.route('/api/breeding/failed-conceptions', methods=['GET'])
 def get_failed_conceptions():
-    """Get all failed breeding records from breeding_records status."""
+    """Get all failed conceptions (failed_conceptions + matching breeding_records notes)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -14883,19 +14944,21 @@ def get_failed_conceptions():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Fetch failed records directly from breeding_records (single source of truth)
         cursor.execute("""
             SELECT
                 br.id,
                 br.sow_id,
                 br.boar_id,
                 br.mating_date,
-                DATE(br.updated_at) as failure_date,
-                CASE
-                    WHEN br.notes LIKE '%%Failure reason:%%' THEN
-                        SUBSTRING_INDEX(br.notes, 'Failure reason:', -1)
-                    ELSE 'Not conceived after serving'
-                END as failure_reason,
+                COALESCE(fc.failure_date, DATE(br.updated_at)) as failure_date,
+                COALESCE(
+                    NULLIF(TRIM(fc.failure_reason), ''),
+                    CASE
+                        WHEN br.notes LIKE '%%Failure reason:%%' THEN
+                            TRIM(SUBSTRING_INDEX(br.notes, 'Failure reason:', -1))
+                        ELSE 'Not conceived after serving'
+                    END
+                ) as failure_reason,
                 br.notes,
                 br.created_by,
                 br.created_at,
@@ -14903,12 +14966,15 @@ def get_failed_conceptions():
                 sow.tag_id as sow_tag_id, sow.breed as sow_breed,
                 boar.tag_id as boar_tag_id, boar.breed as boar_breed,
                 e.full_name as created_by_name
-            FROM breeding_records br
+            FROM failed_conceptions fc
+            INNER JOIN breeding_records br
+                ON br.sow_id = fc.sow_id
+                AND br.mating_date = fc.mating_date
+                AND br.boar_id = fc.boar_id
             LEFT JOIN pigs sow ON br.sow_id = sow.id
             LEFT JOIN pigs boar ON br.boar_id = boar.id
             LEFT JOIN employees e ON br.created_by = e.id
-            WHERE br.status = 'failed'
-            ORDER BY br.updated_at DESC, br.id DESC
+            ORDER BY fc.failure_date DESC, br.id DESC
         """)
         records = cursor.fetchall()
         
@@ -14934,7 +15000,7 @@ def edit_breeding_record(breeding_id):
         data = request.get_json()
         mating_date = data.get('mating_date')
         expected_due_date = data.get('expected_due_date')
-        breeding_status = data.get('breeding_status')
+        breeding_status = (data.get('breeding_status') or '').lower() or None
         
         if not mating_date:
             return jsonify({'success': False, 'message': 'Mating date is required'})
@@ -14942,38 +15008,26 @@ def edit_breeding_record(breeding_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Update breeding record
         cursor.execute("""
-            UPDATE breeding_records 
-            SET mating_date = %s, expected_due_date = %s, status = %s, updated_at = NOW()
+            UPDATE breeding_records
+            SET mating_date = %s, expected_due_date = %s, updated_at = NOW()
             WHERE id = %s
-        """, (mating_date, expected_due_date, breeding_status, breeding_id))
+        """, (mating_date, expected_due_date, breeding_id))
         
-        # Update sow breeding_status based on breeding status
-        if breeding_status in ['cancelled', 'failed']:
-            cursor.execute("""
-                UPDATE pigs 
-                SET breeding_status = 'available' 
-                WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
-            """, (breeding_id,))
-        elif breeding_status in ['served', 'pregnant']:
-            cursor.execute("""
-                UPDATE pigs 
-                SET breeding_status = %s
-                WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
-            """, (breeding_status, breeding_id))
-        elif breeding_status == 'farrowed':
-            cursor.execute("""
-                UPDATE pigs
-                SET breeding_status = 'farrowed'
-                WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
-            """, (breeding_id,))
-        elif breeding_status == 'completed':
-            cursor.execute("""
-                UPDATE pigs 
-                SET breeding_status = 'available' 
-                WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
-            """, (breeding_id,))
+        # Optional: update sow (pigs.breeding_status). UI may pass legacy values like "completed" from older clients.
+        if breeding_status:
+            if breeding_status in ('cancelled', 'failed', 'completed'):
+                cursor.execute("""
+                    UPDATE pigs
+                    SET breeding_status = 'available'
+                    WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
+                """, (breeding_id,))
+            elif breeding_status in ('served', 'pregnant', 'farrowed', 'available', 'young'):
+                cursor.execute("""
+                    UPDATE pigs
+                    SET breeding_status = %s
+                    WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
+                """, (breeding_status, breeding_id))
         
         conn.commit()
         cursor.close()
@@ -15526,21 +15580,18 @@ def get_breeding_statistics():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get breeding records count by status
         cursor.execute("""
-            SELECT 
-                COUNT(CASE WHEN status = 'served' THEN 1 END) as served_count,
-                COUNT(CASE WHEN status = 'pregnant' THEN 1 END) as pregnant_count,
-                COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_count
-            FROM breeding_records
+            SELECT
+                COUNT(CASE WHEN purpose = 'breeding' AND gender = 'female' AND breeding_status = 'served' THEN 1 END) as served_count,
+                COUNT(CASE WHEN purpose = 'breeding' AND gender = 'female' AND breeding_status = 'pregnant' THEN 1 END) as pregnant_count,
+                0 as cancelled_count
+            FROM pigs
         """)
         breeding_stats = cursor.fetchone()
         
-        # Get failed conceptions count
         cursor.execute("SELECT COUNT(*) as failed_count FROM failed_conceptions")
         failed_count = cursor.fetchone()['failed_count']
         
-        # Calculate success rate
         total_attempts = (breeding_stats['served_count'] or 0) + (breeding_stats['pregnant_count'] or 0) + failed_count
         success_rate = 0
         if total_attempts > 0:
@@ -15566,17 +15617,16 @@ def get_breeding_statistics():
         return jsonify({'error': str(e)}), 500
 
 def update_breeding_statuses():
-    """Update breeding statuses based on time elapsed"""
+    """Move served sows to pregnant after the gestation-confirmation window (pigs.breeding_status)."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get breeding records that need status updates
         cursor.execute("""
-            SELECT br.id, br.sow_id, br.mating_date, br.status, sow.tag_id
+            SELECT br.id, br.sow_id, br.mating_date, sow.tag_id, sow.breeding_status
             FROM breeding_records br
             LEFT JOIN pigs sow ON br.sow_id = sow.id
-            WHERE br.status = 'served'
+            WHERE sow.breeding_status = 'served'
         """)
         records = cursor.fetchall()
         
@@ -15587,21 +15637,12 @@ def update_breeding_statuses():
         for record in records:
             days_since_mating = (today - record['mating_date']).days
             
-            # If more than 25 days have passed, change status to pregnant
             if days_since_mating > 25:
                 cursor.execute("""
-                    UPDATE breeding_records 
-                    SET status = 'pregnant' 
-                    WHERE id = %s
-                """, (record['id'],))
-                
-                # Update sow's breeding status to pregnant
-                cursor.execute("""
-                    UPDATE pigs 
-                    SET breeding_status = 'pregnant' 
+                    UPDATE pigs
+                    SET breeding_status = 'pregnant'
                     WHERE id = %s
                 """, (record['sow_id'],))
-                
                 updated_count += 1
         
         conn.commit()
@@ -15609,7 +15650,7 @@ def update_breeding_statuses():
         conn.close()
         
         if updated_count > 0:
-            print(f"✅ Updated {updated_count} breeding statuses to pregnant")
+            print(f"✅ Updated {updated_count} sows to pregnant (breeding status on pigs)")
         
     except Exception as e:
         print(f"❌ Error updating breeding statuses: {e}")
@@ -15727,14 +15768,6 @@ def register_farrowing(breeding_id):
                     ) VALUES (%s, %s, %s, %s)
                 """, (farrowing_id, activity_name, due_day, due_date))
         
-        # Mark this breeding cycle as farrowed after successful litter creation
-        print(f"Updating breeding record {breeding_id} status to 'farrowed'")
-        cursor.execute("""
-            UPDATE breeding_records 
-            SET status = 'farrowed', updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-        """, (breeding_id,))
-        
         # Create litter record
         litter_id = generate_litter_id()
         total_piglets = alive_piglets + still_births
@@ -15761,11 +15794,6 @@ def register_farrowing(breeding_id):
             SET breeding_status = 'farrowed' 
             WHERE id = %s
         """, (breeding_record['sow_id'],))
-        
-        # Verify the updates
-        cursor.execute("SELECT status FROM breeding_records WHERE id = %s", (breeding_id,))
-        updated_breeding = cursor.fetchone()
-        print(f"Breeding record status after update: {updated_breeding['status']}")
         
         cursor.execute("SELECT breeding_status FROM pigs WHERE id = %s", (breeding_record['sow_id'],))
         updated_pig = cursor.fetchone()
@@ -16500,13 +16528,6 @@ def delete_farrowing_record(farrowing_id):
             WHERE id = %s
         """, (record['sow_id'],))
         
-        # Update breeding record status to completed
-        cursor.execute("""
-            UPDATE breeding_records 
-            SET status = 'completed' 
-            WHERE sow_id = %s AND status = 'pregnant'
-        """, (record['sow_id'],))
-        
         # Delete related litters first to avoid foreign key constraint
         cursor.execute("DELETE FROM litters WHERE farrowing_record_id = %s", (farrowing_id,))
         print(f"Deleted litters for farrowing record {farrowing_id}")
@@ -16586,16 +16607,14 @@ def get_family_tree_sows():
             SELECT p.id, p.tag_id, p.breed, p.gender, p.birth_date, p.age_days,
                    p.breeding_status, p.status, p.purpose,
                    f.farm_name, f.farm_location,
-                   COALESCE(COUNT(br.id), 0) as total_breedings,
-                   COALESCE(COUNT(CASE WHEN br.status = 'completed' THEN 1 END), 0) as successful_breedings,
-                   COALESCE(COUNT(CASE WHEN br.status = 'failed' THEN 1 END), 0) as failed_breedings
+                   (SELECT COALESCE(COUNT(*), 0) FROM breeding_records brc WHERE brc.sow_id = p.id) as total_breedings,
+                   (SELECT COALESCE(COUNT(DISTINCT br2.id), 0) FROM breeding_records br2
+                    INNER JOIN farrowing_records fr ON fr.breeding_id = br2.id
+                    WHERE br2.sow_id = p.id) as successful_breedings,
+                   (SELECT COALESCE(COUNT(*), 0) FROM failed_conceptions fcw WHERE fcw.sow_id = p.id) as failed_breedings
             FROM pigs p
             LEFT JOIN farms f ON p.farm_id = f.id
-            LEFT JOIN breeding_records br ON p.id = br.sow_id
             WHERE p.gender = 'female' AND p.status = 'active'
-            GROUP BY p.id, p.tag_id, p.breed, p.gender, p.birth_date, p.age_days,
-                     p.breeding_status, p.status, p.purpose,
-                     f.farm_name, f.farm_location
             ORDER BY p.tag_id
         """)
         sows = cursor.fetchall()
@@ -16631,16 +16650,14 @@ def get_family_tree_boars():
             SELECT p.id, p.tag_id, p.breed, p.gender, p.birth_date, p.age_days,
                    p.breeding_status, p.status, p.purpose,
                    f.farm_name, f.farm_location,
-                   COALESCE(COUNT(br.id), 0) as total_breedings,
-                   COALESCE(COUNT(CASE WHEN br.status = 'completed' THEN 1 END), 0) as successful_breedings,
-                   COALESCE(COUNT(CASE WHEN br.status = 'failed' THEN 1 END), 0) as failed_breedings
+                   (SELECT COALESCE(COUNT(*), 0) FROM breeding_records brc WHERE brc.boar_id = p.id) as total_breedings,
+                   (SELECT COALESCE(COUNT(DISTINCT br2.id), 0) FROM breeding_records br2
+                    INNER JOIN farrowing_records fr ON fr.breeding_id = br2.id
+                    WHERE br2.boar_id = p.id) as successful_breedings,
+                   (SELECT COALESCE(COUNT(*), 0) FROM failed_conceptions f2 WHERE f2.boar_id = p.id) as failed_breedings
             FROM pigs p
             LEFT JOIN farms f ON p.farm_id = f.id
-            LEFT JOIN breeding_records br ON p.id = br.boar_id
             WHERE p.gender = 'male' AND p.status = 'active'
-            GROUP BY p.id, p.tag_id, p.breed, p.gender, p.birth_date, p.age_days,
-                     p.breeding_status, p.status, p.purpose,
-                     f.farm_name, f.farm_location
             ORDER BY p.tag_id
         """)
         boars = cursor.fetchall()
@@ -16767,10 +16784,17 @@ def get_family_tree_relationships():
                 br.boar_id,
                 br.mating_date,
                 br.expected_due_date,
-                br.status,
                 br.notes,
+                sow.breeding_status AS sow_breeding_status,
                 boar.tag_id AS boar_tag_id,
-                boar.breed AS boar_breed
+                boar.breed AS boar_breed,
+                EXISTS(SELECT 1 FROM farrowing_records fr WHERE fr.breeding_id = br.id) AS has_farrowing,
+                EXISTS(
+                    SELECT 1 FROM failed_conceptions fcx
+                    WHERE fcx.sow_id = br.sow_id
+                      AND fcx.mating_date = br.mating_date
+                      AND fcx.boar_id = br.boar_id
+                ) AS is_failed
             FROM breeding_records br
             INNER JOIN pigs sow ON br.sow_id = sow.id
             LEFT JOIN pigs boar ON br.boar_id = boar.id
@@ -16786,7 +16810,12 @@ def get_family_tree_relationships():
             sow_id = br['sow_id']
             boar_id = br['boar_id']
             pair_key = str(boar_id) if boar_id else 'none'
-            st = (br['status'] or '').lower()
+            if br.get('is_failed'):
+                st = 'failed'
+            elif br.get('has_farrowing'):
+                st = 'farrowed'
+            else:
+                st = ((br.get('sow_breeding_status') or '') or 'unknown').lower()
 
             boar_obj = None
             if boar_id:
