@@ -612,7 +612,27 @@ def create_database_and_tables():
             )
         """)
         print("Weight records table checked/created successfully")
-        
+
+        # Create pig_health_records table (per-animal health check-ins captured at weigh-in time)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pig_health_records (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                animal_id INT NOT NULL,
+                check_date DATE NOT NULL,
+                health_status ENUM('healthy', 'sick', 'recovering', 'quarantine', 'critical', 'injured') NOT NULL DEFAULT 'healthy',
+                notes TEXT,
+                weight_record_id INT NULL,
+                recorded_by INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (animal_id) REFERENCES pigs(id) ON DELETE CASCADE,
+                FOREIGN KEY (weight_record_id) REFERENCES weight_records(id) ON DELETE SET NULL,
+                INDEX idx_pig_health_animal (animal_id),
+                INDEX idx_pig_health_date (check_date)
+            )
+        """)
+        print("Pig health records table checked/created successfully")
+
         # Create slaughter_records table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS slaughter_records (
@@ -9289,6 +9309,244 @@ def get_pig_feeding_analytics():
         cursor.close()
         conn.close()
         return jsonify({'success': True, 'total_kg': round(total_kg, 2), 'records_count': records_count, 'pigs_fed_count': pigs_fed_count, 'by_feed': by_feed, 'daily_totals': daily})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/pig-feeding/consumption-forecast', methods=['GET'])
+def get_pig_feeding_consumption_forecast():
+    """Projected pig feed consumption for a given range, based on feed_settings.
+
+    Query params (one of):
+      - range_type=day   + date=YYYY-MM-DD
+      - range_type=period + date_from=YYYY-MM-DD & date_to=YYYY-MM-DD
+      - range_type=month + month=YYYY-MM  (or year & month_num)
+      - range_type=year  + year=YYYY
+
+    Output:
+      {
+        success, range_type, date_from, date_to, days,
+        animals_total,
+        total_kg,
+        by_feed:     [{feed_id?, feed_name, feed_type, total_kg, animal_count}],
+        by_category: [{age_group_name, feed_type, feed_name, animal_count, daily_kg, total_kg}],
+        by_day:      [{date, total_kg}]
+      }
+    """
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    from datetime import date as date_type, timedelta
+    import calendar as _cal
+
+    def _parse_iso(v):
+        try:
+            return date_type.fromisoformat(v)
+        except Exception:
+            return None
+
+    range_type = (request.args.get('range_type') or 'day').lower()
+    today = date_type.today()
+
+    if range_type == 'day':
+        d = _parse_iso(request.args.get('date') or '') or today
+        date_from = d
+        date_to = d
+    elif range_type == 'period':
+        date_from = _parse_iso(request.args.get('date_from') or '') or today
+        date_to   = _parse_iso(request.args.get('date_to')   or '') or date_from
+        if date_to < date_from:
+            date_from, date_to = date_to, date_from
+    elif range_type == 'month':
+        m = request.args.get('month') or today.strftime('%Y-%m')
+        try:
+            year, month = [int(p) for p in m.split('-')[:2]]
+        except Exception:
+            year, month = today.year, today.month
+        last_day = _cal.monthrange(year, month)[1]
+        date_from = date_type(year, month, 1)
+        date_to   = date_type(year, month, last_day)
+    elif range_type == 'year':
+        try:
+            year = int(request.args.get('year') or today.year)
+        except Exception:
+            year = today.year
+        date_from = date_type(year, 1, 1)
+        date_to   = date_type(year, 12, 31)
+    else:
+        return jsonify({'success': False, 'message': 'Invalid range_type'}), 400
+
+    # Safety cap: never project more than ~2 years of daily ticks (saves compute).
+    if (date_to - date_from).days > 366 * 2:
+        date_to = date_from + timedelta(days=366 * 2)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Active pigs with either birth_date or purchase_date for age computation.
+        cursor.execute("""
+            SELECT id, tag_id, breed, gender, birth_date, purchase_date, pig_source
+            FROM pigs
+            WHERE status = 'active'
+        """)
+        pigs = cursor.fetchall() or []
+
+        # Pig feed settings, ordered by age range.
+        cursor.execute("""
+            SELECT id, age_group_name, start_age_days, end_age_days,
+                   feed_amount_grams, feeding_times_per_day, feed_type
+            FROM feed_settings
+            WHERE status = 'active' AND animal_type = 'pig'
+            ORDER BY start_age_days ASC
+        """)
+        settings = cursor.fetchall() or []
+
+        # Feeds list (to map feed_type setting -> feed name/id).
+        cursor.execute("""
+            SELECT id, feed_name, feed_type, animal_type
+            FROM feeds
+            WHERE (animal_type = 'pig' OR animal_type = 'all')
+        """)
+        feeds = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+
+        # Build feed lookup: accept the setting's feed_type as either a feed id
+        # (stored as string) or a feed name / feed_type keyword.
+        feed_by_id   = {int(f['id']): f for f in feeds}
+        feed_by_name = {str(f.get('feed_name') or '').strip().lower(): f for f in feeds}
+        feed_by_type = {str(f.get('feed_type') or '').strip().lower(): f for f in feeds}
+
+        def _resolve_feed(ft):
+            if ft is None:
+                return None
+            raw = str(ft).strip()
+            if not raw:
+                return None
+            # Try integer id first.
+            try:
+                fid = int(raw)
+                if fid in feed_by_id:
+                    return feed_by_id[fid]
+            except ValueError:
+                pass
+            low = raw.lower()
+            return feed_by_name.get(low) or feed_by_type.get(low)
+
+        # Compute the age-for-a-date for each pig lazily.
+        def _origin(pig):
+            if (pig.get('pig_source') or '').lower() == 'purchased' and pig.get('purchase_date'):
+                return pig['purchase_date']
+            return pig.get('birth_date') or pig.get('purchase_date')
+
+        def _match_setting(age_days):
+            if age_days is None:
+                return None
+            for s in settings:
+                try:
+                    start = int(s['start_age_days']); end = int(s['end_age_days'])
+                except Exception:
+                    continue
+                if start <= age_days <= end:
+                    return s
+            return None
+
+        days = (date_to - date_from).days + 1
+
+        # Accumulators
+        by_feed = {}       # feed_name -> {feed_id, feed_name, feed_type, total_kg, animals:set}
+        by_category = {}   # setting_id -> {age_group_name, feed_name, feed_type, animals:set, daily_kg, total_kg}
+        by_day_map = {d: 0.0 for d in (date_from + timedelta(days=i) for i in range(days))}
+
+        animals_counted = set()
+
+        for pig in pigs:
+            origin = _origin(pig)
+            if not origin:
+                continue
+            for i in range(days):
+                day = date_from + timedelta(days=i)
+                if day < origin:
+                    continue
+                age_days = (day - origin).days
+                setting = _match_setting(age_days)
+                if not setting:
+                    continue
+                try:
+                    grams = float(setting.get('feed_amount_grams') or 0)
+                    times = int(setting.get('feeding_times_per_day') or 0)
+                except Exception:
+                    continue
+                if grams <= 0 or times <= 0:
+                    continue
+                daily_kg = grams * times / 1000.0
+
+                # Resolve feed (for display + breakdown)
+                feed_row = _resolve_feed(setting.get('feed_type'))
+                feed_name = (feed_row or {}).get('feed_name') or (setting.get('feed_type') or 'Unassigned feed')
+                feed_type = (feed_row or {}).get('feed_type') or None
+                feed_id   = (feed_row or {}).get('id')
+
+                # Accumulate totals
+                by_day_map[day] = by_day_map.get(day, 0.0) + daily_kg
+
+                bf = by_feed.setdefault(feed_name, {
+                    'feed_id': feed_id, 'feed_name': feed_name, 'feed_type': feed_type,
+                    'total_kg': 0.0, '_animals': set()
+                })
+                bf['total_kg'] += daily_kg
+                bf['_animals'].add(pig['id'])
+
+                cat_key = setting['id']
+                bc = by_category.setdefault(cat_key, {
+                    'age_group_name': setting.get('age_group_name') or 'Category',
+                    'start_age_days': setting.get('start_age_days'),
+                    'end_age_days': setting.get('end_age_days'),
+                    'feed_name': feed_name, 'feed_type': feed_type,
+                    'daily_kg': daily_kg, 'total_kg': 0.0, '_animals': set()
+                })
+                bc['total_kg'] += daily_kg
+                bc['_animals'].add(pig['id'])
+                animals_counted.add(pig['id'])
+
+        by_feed_list = sorted(
+            [{
+                'feed_id': v['feed_id'], 'feed_name': v['feed_name'], 'feed_type': v['feed_type'],
+                'total_kg': round(v['total_kg'], 2), 'animal_count': len(v['_animals'])
+            } for v in by_feed.values()],
+            key=lambda x: -x['total_kg']
+        )
+        by_category_list = sorted(
+            [{
+                'age_group_name': v['age_group_name'],
+                'start_age_days': v['start_age_days'],
+                'end_age_days': v['end_age_days'],
+                'feed_name': v['feed_name'], 'feed_type': v['feed_type'],
+                'animal_count': len(v['_animals']),
+                'daily_kg': round(v['daily_kg'], 3),
+                'total_kg': round(v['total_kg'], 2)
+            } for v in by_category.values()],
+            key=lambda x: (x.get('start_age_days') or 0)
+        )
+        by_day_list = [{'date': d.isoformat(), 'total_kg': round(kg, 2)} for d, kg in by_day_map.items()]
+        total_kg = round(sum(v['total_kg'] for v in by_feed.values()), 2)
+
+        return jsonify({
+            'success': True,
+            'range_type': range_type,
+            'date_from': date_from.isoformat(),
+            'date_to': date_to.isoformat(),
+            'days': days,
+            'animals_total': len(animals_counted),
+            'active_pigs': len(pigs),
+            'total_kg': total_kg,
+            'by_feed': by_feed_list,
+            'by_category': by_category_list,
+            'by_day': by_day_list
+        })
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -20107,6 +20365,259 @@ def get_animal_details(animal_id):
         print(f"Error getting animal details: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to get animal details: {str(e)}'})
 
+@app.route('/api/animal/record-weigh-in', methods=['POST'])
+def record_animal_weigh_in():
+    """Record an animal's weight AND health status at the same time (single weigh-in event)."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        animal_id      = data.get('animal_id')
+        actual_weight  = data.get('actual_weight') or data.get('weight')
+        expected_weight = data.get('expected_weight')
+        weighing_date  = data.get('weighing_date')
+        weighing_time  = data.get('weighing_time')
+        weight_notes   = (data.get('weight_notes') or '').strip()
+        health_status  = (data.get('health_status') or 'healthy').strip().lower()
+        health_notes   = (data.get('health_notes') or '').strip()
+
+        if not animal_id or actual_weight is None or not weighing_date:
+            return jsonify({'success': False, 'message': 'animal_id, actual_weight and weighing_date are required'})
+
+        allowed_statuses = {'healthy', 'sick', 'recovering', 'quarantine', 'critical', 'injured'}
+        if health_status not in allowed_statuses:
+            return jsonify({'success': False, 'message': f'Invalid health status. Allowed: {", ".join(sorted(allowed_statuses))}'})
+
+        if health_status != 'healthy' and not health_notes:
+            return jsonify({'success': False, 'message': 'A note is required when the animal is not healthy'})
+
+        from datetime import datetime
+        try:
+            weighing_date_obj = datetime.strptime(weighing_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid weighing_date format (expected YYYY-MM-DD)'})
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Validate that the weighing_date is not earlier than the animal's origin date
+        cursor.execute("""
+            SELECT id, birth_date, purchase_date, pig_source
+            FROM pigs WHERE id = %s
+        """, (animal_id,))
+        pig = cursor.fetchone()
+        if not pig:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Animal not found'})
+
+        origin_date = None
+        if (pig.get('pig_source') or '').lower() == 'purchased' and pig.get('purchase_date'):
+            origin_date = pig['purchase_date']
+        elif pig.get('birth_date'):
+            origin_date = pig['birth_date']
+
+        if origin_date and weighing_date_obj < origin_date:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': f'Weighing date cannot be before the animal\'s origin date ({origin_date.isoformat()})'
+            })
+
+        if weighing_date_obj > datetime.now().date():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Weighing date cannot be in the future'})
+
+        # Calculate expected weight if not provided
+        if expected_weight is None:
+            expected_weight = calculate_expected_weight(animal_id=animal_id, weighing_date=weighing_date_obj)
+
+        # Insert weight record
+        cursor.execute("""
+            INSERT INTO weight_records
+                (animal_id, weight, expected_weight, weight_type, weighing_date, weighing_time, notes, created_at, updated_at)
+            VALUES (%s, %s, %s, 'actual', %s, %s, %s, NOW(), NOW())
+        """, (animal_id, actual_weight, expected_weight, weighing_date_obj, weighing_time, weight_notes or None))
+        weight_record_id = cursor.lastrowid
+
+        # Insert health record
+        combined_notes = health_notes
+        if not combined_notes and health_status == 'healthy' and weight_notes:
+            combined_notes = weight_notes
+        cursor.execute("""
+            INSERT INTO pig_health_records
+                (animal_id, check_date, health_status, notes, weight_record_id, recorded_by, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+        """, (animal_id, weighing_date_obj, health_status, combined_notes or None, weight_record_id, session.get('employee_id')))
+        health_record_id = cursor.lastrowid
+
+        # Optionally reflect the health status on the pig's master status field for a quick indicator
+        status_map = {
+            'sick': 'sick',
+            'quarantine': 'quarantine',
+            'critical': 'sick',
+            'injured': 'sick',
+            'recovering': 'active',
+            'healthy': 'active'
+        }
+        new_pig_status = status_map.get(health_status)
+        if new_pig_status:
+            try:
+                cursor.execute("""
+                    UPDATE pigs SET status = %s, updated_at = NOW()
+                    WHERE id = %s AND status NOT IN ('sold','deceased','slaughtered','transferred')
+                """, (new_pig_status, animal_id))
+            except Exception as upd_e:
+                # Don't fail the whole request if the pigs.status ENUM doesn't include sick/quarantine
+                print(f"Note: could not sync pig.status to '{new_pig_status}': {upd_e}")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Weigh-in recorded successfully',
+            'weight_record_id': weight_record_id,
+            'health_record_id': health_record_id,
+            'expected_weight': expected_weight
+        })
+
+    except Exception as e:
+        print(f"Error recording weigh-in: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to record weigh-in: {str(e)}'})
+
+
+@app.route('/api/animal/<int:animal_id>/health', methods=['GET'])
+def get_animal_health_records(animal_id):
+    """Return per-animal health records (most recent first)."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT hr.id, hr.animal_id, hr.check_date, hr.health_status, hr.notes,
+                   hr.weight_record_id, hr.recorded_by, hr.created_at,
+                   w.weight AS weight_at_check, w.expected_weight,
+                   e.full_name AS recorded_by_name
+            FROM pig_health_records hr
+            LEFT JOIN weight_records w ON hr.weight_record_id = w.id
+            LEFT JOIN employees e      ON hr.recorded_by = e.id
+            WHERE hr.animal_id = %s
+            ORDER BY hr.check_date DESC, hr.id DESC
+        """, (animal_id,))
+        records = cursor.fetchall()
+
+        for r in records:
+            for k in ('check_date', 'created_at'):
+                if r.get(k) is not None:
+                    r[k] = str(r[k])
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'records': records})
+
+    except Exception as e:
+        print(f"Error getting animal health records: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to load health records: {str(e)}'})
+
+
+@app.route('/api/animal/<int:animal_id>/breeding', methods=['GET'])
+def get_animal_breeding_records(animal_id):
+    """Get breeding records where the animal is either the sow or the boar."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, gender FROM pigs WHERE id = %s
+        """, (animal_id,))
+        pig = cursor.fetchone()
+        if not pig:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Animal not found'})
+
+        cursor.execute("""
+            SELECT
+                br.id,
+                br.sow_id,
+                br.boar_id,
+                br.mating_date,
+                br.expected_due_date,
+                br.notes,
+                br.created_at,
+                sow.tag_id        AS sow_tag_id,
+                sow.breed         AS sow_breed,
+                sow.breeding_status AS sow_breeding_status,
+                boar.tag_id       AS boar_tag_id,
+                boar.breed        AS boar_breed,
+                CASE WHEN br.sow_id = %s THEN 'sow' ELSE 'boar' END AS role,
+                EXISTS(
+                    SELECT 1 FROM farrowing_records fr WHERE fr.breeding_id = br.id
+                ) AS has_farrowing,
+                EXISTS(
+                    SELECT 1 FROM failed_conceptions fc
+                    WHERE fc.sow_id = br.sow_id
+                      AND fc.mating_date = br.mating_date
+                      AND fc.boar_id = br.boar_id
+                ) AS is_failed,
+                (
+                    SELECT MAX(fr.farrowing_date)
+                    FROM farrowing_records fr
+                    WHERE fr.breeding_id = br.id
+                ) AS last_farrowing_date,
+                (
+                    SELECT COALESCE(SUM(l.alive_piglets), 0)
+                    FROM farrowing_records fr
+                    JOIN litters l ON l.farrowing_record_id = fr.id
+                    WHERE fr.breeding_id = br.id
+                ) AS total_alive_piglets
+            FROM breeding_records br
+            LEFT JOIN pigs sow  ON br.sow_id  = sow.id
+            LEFT JOIN pigs boar ON br.boar_id = boar.id
+            WHERE br.sow_id = %s OR br.boar_id = %s
+            ORDER BY br.mating_date DESC, br.id DESC
+        """, (animal_id, animal_id, animal_id))
+        records = cursor.fetchall()
+
+        for r in records:
+            for key in ('mating_date', 'expected_due_date', 'created_at', 'last_farrowing_date'):
+                if r.get(key) is not None:
+                    r[key] = str(r[key])
+            r['has_farrowing'] = bool(r.get('has_farrowing'))
+            r['is_failed'] = bool(r.get('is_failed'))
+            if r.get('is_failed'):
+                r['cycle_status'] = 'failed'
+            elif r.get('has_farrowing'):
+                r['cycle_status'] = 'farrowed'
+            else:
+                r['cycle_status'] = (r.get('sow_breeding_status') or 'active').lower()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'gender': pig.get('gender'),
+            'records': records
+        })
+
+    except Exception as e:
+        print(f"Error getting animal breeding records: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to load breeding records: {str(e)}'})
+
+
 @app.route('/api/litter/<int:litter_id>/details', methods=['GET'])
 def get_litter_details(litter_id):
     """Get litter details including farrowing date for age calculation"""
@@ -20117,23 +20628,36 @@ def get_litter_details(litter_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get litter details with farrowing date
+        # Get litter details with farrowing date + sow/boar + farm info
         cursor.execute("""
-            SELECT l.id, l.litter_id, l.farrowing_date, l.sow_id, l.boar_id,
-                   l.total_piglets, l.alive_piglets, l.status,
-                   p.tag_id as sow_tag_id, p.breed as sow_breed,
-                   f.farm_name, DATEDIFF(CURDATE(), l.farrowing_date) as age_days
+            SELECT l.id, l.litter_id, l.farrowing_record_id,
+                   l.farrowing_date, l.sow_id, l.boar_id,
+                   l.total_piglets, l.alive_piglets, l.still_births,
+                   l.avg_weight, l.weaning_weight, l.weaning_date,
+                   l.status, l.notes,
+                   l.created_at, l.updated_at,
+                   p.tag_id   AS sow_tag_id,   p.breed AS sow_breed,
+                   b.tag_id   AS boar_tag_id,  b.breed AS boar_breed,
+                   f.farm_name, DATEDIFF(CURDATE(), l.farrowing_date) AS age_days,
+                   e.full_name AS created_by_name
             FROM litters l
-            LEFT JOIN pigs p ON l.sow_id = p.id
-            LEFT JOIN farms f ON p.farm_id = f.id
+            LEFT JOIN pigs p    ON l.sow_id  = p.id
+            LEFT JOIN pigs b    ON l.boar_id = b.id
+            LEFT JOIN farms f   ON p.farm_id = f.id
+            LEFT JOIN employees e ON l.created_by = e.id
             WHERE l.id = %s
         """, (litter_id,))
-        
+
         litter = cursor.fetchone()
         if not litter:
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Litter not found'})
+
+        # Stringify date/datetime columns for consistent JSON
+        for k in ('farrowing_date', 'weaning_date', 'created_at', 'updated_at'):
+            if litter.get(k) is not None:
+                litter[k] = str(litter[k])
         
         cursor.close()
         conn.close()
@@ -23582,9 +24106,41 @@ def animal_details_page(animal_id):
     # Get the type parameter from query string
     animal_type = request.args.get('type', 'grown_pig')
     
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    
     return render_template('admin_farm_animal_details.html', 
+                         user=user_data,
                          animal_id=animal_id, 
                          animal_type=animal_type)
+
+@app.route('/admin/farm/litter-details/<int:litter_id>')
+@app.route('/manager/farm/litter-details/<int:litter_id>')
+def litter_details_page(litter_id):
+    """Litter details page (info + weights + activities + visual analytics)."""
+    if 'employee_id' not in session:
+        return redirect(url_for('employee_login'))
+
+    if session.get('employee_role') not in ['administrator', 'manager']:
+        flash('Access denied. Administrator or Manager privileges required.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_litter_details.html',
+                           user=user_data,
+                           litter_id=litter_id)
 
 @app.route('/admin/farm/vaccination-analytics')
 def vaccination_analytics_page():

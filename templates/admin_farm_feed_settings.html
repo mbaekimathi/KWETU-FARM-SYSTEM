@@ -12,7 +12,8 @@
 {% set farm_sidebar_banner_title = 'Farm' %}
 {% set farm_sidebar_banner_sub = 'Feed settings' %}
 {% set farm_sidebar_nav_partial = 'includes/farm_nav_farm_operations_hub.html' %}
-{{% set farm_hub_nav_active = 'pig_feeding' %}}
+{% set farm_sidebar_no_main_links = true %}
+{% set farm_hub_nav_active = 'pig_feeding' %}
 
 {% include 'includes/farm_shell_header.html' %}
 {% include 'includes/farm_unified_sidebar.html' %}

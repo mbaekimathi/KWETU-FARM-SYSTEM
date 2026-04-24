@@ -26,7 +26,7 @@
     {% else %}
         {% set farm_sidebar_banner_title = 'Pig hub' %}
         {% set farm_sidebar_banner_sub = 'Feeding' %}
-        {% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_hub.html' %}
+        {% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_feeding_focus.html' %}
         {% set pig_nav_active = 'feeding' %}
     {% endif %}
     {% include 'includes/farm_shell_header.html' %}
@@ -84,17 +84,31 @@
                 </article>
             </section>
 
-            <!-- Register New Feed (on-page form) -->
-            <div class="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-orange-200 dark:border-orange-800/50 overflow-hidden mb-6 sm:mb-8">
+            <!-- Register New Feed (collapsible, opens on click) -->
+            <div class="w-full mb-6 sm:mb-8">
+                <a id="register-feed-toggle" href="#feed-registration-form-inline"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 text-white font-medium text-sm shadow-md hover:shadow-lg hover:from-orange-600 hover:to-red-700 transition-all"
+                   onclick="toggleRegisterFeedPanel(event)" role="button" aria-expanded="false" aria-controls="register-feed-panel">
+                    <i class="fas fa-plus"></i>
+                    <span id="register-feed-toggle-label">Register New Feed</span>
+                    <i id="register-feed-toggle-chevron" class="fas fa-chevron-down text-xs transition-transform"></i>
+                </a>
+            </div>
+            <div id="register-feed-panel" class="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-orange-200 dark:border-orange-800/50 overflow-hidden mb-6 sm:mb-8 hidden">
                 <div class="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border-b-2 border-orange-200 dark:border-orange-800/50">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Register New Feed</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Add a new feed type for {{ animal_plural|lower }}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Register New Feed</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Add a new feed type for {{ animal_plural|lower }}</p>
-                        </div>
+                        <button type="button" onclick="toggleRegisterFeedPanel(event, false)" class="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors" aria-label="Close form">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="p-4 sm:p-6 lg:p-8">
@@ -329,6 +343,33 @@
     </div>
 
     <script>
+        // Collapsible "Register New Feed" on-page form
+        function toggleRegisterFeedPanel(event, force) {
+            if (event && event.preventDefault) event.preventDefault();
+            var panel   = document.getElementById('register-feed-panel');
+            var toggle  = document.getElementById('register-feed-toggle');
+            var label   = document.getElementById('register-feed-toggle-label');
+            var chevron = document.getElementById('register-feed-toggle-chevron');
+            if (!panel || !toggle) return;
+            var willOpen = (typeof force === 'boolean') ? force : panel.classList.contains('hidden');
+            if (willOpen) {
+                panel.classList.remove('hidden');
+                toggle.setAttribute('aria-expanded', 'true');
+                if (label)   label.textContent = 'Hide Register New Feed';
+                if (chevron) chevron.classList.add('rotate-180');
+                setTimeout(function(){
+                    var firstInput = panel.querySelector('input[name="feed_name"]');
+                    if (firstInput) firstInput.focus({ preventScroll: true });
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 10);
+            } else {
+                panel.classList.add('hidden');
+                toggle.setAttribute('aria-expanded', 'false');
+                if (label)   label.textContent = 'Register New Feed';
+                if (chevron) chevron.classList.remove('rotate-180');
+            }
+        }
+
         // Feed Registration: expose opener early so sidebar/mobile clicks always work
         function openFeedRegistrationModal() {
             var modal = document.getElementById('feed-registration-modal');

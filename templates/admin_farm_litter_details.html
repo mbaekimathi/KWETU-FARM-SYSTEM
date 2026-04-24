@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Litter Details - Pig Farm Management System</title>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Litter Details' %}
+{% set farm_shell_icon_class = 'fas fa-baby' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Litters' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_hub.html' %}
+{% set farm_sidebar_no_main_links = true %}
+{% set pig_nav_active = 'hub' %}
+
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+
+<main class="pt-16 md:pl-64 min-h-screen bg-gray-50 dark:bg-gray-900 transition-[padding] duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <!-- Page Header -->
+        <div class="mb-8 animate-slide-up">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-gradient-to-br from-pink-500 via-rose-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-baby text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Litter Details</h1>
+                            <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">View a litter's profile, weights, activities and growth analytics</p>
+                            <div class="flex items-center space-x-2 mt-2">
+                                <div class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
+                                <span class="text-xs font-semibold text-pink-600 dark:text-pink-400">Live Data</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="history.back()" class="group p-3 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Go back">
+                            <i class="fas fa-arrow-left text-lg group-hover:scale-110 transition-transform duration-300"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div id="litterTabs" class="mb-6 hidden">
+            <div class="inline-flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-1.5">
+                <button data-tab="details" class="tab-btn px-4 sm:px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow">
+                    <i class="fas fa-list-ul mr-2"></i>Details
+                </button>
+                <button data-tab="analytics" class="tab-btn px-4 sm:px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-chart-line mr-2"></i>Visual Analytics
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-12 animate-slide-up">
+            <div class="flex justify-center items-center">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+                    <p class="text-gray-600 dark:text-gray-400 font-medium">Loading litter details...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 animate-slide-up">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-red-500 mr-3 text-xl"></i>
+                <div>
+                    <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error Loading Litter</h3>
+                    <p class="text-red-600 dark:text-red-400 mt-1" id="errorMessage">Failed to load litter information.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Tab Content -->
+        <div id="litterDetails" class="hidden space-y-6">
+            <!-- Overview Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-2xl p-5 border border-pink-200 dark:border-pink-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-300">Litter ID</p>
+                    <p id="summLitterId" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">—</p>
+                </div>
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-2xl p-5 border border-emerald-200 dark:border-emerald-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Alive Piglets</p>
+                    <p id="summAlive" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">—</p>
+                    <p id="summAliveSub" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                </div>
+                <div class="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-5 border border-amber-200 dark:border-amber-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-300">Age</p>
+                    <p id="summAge" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">—</p>
+                    <p id="summFarrowing" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+                </div>
+                <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-2xl p-5 border border-indigo-200 dark:border-indigo-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Status</p>
+                    <span id="summStatus" class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">—</span>
+                </div>
+            </div>
+
+            <!-- Basic Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-info-circle text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Basic Information</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Litter identification and statistics</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Litter ID</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="litterIdText">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Farm</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="farmName">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Farrowing Date</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="farrowingDate">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Age (days)</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="ageDays">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Piglets</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="totalPiglets">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alive Piglets</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="alivePiglets">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Still Births</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="stillBirths">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Avg Birth Weight</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="avgWeight">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Weaning Date</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="weaningDate">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Weaning Weight</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="weaningWeight">-</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                            <span id="statusBadge" class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">-</span>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Registered By</label>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="createdBy">-</p>
+                        </div>
+                    </div>
+                    <div id="notesBlock" class="mt-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 hidden">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Notes</p>
+                        <p id="notesText" class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parentage -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-venus-mars text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Parentage</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Sow and boar information</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Sow -->
+                    <div class="rounded-xl p-4 border border-pink-200 dark:border-pink-800 bg-pink-50/40 dark:bg-pink-900/10 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow">
+                                <i class="fas fa-venus text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] uppercase font-semibold text-pink-600 dark:text-pink-300">Sow</p>
+                                <p id="sowTag"   class="text-lg font-bold text-gray-900 dark:text-white">—</p>
+                                <p id="sowBreed" class="text-xs text-gray-600 dark:text-gray-400">—</p>
+                            </div>
+                        </div>
+                        <button id="sowViewBtn" class="hidden px-3 py-2 text-xs font-semibold rounded-lg bg-pink-600 text-white hover:bg-pink-700 transition-colors">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                    </div>
+                    <!-- Boar -->
+                    <div class="rounded-xl p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow">
+                                <i class="fas fa-mars text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] uppercase font-semibold text-blue-600 dark:text-blue-300">Boar</p>
+                                <p id="boarTag"   class="text-lg font-bold text-gray-900 dark:text-white">—</p>
+                                <p id="boarBreed" class="text-xs text-gray-600 dark:text-gray-400">—</p>
+                            </div>
+                        </div>
+                        <button id="boarViewBtn" class="hidden px-3 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight Records -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-weight text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Weight Records</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Average weight per weighing with expected growth comparison</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="weightRecords" class="space-y-4">
+                        <div class="flex justify-center items-center py-8">
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
+                                <p class="text-gray-600 dark:text-gray-400 font-medium">Loading weight records...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Farrowing / Care Activities -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-calendar-check text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Farrowing Activities</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Scheduled care activities and their completion status</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="activitiesContainer" class="space-y-3">
+                        <div class="flex justify-center items-center py-8">
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
+                                <p class="text-gray-600 dark:text-gray-400 font-medium">Loading activities...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab Content -->
+        <div id="analyticsContent" class="hidden space-y-6">
+            <!-- Weight trend -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-weight text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Weight Records</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Litter average weight vs. expected piglet growth curve</p>
+                        </div>
+                    </div>
+                    <span id="weightAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Average Weight Over Time (kg)</h4>
+                            <div class="relative h-64"><canvas id="weightTrendChart"></canvas></div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Average Daily Gain (kg/day)</h4>
+                            <div class="relative h-64"><canvas id="adgChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div id="weightAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">
+                        <i class="fas fa-chart-area text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                        <p>No weight measurements recorded for this litter yet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health / Survival -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-heartbeat text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Health Records</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Piglet survival vs. benchmark (95% target)</p>
+                        </div>
+                    </div>
+                    <span id="healthAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Survival Rate</h4>
+                            <div class="relative h-64"><canvas id="survivalChart"></canvas></div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Litter Composition</h4>
+                            <div class="relative h-64"><canvas id="compositionChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vaccination (piglet schedule) -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-shield-alt text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Vaccination Records</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Planned piglet vaccinations over the litter's age</p>
+                        </div>
+                    </div>
+                    <span id="vaccinationAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
+                </div>
+                <div class="p-6">
+                    <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                        <div class="relative h-64"><canvas id="vaccinationTrendChart"></canvas></div>
+                    </div>
+                    <div id="vaccinationAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">
+                        <i class="fas fa-syringe text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                        <p>No vaccination schedule available.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breeding (farrowing activities compliance) -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-calendar-check text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Breeding Records</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Farrowing activities — completed vs. scheduled</p>
+                        </div>
+                    </div>
+                    <span id="breedingAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
+                </div>
+                <div class="p-6">
+                    <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                        <div class="relative h-64"><canvas id="activitiesChart"></canvas></div>
+                    </div>
+                    <div id="breedingAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">
+                        <i class="fas fa-calendar-check text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                        <p>No farrowing activities found for this litter.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production coming soon -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-chart-line text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Production Records</h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Output and productivity analytics</p>
+                    </div>
+                </div>
+                <div class="p-10 text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 mb-3">
+                        <i class="fas fa-hourglass-half text-2xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Coming Soon</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                        Production analytics will visualise wean-to-market performance and revenue once those data points are captured.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    const litterId = {{ litter_id }};
+    let litterData = null;
+    let weightCategoriesCache = null;
+    let litterWeightsCache = null;
+    let activitiesCache = null;
+
+    async function getWeightCategories() {
+        if (weightCategoriesCache !== null) return weightCategoriesCache;
+        try {
+            const res = await fetch('/api/weight/categories');
+            const data = await res.json();
+            weightCategoriesCache = (data && data.success) ? (data.categories || []) : [];
+        } catch (_) {
+            weightCategoriesCache = [];
+        }
+        return weightCategoriesCache;
+    }
+
+    function findCategoryForAge(categories, ageDays) {
+        if (ageDays == null || !categories || !categories.length) return null;
+        return categories.find(c =>
+            c.start_age != null && c.end_age != null &&
+            ageDays >= Number(c.start_age) && ageDays <= Number(c.end_age)
+        ) || null;
+    }
+
+    function computeExpectedWeight(category, ageDays) {
+        if (!category) return null;
+        const start = Number(category.start_age);
+        const end   = Number(category.end_age);
+        const minW  = Number(category.min_weight);
+        const dg    = Number(category.daily_gain || 0);
+        if ([start, end, minW].some(Number.isNaN)) return null;
+        const daysIn = Math.max(0, Math.min(end - start, ageDays - start));
+        return minW + daysIn * dg;
+    }
+
+    function statusBadgeClasses(status) {
+        const s = (status || '').toLowerCase();
+        const map = {
+            unweaned:    'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+            weaned:      'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+            sold:        'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200',
+            deceased:    'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+            dead:        'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+            slaughtered: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200'
+        };
+        return map[s] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+
+    function formatDate(v) {
+        if (!v) return '—';
+        const d = new Date(v);
+        return isNaN(d.getTime()) ? v : d.toLocaleDateString();
+    }
+
+    function showError(msg) {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('errorState').classList.remove('hidden');
+        document.getElementById('errorMessage').textContent = msg || 'Failed to load litter';
+    }
+
+    document.addEventListener('DOMContentLoaded', loadLitterDetails);
+
+    async function loadLitterDetails() {
+        try {
+            const res = await fetch(`/api/litter/${litterId}/details`);
+            const data = await res.json();
+            if (!data || !data.success) {
+                showError(data && data.message ? data.message : 'Litter not found');
+                return;
+            }
+            litterData = data.litter;
+            renderDetails();
+            loadWeightRecords();
+            loadActivities();
+        } catch (e) {
+            console.error(e);
+            showError('Failed to load litter details');
+        }
+    }
+
+    function renderDetails() {
+        if (!litterData) return;
+        const l = litterData;
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v == null || v === '') ? '—' : v; };
+
+        setText('summLitterId', l.litter_id);
+        const alive = Number(l.alive_piglets || 0), total = Number(l.total_piglets || 0);
+        setText('summAlive', `${alive}`);
+        document.getElementById('summAliveSub').textContent = total ? `of ${total} total` : '';
+        setText('summAge', (l.age_days != null) ? `${l.age_days} days` : '—');
+        document.getElementById('summFarrowing').textContent = l.farrowing_date ? `Farrowed ${formatDate(l.farrowing_date)}` : '';
+        const statusLabel = (l.status || '—').replace(/(^|\s)\S/g, c => c.toUpperCase());
+        const summStatus = document.getElementById('summStatus');
+        summStatus.textContent = statusLabel;
+        summStatus.className = `mt-2 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadgeClasses(l.status)}`;
+
+        setText('litterIdText', l.litter_id);
+        setText('farmName', l.farm_name);
+        setText('farrowingDate', formatDate(l.farrowing_date));
+        setText('ageDays', l.age_days != null ? `${l.age_days} days` : '—');
+        setText('totalPiglets', l.total_piglets);
+        setText('alivePiglets', l.alive_piglets);
+        setText('stillBirths', l.still_births != null ? l.still_births : 0);
+        setText('avgWeight', l.avg_weight != null ? `${Number(l.avg_weight).toFixed(2)} kg` : '—');
+        setText('weaningDate', formatDate(l.weaning_date));
+        setText('weaningWeight', l.weaning_weight != null ? `${Number(l.weaning_weight).toFixed(2)} kg` : '—');
+        const statusBadge = document.getElementById('statusBadge');
+        statusBadge.textContent = statusLabel;
+        statusBadge.className = `mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClasses(l.status)}`;
+        setText('createdBy', l.created_by_name);
+
+        if (l.notes && l.notes.trim()) {
+            document.getElementById('notesBlock').classList.remove('hidden');
+            document.getElementById('notesText').textContent = l.notes;
+        }
+
+        // Sow & boar
+        document.getElementById('sowTag').textContent   = l.sow_tag_id  || '—';
+        document.getElementById('sowBreed').textContent = l.sow_breed   || '—';
+        document.getElementById('boarTag').textContent  = l.boar_tag_id || '—';
+        document.getElementById('boarBreed').textContent = l.boar_breed || '—';
+        if (l.sow_id) {
+            const b = document.getElementById('sowViewBtn');
+            b.classList.remove('hidden');
+            b.onclick = () => window.location.href = `/admin/farm/animal-details/${l.sow_id}?type=grown_pig`;
+        }
+        if (l.boar_id) {
+            const b = document.getElementById('boarViewBtn');
+            b.classList.remove('hidden');
+            b.onclick = () => window.location.href = `/admin/farm/animal-details/${l.boar_id}?type=grown_pig`;
+        }
+
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('litterDetails').classList.remove('hidden');
+        document.getElementById('litterTabs').classList.remove('hidden');
+    }
+
+    async function loadWeightRecords() {
+        const container = document.getElementById('weightRecords');
+        try {
+            const res = await fetch(`/api/litter/${litterId}/weights`);
+            const data = await res.json();
+            const weights = (data && data.success) ? (data.weights || []) : [];
+            litterWeightsCache = weights;
+            if (!weights.length) {
+                await loadDefaultWeightSchedule();
+                return;
+            }
+
+            const categories = await getWeightCategories();
+            const farrow = litterData && litterData.farrowing_date ? new Date(litterData.farrowing_date) : null;
+            const sortedAsc = weights.slice().sort((a, b) => new Date(a.weighing_date) - new Date(b.weighing_date));
+
+            const rows = sortedAsc.map((w, i) => {
+                const date    = new Date(w.weighing_date);
+                const ageDays = farrow ? Math.max(0, Math.floor((date - farrow) / 86400000)) : null;
+                const cat     = findCategoryForAge(categories, ageDays);
+                const expected = w.expected_weight != null ? Number(w.expected_weight) : computeExpectedWeight(cat, ageDays);
+                const actual   = Number(w.weight);
+                let diffBadge = '';
+                if (expected != null) {
+                    const diff = actual - expected;
+                    const pct  = (diff / expected) * 100;
+                    const cls  = Math.abs(pct) <= 5 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                                : pct > 5         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                                                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200';
+                    const sign = diff >= 0 ? '+' : '';
+                    diffBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${cls}">${sign}${diff.toFixed(2)} kg (${sign}${pct.toFixed(1)}%)</span>`;
+                }
+                let adgCell = '<span class="text-gray-400">—</span>';
+                if (i > 0) {
+                    const prev = sortedAsc[i - 1];
+                    const days = Math.max(1, (date - new Date(prev.weighing_date)) / 86400000);
+                    const actualAdg = (actual - Number(prev.weight)) / days;
+                    const expAdg = cat ? Number(cat.daily_gain || 0) : null;
+                    adgCell = `<div class="flex flex-col"><span class="font-semibold">${actualAdg.toFixed(3)} kg/day</span>${expAdg != null ? `<span class="text-[11px] text-gray-500">Expected ${expAdg.toFixed(3)}</span>` : ''}</div>`;
+                }
+                return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-white whitespace-nowrap">${date.toLocaleDateString()}</td>
+                        <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">${ageDays != null ? ageDays + ' days' : '—'}</td>
+                        <td class="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">${actual.toFixed(2)} kg</td>
+                        <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">${expected != null ? expected.toFixed(2) + ' kg' : '—'}</td>
+                        <td class="px-4 py-2 text-sm whitespace-nowrap">${diffBadge || '<span class="text-gray-400">—</span>'}</td>
+                        <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">${adgCell}</td>
+                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">${w.notes || ''}</td>
+                    </tr>`;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/40">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Date</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Age</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actual Weight</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Expected</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">vs. Expected</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">ADG</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
+                    </table>
+                </div>`;
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = `<p class="text-sm text-red-500">Failed to load weight records.</p>`;
+        }
+    }
+
+    // Fallback: show default weight categories/targets from settings when no records exist
+    async function loadDefaultWeightSchedule() {
+        const container = document.getElementById('weightRecords');
+        try {
+            const categories = await getWeightCategories();
+
+            if (!categories.length) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-weight text-3xl mb-2 text-gray-400"></i>
+                        <p>No weight records found, and no default weight schedule has been configured.</p>
+                    </div>`;
+                return;
+            }
+
+            const currentAge = litterData && litterData.age_days != null ? Number(litterData.age_days) : null;
+
+            container.innerHTML = `
+                <div class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <i class="fas fa-info-circle text-blue-500"></i>
+                    <p class="text-sm text-blue-700 dark:text-blue-300">
+                        No weight records recorded yet. Showing the <strong>default weight schedule</strong> from farm settings as a reference${currentAge !== null ? ` (current age: <strong>${currentAge} days</strong>)` : ''}.
+                    </p>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">Category</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">Age Range (days)</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">Expected Weight (kg)</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">Daily Gain</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            ${categories.map(cat => {
+                                const inRange = currentAge !== null && cat.start_age != null && cat.end_age != null &&
+                                                currentAge >= Number(cat.start_age) && currentAge <= Number(cat.end_age);
+                                return `
+                                    <tr class="${inRange ? 'bg-amber-50 dark:bg-amber-900/20' : ''}">
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                            ${cat.category_name || '—'}
+                                            ${inRange ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-200 text-amber-900 dark:bg-amber-500/30 dark:text-amber-200">Current</span>' : ''}
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${cat.start_age ?? '—'} – ${cat.end_age ?? '—'}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${cat.min_weight ?? '—'} – ${cat.max_weight ?? '—'}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${cat.daily_gain ?? '—'} kg/day</td>
+                                    </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        } catch (error) {
+            console.error('Error loading default weight schedule:', error);
+            container.innerHTML = '<p class="text-gray-500 dark:text-gray-400">No weight records found.</p>';
+        }
+    }
+
+    async function loadActivities() {
+        const container = document.getElementById('activitiesContainer');
+        try {
+            const res = await fetch(`/api/litter/${litterData.litter_id}/activities`);
+            const data = await res.json();
+            const activities = (data && data.success) ? (data.activities || []) : [];
+            activitiesCache = activities;
+
+            if (!activities.length) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-calendar-check text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">${(data && data.message) || 'No farrowing activities were scheduled for this litter.'}</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = activities.map(a => {
+                const status = (a.status || 'pending').toLowerCase();
+                const badgeCls = status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                                : status === 'overdue'  ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+                                : status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'
+                                :                           'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
+                const due = a.due_date || a.due_day_date || a.planned_date || '';
+                return `
+                    <div class="flex items-start justify-between gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow">
+                                <i class="fas fa-tasks text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900 dark:text-white">${a.activity_name || a.name || 'Activity'}</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">
+                                    ${a.due_day != null ? `Day ${a.due_day}` : ''}
+                                    ${due ? ` · Due ${formatDate(due)}` : ''}
+                                    ${a.completed_at ? ` · Completed ${formatDate(a.completed_at)}` : ''}
+                                </p>
+                                ${a.notes ? `<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">${a.notes}</p>` : ''}
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${badgeCls}">${status.replace('_', ' ').replace(/^./, c => c.toUpperCase())}</span>
+                    </div>`;
+            }).join('');
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = `<p class="text-sm text-red-500">Failed to load activities.</p>`;
+        }
+    }
+
+    // =========================================================
+    // Tabs + analytics
+    // =========================================================
+    let currentTab = 'details';
+    let analyticsRendered = false;
+    const analyticsCharts = {};
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.tab-btn');
+        if (!btn) return;
+        switchTab(btn.dataset.tab);
+    });
+
+    function switchTab(tab) {
+        if (!tab || tab === currentTab) return;
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            const active = b.dataset.tab === tab;
+            b.classList.toggle('bg-gradient-to-r', active);
+            b.classList.toggle('from-pink-500', active);
+            b.classList.toggle('to-rose-600',  active);
+            b.classList.toggle('text-white',   active);
+            b.classList.toggle('shadow',       active);
+            b.classList.toggle('text-gray-600', !active);
+            b.classList.toggle('dark:text-gray-300', !active);
+            b.classList.toggle('hover:bg-gray-100', !active);
+            b.classList.toggle('dark:hover:bg-gray-700', !active);
+        });
+        document.getElementById('litterDetails').classList.toggle('hidden', tab !== 'details');
+        document.getElementById('analyticsContent').classList.toggle('hidden', tab !== 'analytics');
+        if (tab === 'analytics' && !analyticsRendered) renderAllAnalytics();
+    }
+
+    function destroyChartIfExists(key) {
+        if (analyticsCharts[key]) { try { analyticsCharts[key].destroy(); } catch(_) {} analyticsCharts[key] = null; }
+    }
+
+    async function renderAllAnalytics() {
+        if (typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
+        analyticsRendered = true;
+        await Promise.all([
+            renderWeightAnalytics(),
+            renderHealthAnalytics(),
+            renderVaccinationAnalytics(),
+            renderBreedingAnalytics()
+        ]);
+    }
+
+    async function renderWeightAnalytics() {
+        try {
+            let weights = litterWeightsCache;
+            if (weights == null) {
+                const res = await fetch(`/api/litter/${litterId}/weights`).then(r => r.json());
+                weights = (res && res.success) ? (res.weights || []) : [];
+                litterWeightsCache = weights;
+            }
+            const cats = await getWeightCategories();
+            const farrow = litterData && litterData.farrowing_date ? new Date(litterData.farrowing_date) : null;
+
+            if (!weights.length) {
+                document.getElementById('weightAnalyticsEmpty').classList.remove('hidden');
+                document.getElementById('weightAnalyticsSummary').textContent = 'No measurements';
+                return;
+            }
+            document.getElementById('weightAnalyticsEmpty').classList.add('hidden');
+
+            const sorted = weights.slice()
+                .filter(w => w.weighing_date && w.weight != null)
+                .sort((a, b) => new Date(a.weighing_date) - new Date(b.weighing_date));
+
+            const labels = [];
+            const actualSeries = [];
+            const expectedSeries = [];
+            const actualAdg = [];
+            const expectedAdg = [];
+
+            let prev = null;
+            sorted.forEach(w => {
+                const d = new Date(w.weighing_date);
+                const ageDays = farrow ? Math.max(0, Math.floor((d - farrow) / 86400000)) : null;
+                labels.push(`Day ${ageDays != null ? ageDays : '?'} (${d.toLocaleDateString()})`);
+                actualSeries.push(Number(w.weight));
+                const cat = findCategoryForAge(cats, ageDays);
+                const exp = w.expected_weight != null ? Number(w.expected_weight) : computeExpectedWeight(cat, ageDays);
+                expectedSeries.push(exp != null ? Number(exp.toFixed(2)) : null);
+
+                if (prev) {
+                    const days = Math.max(1, (d - new Date(prev.weighing_date)) / 86400000);
+                    actualAdg.push(Number(((Number(w.weight) - Number(prev.weight)) / days).toFixed(3)));
+                } else {
+                    actualAdg.push(null);
+                }
+                expectedAdg.push(cat ? Number(Number(cat.daily_gain || 0).toFixed(3)) : null);
+                prev = w;
+            });
+
+            document.getElementById('weightAnalyticsSummary').textContent =
+                `${sorted.length} measurement${sorted.length === 1 ? '' : 's'}`;
+
+            destroyChartIfExists('weight');
+            analyticsCharts.weight = new Chart(document.getElementById('weightTrendChart'), {
+                type: 'line',
+                data: { labels,
+                    datasets: [
+                        { label: 'Actual Avg Weight', data: actualSeries,   borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)', tension: 0.3, fill: true, pointRadius: 4 },
+                        { label: 'Expected Weight',   data: expectedSeries, borderColor: '#6366f1', borderDash: [6,4], tension: 0.3, pointRadius: 3 }
+                    ]},
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { title: { display: true, text: 'kg' } } } }
+            });
+
+            destroyChartIfExists('adg');
+            analyticsCharts.adg = new Chart(document.getElementById('adgChart'), {
+                type: 'bar',
+                data: { labels,
+                    datasets: [
+                        { type: 'bar',  label: 'Actual ADG',   data: actualAdg,   backgroundColor: 'rgba(16,185,129,0.6)', borderColor: '#10b981' },
+                        { type: 'line', label: 'Expected ADG', data: expectedAdg, borderColor: '#6366f1', borderDash: [6,4], tension: 0.3, pointRadius: 3, fill: false }
+                    ]},
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { title: { display: true, text: 'kg/day' } } } }
+            });
+        } catch (e) { console.error('Weight analytics error:', e); }
+    }
+
+    async function renderHealthAnalytics() {
+        try {
+            const l = litterData || {};
+            const total = Number(l.total_piglets || 0);
+            const alive = Number(l.alive_piglets || 0);
+            const still = Number(l.still_births || 0);
+            const dead  = Math.max(0, total - alive - still);
+            const survival = total > 0 ? (alive / total) * 100 : 0;
+
+            document.getElementById('healthAnalyticsSummary').textContent =
+                total > 0 ? `${survival.toFixed(1)}% survival (target 95%)` : 'No data';
+
+            destroyChartIfExists('survival');
+            analyticsCharts.survival = new Chart(document.getElementById('survivalChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['This litter'],
+                    datasets: [
+                        { label: 'Actual Survival %',    data: [Number(survival.toFixed(1))], backgroundColor: survival >= 95 ? 'rgba(16,185,129,0.75)' : 'rgba(244,63,94,0.75)', borderColor: survival >= 95 ? '#10b981' : '#f43f5e' },
+                        { label: 'Benchmark (95%)',       data: [95],                         backgroundColor: 'rgba(99,102,241,0.45)', borderColor: '#6366f1' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 0, max: 100, title: { display: true, text: '%' } } } }
+            });
+
+            destroyChartIfExists('composition');
+            analyticsCharts.composition = new Chart(document.getElementById('compositionChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Alive', 'Still births', 'Lost after birth'],
+                    datasets: [{ data: [alive, still, dead], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        } catch (e) { console.error('Health analytics error:', e); }
+    }
+
+    async function renderVaccinationAnalytics() {
+        try {
+            const res = await fetch('/api/vaccination/schedule').then(r => r.ok ? r.json() : { success: false }).catch(() => ({ success: false }));
+            const schedule = (res && res.success) ? (res.schedule || res.vaccinations || []) : [];
+            if (!schedule.length) {
+                document.getElementById('vaccinationAnalyticsEmpty').classList.remove('hidden');
+                document.getElementById('vaccinationAnalyticsSummary').textContent = 'No schedule';
+                return;
+            }
+            document.getElementById('vaccinationAnalyticsEmpty').classList.add('hidden');
+
+            const currentAge = litterData && litterData.age_days != null ? Number(litterData.age_days) : null;
+            const labels  = schedule.map(s => (s.vaccine_name || s.name || 'Vaccine'));
+            const planned = schedule.map(s => Number(s.age_days ?? s.recommended_age_days ?? s.age ?? 0));
+            const status  = planned.map(age => currentAge != null && age <= currentAge ? age : null);
+            const doseDue = planned.filter(age => currentAge != null && age <= currentAge).length;
+
+            document.getElementById('vaccinationAnalyticsSummary').textContent =
+                currentAge != null ? `${doseDue}/${schedule.length} doses should be completed by now` : `${schedule.length} scheduled doses`;
+
+            destroyChartIfExists('vaccination');
+            analyticsCharts.vaccination = new Chart(document.getElementById('vaccinationTrendChart'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Planned Age (days)',   data: planned, backgroundColor: 'rgba(99,102,241,0.55)', borderColor: '#6366f1' },
+                        { label: 'Already Due (days)',   data: status,  backgroundColor: 'rgba(16,185,129,0.75)', borderColor: '#10b981' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { title: { display: true, text: 'Age (days)' } } } }
+            });
+        } catch (e) { console.error('Vaccination analytics error:', e); }
+    }
+
+    async function renderBreedingAnalytics() {
+        try {
+            let activities = activitiesCache;
+            if (activities == null) {
+                try {
+                    const r = await fetch(`/api/litter/${litterData.litter_id}/activities`).then(r => r.json());
+                    activities = (r && r.success) ? (r.activities || []) : [];
+                } catch (_) { activities = []; }
+                activitiesCache = activities;
+            }
+
+            if (!activities.length) {
+                document.getElementById('breedingAnalyticsEmpty').classList.remove('hidden');
+                document.getElementById('breedingAnalyticsSummary').textContent = 'No activities';
+                return;
+            }
+            document.getElementById('breedingAnalyticsEmpty').classList.add('hidden');
+
+            const completed = activities.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+            const overdue   = activities.filter(a => (a.status || '').toLowerCase() === 'overdue').length;
+            const pending   = activities.length - completed - overdue;
+            document.getElementById('breedingAnalyticsSummary').textContent = `${completed}/${activities.length} completed`;
+
+            destroyChartIfExists('activities');
+            analyticsCharts.activities = new Chart(document.getElementById('activitiesChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Pending', 'Overdue'],
+                    datasets: [{ data: [completed, pending, overdue], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        } catch (e) { console.error('Breeding analytics error:', e); }
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% include 'includes/farm_shell_footer.html' %}
+</body>
+</html>
