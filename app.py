@@ -1850,17 +1850,26 @@ def update_pig_ages(cursor):
                 # Update age
                 cursor.execute("UPDATE pigs SET age_days = %s WHERE id = %s", (current_age, pig['id']))
                 
-                # Update breeding status for grown pigs with breeding purpose
+                # Update breeding status for grown pigs with breeding purpose.
+                # Only promote young -> available based on age. NEVER overwrite
+                # lifecycle states (served / pregnant / farrowed); those are owned
+                # by the breeding/farrowing workflow and must not be reset here.
                 if pig['pig_type'] == 'grown_pig' and pig['purpose'] == 'breeding':
-                    new_breeding_status = 'available' if current_age >= 200 else 'young'
-                    
-                    # Only update if status changed
-                    if pig['breeding_status'] != new_breeding_status:
+                    current_status = pig['breeding_status']
+                    if current_status == 'young' and current_age >= 200:
                         cursor.execute("""
-                            UPDATE pigs 
-                            SET breeding_status = %s 
+                            UPDATE pigs
+                            SET breeding_status = 'available'
                             WHERE id = %s
-                        """, (new_breeding_status, pig['id']))
+                        """, (pig['id'],))
+                        breeding_status_updates += 1
+                    elif current_status is None and current_age < 200:
+                        # Initialize missing status for young breeding pigs only.
+                        cursor.execute("""
+                            UPDATE pigs
+                            SET breeding_status = 'young'
+                            WHERE id = %s
+                        """, (pig['id'],))
                         breeding_status_updates += 1
                 
                 updated_count += 1
@@ -13993,12 +14002,18 @@ def update_pig(pig_id):
                 except ValueError:
                     pass
             
-            # Determine breeding status based on purpose and age
+            # Determine breeding status based on purpose and age.
+            # IMPORTANT: never overwrite lifecycle states (served / pregnant /
+            # farrowed / available) here. Only initialize or promote from young.
             if purpose == 'breeding' and age_days is not None:
-                new_breeding_status = 'available' if age_days >= 200 else 'young'
-                update_fields.append("breeding_status = %s")
-                update_values.append(new_breeding_status)
-                changes.append(f"Breeding Status: {current_pig.get('breeding_status', 'None')} → {new_breeding_status}")
+                existing_status = current_pig.get('breeding_status')
+                new_breeding_status = None
+                if existing_status in (None, '', 'young'):
+                    new_breeding_status = 'available' if age_days >= 200 else 'young'
+                if new_breeding_status and new_breeding_status != existing_status:
+                    update_fields.append("breeding_status = %s")
+                    update_values.append(new_breeding_status)
+                    changes.append(f"Breeding Status: {existing_status or 'None'} → {new_breeding_status}")
             elif purpose == 'meat':
                 # Meat pigs don't have breeding status
                 update_fields.append("breeding_status = NULL")
@@ -14510,13 +14525,12 @@ def register_litter():
         if not breeding_record:
             return jsonify({'success': False, 'message': 'Breeding record not found for this farrowing'})
         
-        # Update sow breeding status back to available
-        cursor.execute("""
-            UPDATE pigs 
-            SET breeding_status = 'available' 
-            WHERE id = %s
-        """, (data['sow_id']))
-        
+        # NOTE: Do NOT flip the sow to 'available' here. The sow remains 'farrowed'
+        # until the full farrowing cycle (all activities completed AND litter weaned)
+        # is satisfied. The transition is performed centrally by
+        # maybe_mark_sow_available_after_farrowing_cycle() when the Weaning activity
+        # is marked complete.
+
         # Log activity
         log_activity(session['employee_id'], 'LITTER_REGISTRATION', 
                    f'Registered litter {data["litter_id"]} with {data["alive_piglets"]} alive piglets from sow {data["sow_id"]}')
@@ -15284,15 +15298,33 @@ def edit_breeding_record(breeding_id):
             WHERE id = %s
         """, (mating_date, expected_due_date, breeding_id))
         
-        # Optional: update sow (pigs.breeding_status). UI may pass legacy values like "completed" from older clients.
+        # Optional: update sow (pigs.breeding_status). UI may pass legacy values
+        # like "completed" from older clients. We intentionally do NOT flip the
+        # sow to 'available' from this endpoint, because availability after a
+        # farrowed cycle must be gated on farrowing_cycle_ready_for_sow_available
+        # (all activities done AND litter weaned). Legacy "completed/cancelled/
+        # failed" payloads are therefore ignored here; use the proper cancel,
+        # delete, or mark-available endpoints instead.
         if breeding_status:
-            if breeding_status in ('cancelled', 'failed', 'completed'):
+            if breeding_status in ('cancelled', 'failed', 'completed', 'available'):
+                # Look up the sow's current status so we can decide safely.
                 cursor.execute("""
-                    UPDATE pigs
-                    SET breeding_status = 'available'
-                    WHERE id = (SELECT sow_id FROM breeding_records WHERE id = %s)
+                    SELECT p.id AS sow_id, p.breeding_status
+                    FROM breeding_records br
+                    JOIN pigs p ON p.id = br.sow_id
+                    WHERE br.id = %s
                 """, (breeding_id,))
-            elif breeding_status in ('served', 'pregnant', 'farrowed', 'available', 'young'):
+                sow_row = cursor.fetchone()
+                if sow_row and sow_row['breeding_status'] != 'farrowed':
+                    # Safe: sow isn't in an active farrowing cycle, allow the reset.
+                    cursor.execute("""
+                        UPDATE pigs
+                        SET breeding_status = 'available'
+                        WHERE id = %s
+                    """, (sow_row['sow_id'],))
+                # If the sow IS 'farrowed', ignore the legacy reset; the cycle
+                # must complete via maybe_mark_sow_available_after_farrowing_cycle.
+            elif breeding_status in ('served', 'pregnant', 'farrowed', 'young'):
                 cursor.execute("""
                     UPDATE pigs
                     SET breeding_status = %s
