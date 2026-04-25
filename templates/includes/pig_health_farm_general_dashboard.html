@@ -9,10 +9,38 @@
                         <i class="fas {{ hm_page_icon }} text-emerald-500 mr-3"></i>{{ hm_page_title }}
                     </h1>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ hm_page_subtitle }}</p>
+                    <p id="hm-snapshot-hint" class="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden"></p>
+                    <p id="hm-trend-hint" class="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5 font-medium hidden"></p>
                 </div>
-                <button type="button" onclick="loadFarmHealthAggregate()" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    <i class="fas fa-sync-alt mr-1"></i>Refresh
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" onclick="loadFarmHealthAggregate()" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-6 p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Trend charts date range</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Pig/ litter counts and the doughnut charts are always <strong>live today</strong>. The three trend graphs below use the period you set here (monthly buckets).</p>
+            <div class="flex flex-col lg:flex-row flex-wrap items-end gap-3">
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">From
+                    <input type="date" id="hm-date-from" class="mt-0.5 block w-full sm:w-40 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                </label>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">To
+                    <input type="date" id="hm-date-to" class="mt-0.5 block w-full sm:w-40 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input type="checkbox" id="hm-trends-all" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                    All time (trends, no date filter)
+                </label>
+                <button type="button" onclick="loadFarmHealthAggregate()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium">Apply</button>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3">
+                <button type="button" class="hm-preset text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" data-months="3">Last 3 months</button>
+                <button type="button" class="hm-preset text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" data-months="6">Last 6 months</button>
+                <button type="button" class="hm-preset text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700" data-months="12">Last 12 months</button>
+                <button type="button" id="hm-preset-ytd" class="text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Year to date</button>
             </div>
         </div>
 
@@ -42,7 +70,7 @@
             </div>
 
             <h2 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center">
-                <i class="fas fa-th-large text-emerald-500 mr-2"></i>Current health status (all subjects)
+                <i class="fas fa-th-large text-emerald-500 mr-2"></i>Current health status (all subjects) — <span class="font-normal text-gray-500">live</span>
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-4">
@@ -61,18 +89,21 @@
 
             <div class="grid grid-cols-1 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-4">
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2"><i class="fas fa-weight-scale text-emerald-500 mr-2"></i>All weigh-ins — monthly averages (kg)</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Each point is the average of all weight records in that month (pigs, batches, and litters).</p>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2"><i class="fas fa-weight-scale text-emerald-500 mr-2"></i>Weigh-ins in selected period — monthly averages (kg)</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Each point is the average of weight records in that month (all subjects), within the trend date range only.</p>
+                    <p id="hm-weight-empty" class="hidden text-xs text-amber-600 dark:text-amber-400 mb-2">No weight records in this period — widen the range or pick “all time”.</p>
                     <div class="relative h-64"><canvas id="hm-trend-weight"></canvas></div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-4">
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2"><i class="fas fa-heart-pulse text-pink-500 mr-2"></i>All health check records — by month &amp; status</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Pig and litter health checks combined.</p>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2"><i class="fas fa-heart-pulse text-pink-500 mr-2"></i>Health checks in selected period — by month &amp; status</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Pig and litter health checks, filtered by the trend date range.</p>
+                    <p id="hm-health-empty" class="hidden text-xs text-amber-600 dark:text-amber-400 mb-2">No health records in this period.</p>
                     <div class="relative h-72"><canvas id="hm-trend-health"></canvas></div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-4">
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2"><i class="fas fa-syringe text-amber-500 mr-2"></i>All completed medications — by month</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Pig vs litter (other types grouped).</p>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2"><i class="fas fa-syringe text-amber-500 mr-2"></i>Medications in selected period — by month</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Completed vaccinations, filtered by the trend date range.</p>
+                    <p id="hm-med-empty" class="hidden text-xs text-amber-600 dark:text-amber-400 mb-2">No medication records in this period.</p>
                     <div class="relative h-64"><canvas id="hm-trend-med"></canvas></div>
                 </div>
             </div>
@@ -136,6 +167,8 @@
         const wm = payload.weight_monthly || [];
         destroyChart(CHARTS.w);
         const wctx = document.getElementById('hm-trend-weight');
+        const wEmpty = document.getElementById('hm-weight-empty');
+        if (wEmpty) wEmpty.classList.toggle('hidden', wm.length > 0);
         if (wctx) {
             if (wm.length) {
                 CHARTS.w = new Chart(wctx.getContext('2d'), {
@@ -149,11 +182,15 @@
                     },
                     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
                 });
+            } else {
+                wctx.getContext('2d').clearRect(0, 0, wctx.width, wctx.height);
             }
         }
 
         const hm = payload.health_monthly || [];
         destroyChart(CHARTS.h);
+        const hEmpty = document.getElementById('hm-health-empty');
+        if (hEmpty) hEmpty.classList.toggle('hidden', hm.length > 0);
         const hctx = document.getElementById('hm-trend-health');
         if (hctx && hm.length) {
             const order = ['healthy', 'recovering', 'sick', 'quarantine', 'injured', 'critical', 'unknown'];
@@ -161,16 +198,24 @@
             const datasets = order
                 .filter(s => hm.some(m => m[s] > 0))
                 .map(s => ({ label: s, data: hm.map(m => m[s] || 0), backgroundColor: palette[s] + 'cc', borderWidth: 0 }));
-            CHARTS.h = new Chart(hctx.getContext('2d'), {
-                type: 'bar',
-                data: { labels: hm.map(m => m.month), datasets },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } },
-                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
-            });
+            if (datasets.length) {
+                CHARTS.h = new Chart(hctx.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: hm.map(m => m.month), datasets },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } },
+                        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+                });
+            } else {
+                hctx.getContext('2d').clearRect(0, 0, hctx.width, hctx.height);
+            }
+        } else if (hctx) {
+            hctx.getContext('2d').clearRect(0, 0, hctx.width, hctx.height);
         }
 
         const mm = payload.medication_monthly || [];
         destroyChart(CHARTS.m);
+        const mEmpty = document.getElementById('hm-med-empty');
+        if (mEmpty) mEmpty.classList.toggle('hidden', mm.length > 0);
         const mctx = document.getElementById('hm-trend-med');
         if (mctx) {
             if (mm.length) {
@@ -187,8 +232,89 @@
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } },
                         scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
                 });
+            } else {
+                mctx.getContext('2d').clearRect(0, 0, mctx.width, mctx.height);
             }
         }
+    }
+
+    function fmtLocalDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function setDefaultDateInputs() {
+        const to = new Date();
+        const from = new Date();
+        from.setDate(from.getDate() - 365);
+        const f = document.getElementById('hm-date-from');
+        const t = document.getElementById('hm-date-to');
+        if (f) f.value = fmtLocalDate(from);
+        if (t) { t.value = fmtLocalDate(to); t.max = fmtLocalDate(to); }
+        if (f) f.max = fmtLocalDate(to);
+    }
+
+    function setDateRangeMonthsBack(months) {
+        const to = new Date();
+        const from = new Date();
+        from.setMonth(from.getMonth() - months);
+        const f = document.getElementById('hm-date-from');
+        const t = document.getElementById('hm-date-to');
+        if (f) f.value = fmtLocalDate(from);
+        if (t) t.value = fmtLocalDate(to);
+    }
+
+    function setYTD() {
+        const to = new Date();
+        const from = new Date(to.getFullYear(), 0, 1);
+        const f = document.getElementById('hm-date-from');
+        const t = document.getElementById('hm-date-to');
+        if (f) f.value = fmtLocalDate(from);
+        if (t) t.value = fmtLocalDate(to);
+    }
+
+    function buildAggregateQuery() {
+        const p = new URLSearchParams();
+        if (document.getElementById('hm-trends-all') && document.getElementById('hm-trends-all').checked) {
+            p.set('trends_all_time', '1');
+        } else {
+            p.set('date_from', document.getElementById('hm-date-from')?.value || '');
+            p.set('date_to', document.getElementById('hm-date-to')?.value || '');
+        }
+        return p.toString();
+    }
+
+    function updateMeta(d) {
+        const snap = document.getElementById('hm-snapshot-hint');
+        const tr = document.getElementById('hm-trend-hint');
+        if (snap) {
+            const when = d.fetched_at || '—';
+            const dday = d.snapshot && d.snapshot.as_of ? d.snapshot.as_of : '';
+            snap.textContent = 'Herd snapshot (KPIs & doughnut charts): from the database as of today (' + dday + '). Last fetch: ' + when + '.';
+            snap.classList.remove('hidden');
+        }
+        if (tr) {
+            const t = d.trends || {};
+            if (t.all_time) {
+                tr.textContent = 'Trend charts: all history (no start/end filter on data).';
+            } else if (t.date_from && t.date_to) {
+                tr.textContent = 'Trend charts: only records with dates between ' + t.date_from + ' and ' + t.date_to + ' (inclusive), grouped by month.';
+            } else {
+                tr.textContent = 'Trend charts: use the date range panel above.';
+            }
+            tr.classList.remove('hidden');
+        }
+    }
+
+    function syncTrendsAllDisabled() {
+        const c = document.getElementById('hm-trends-all');
+        const f = document.getElementById('hm-date-from');
+        const t = document.getElementById('hm-date-to');
+        const on = c && c.checked;
+        if (f) f.disabled = on;
+        if (t) t.disabled = on;
     }
 
     window.loadFarmHealthAggregate = async function() {
@@ -199,7 +325,8 @@
         if (loadEl) { loadEl.classList.remove('hidden'); }
         if (pan) { pan.classList.add('hidden'); }
         try {
-            const res = await fetch('/api/health-analytics/aggregate');
+            const qs = buildAggregateQuery();
+            const res = await fetch('/api/health-analytics/aggregate?' + qs);
             const d = await res.json();
             if (!d.success) throw new Error(d.message || 'Failed to load');
             if (loadEl) loadEl.classList.add('hidden');
@@ -210,11 +337,34 @@
             if (ge('hm-kpi-batches')) ge('hm-kpi-batches').textContent = t.batches != null ? t.batches : '0';
             if (ge('hm-kpi-litters')) ge('hm-kpi-litters').textContent = t.litters != null ? t.litters : '0';
             if (ge('hm-kpi-total')) ge('hm-kpi-total').textContent = t.animals != null ? t.animals : '0';
+            updateMeta(d);
             renderAllCharts(d);
         } catch (e) {
             if (loadEl) loadEl.classList.add('hidden');
             if (errEl) { errEl.textContent = (e && e.message) || 'Failed to load farm analytics.'; errEl.classList.remove('hidden'); }
         }
     };
-    document.addEventListener('DOMContentLoaded', loadFarmHealthAggregate);
+    document.addEventListener('DOMContentLoaded', () => {
+        setDefaultDateInputs();
+        syncTrendsAllDisabled();
+        const allCb = document.getElementById('hm-trends-all');
+        if (allCb) allCb.addEventListener('change', syncTrendsAllDisabled);
+        document.querySelectorAll('.hm-preset').forEach(b => {
+            b.addEventListener('click', () => {
+                const m = parseInt(b.getAttribute('data-months') || '12', 10);
+                if (allCb) allCb.checked = false;
+                syncTrendsAllDisabled();
+                setDateRangeMonthsBack(m);
+                loadFarmHealthAggregate();
+            });
+        });
+        const ytd = document.getElementById('hm-preset-ytd');
+        if (ytd) ytd.addEventListener('click', () => { if (allCb) allCb.checked = false; syncTrendsAllDisabled(); setYTD(); loadFarmHealthAggregate(); });
+        const df = document.getElementById('hm-date-from');
+        const dt = document.getElementById('hm-date-to');
+        if (df && dt) {
+            [df, dt].forEach(el => el.addEventListener('change', () => { if (allCb) allCb.checked = false; syncTrendsAllDisabled(); }));
+        }
+        loadFarmHealthAggregate();
+    });
 </script>

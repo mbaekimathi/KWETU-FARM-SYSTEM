@@ -21259,15 +21259,50 @@ def _health_distribution_tallies(animals):
 
 @app.route('/api/health-analytics/aggregate', methods=['GET'])
 def health_analytics_aggregate():
-    """Farm-wide monthly trends + health distribution (no per-animal pick required)."""
+    """Farm-wide monthly trends (optionally by date range) + live herd snapshot.
+
+    Query params:
+      - trends_all_time: 1/true  -> trend charts use all history (no date filter)
+      - date_from, date_to: YYYY-MM-DD inclusive, applied to trend series only
+        (defaults: last 365 days through today, when trends_all_time is false/omitted)
+
+    Snapshots (totals, health_distribution) always reflect the live database *today*.
+    """
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
 
-    from datetime import date
+    from datetime import date, datetime, timedelta
     from collections import defaultdict
 
     try:
+        now_ts = datetime.now().isoformat(timespec='seconds')
         today = date.today()
+        ra = (request.args.get('trends_all_time') or '').lower()
+        trends_all_time = ra in ('1', 'true', 'yes', 'on')
+
+        date_from = (request.args.get('date_from') or '').strip()
+        date_to = (request.args.get('date_to') or '').strip()
+        d_from, d_to = None, None
+        if not trends_all_time:
+            if not date_to:
+                d_to = today
+            else:
+                try:
+                    d_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                except ValueError:
+                    return jsonify({'success': False, 'message': 'Invalid date_to. Use YYYY-MM-DD.'}), 400
+                if d_to > today:
+                    d_to = today
+            if not date_from:
+                d_from = d_to - timedelta(days=365)
+            else:
+                try:
+                    d_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                except ValueError:
+                    return jsonify({'success': False, 'message': 'Invalid date_from. Use YYYY-MM-DD.'}), 400
+            if d_from > d_to:
+                return jsonify({'success': False, 'message': 'date_from must be on or before date_to.'}), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
         animals = _build_health_analytics_animals_list(cursor, today)
@@ -21279,7 +21314,8 @@ def health_analytics_aggregate():
             'animals': len(animals),
         }
 
-        cursor.execute("""
+        if trends_all_time:
+            weight_sql = """
             SELECT DATE_FORMAT(weighing_date, '%%Y-%%m') AS ym,
                    COUNT(*) AS weigh_ins,
                    AVG(weight) AS avg_weight,
@@ -21288,7 +21324,22 @@ def health_analytics_aggregate():
             WHERE weighing_date IS NOT NULL
             GROUP BY DATE_FORMAT(weighing_date, '%%Y-%%m')
             ORDER BY ym ASC
-        """)
+            """
+            cursor.execute(weight_sql)
+        else:
+            weight_sql = """
+            SELECT DATE_FORMAT(weighing_date, '%%Y-%%m') AS ym,
+                   COUNT(*) AS weigh_ins,
+                   AVG(weight) AS avg_weight,
+                   AVG(expected_weight) AS avg_expected
+            FROM weight_records
+            WHERE weighing_date IS NOT NULL
+              AND DATE(weighing_date) >= %s AND DATE(weighing_date) <= %s
+            GROUP BY DATE_FORMAT(weighing_date, '%%Y-%%m')
+            ORDER BY ym ASC
+            """
+            cursor.execute(weight_sql, (d_from, d_to))
+
         weight_monthly = []
         for row in cursor.fetchall() or []:
             aw = row.get('avg_weight')
@@ -21300,7 +21351,8 @@ def health_analytics_aggregate():
                 'avg_expected': float(ae) if ae is not None else None,
             })
 
-        cursor.execute("""
+        if trends_all_time:
+            cursor.execute("""
             SELECT DATE_FORMAT(h.check_date, '%%Y-%%m') AS ym, h.health_status, COUNT(*) AS c
             FROM (
                 SELECT check_date, health_status FROM pig_health_records
@@ -21310,7 +21362,22 @@ def health_analytics_aggregate():
             WHERE h.check_date IS NOT NULL
             GROUP BY DATE_FORMAT(h.check_date, '%%Y-%%m'), h.health_status
             ORDER BY ym ASC, h.health_status
-        """)
+            """)
+        else:
+            cursor.execute("""
+            SELECT DATE_FORMAT(h.check_date, '%%Y-%%m') AS ym, h.health_status, COUNT(*) AS c
+            FROM (
+                SELECT check_date, health_status FROM pig_health_records
+                WHERE check_date IS NOT NULL
+                  AND DATE(check_date) >= %s AND DATE(check_date) <= %s
+                UNION ALL
+                SELECT check_date, health_status FROM litter_health_records
+                WHERE check_date IS NOT NULL
+                  AND DATE(check_date) >= %s AND DATE(check_date) <= %s
+            ) h
+            GROUP BY DATE_FORMAT(h.check_date, '%%Y-%%m'), h.health_status
+            ORDER BY ym ASC, h.health_status
+            """, (d_from, d_to, d_from, d_to))
         health_statuses = ['healthy', 'recovering', 'sick', 'quarantine', 'injured', 'critical', 'unknown']
         by_ym = defaultdict(lambda: defaultdict(int))
         for r in cursor.fetchall() or []:
@@ -21329,13 +21396,23 @@ def health_analytics_aggregate():
                 d[s] = by_ym[ym].get(s, 0)
             health_monthly.append(d)
 
-        cursor.execute("""
+        if trends_all_time:
+            cursor.execute("""
             SELECT DATE_FORMAT(completed_date, '%%Y-%%m') AS ym, animal_type, COUNT(*) AS c
             FROM vaccination_records
             WHERE completed_date IS NOT NULL
             GROUP BY DATE_FORMAT(completed_date, '%%Y-%%m'), animal_type
             ORDER BY ym ASC
-        """)
+            """)
+        else:
+            cursor.execute("""
+            SELECT DATE_FORMAT(completed_date, '%%Y-%%m') AS ym, animal_type, COUNT(*) AS c
+            FROM vaccination_records
+            WHERE completed_date IS NOT NULL
+              AND DATE(completed_date) >= %s AND DATE(completed_date) <= %s
+            GROUP BY DATE_FORMAT(completed_date, '%%Y-%%m'), animal_type
+            ORDER BY ym ASC
+            """, (d_from, d_to))
         med_by_month = defaultdict(lambda: {'pig': 0, 'litter': 0, 'other': 0})
         for r in cursor.fetchall() or []:
             at = (r.get('animal_type') or 'other') or 'other'
@@ -21359,8 +21436,17 @@ def health_analytics_aggregate():
 
         cursor.close()
         conn.close()
+
+        trends_meta = {
+            'all_time': trends_all_time,
+            'date_from': str(d_from) if d_from is not None else None,
+            'date_to': str(d_to) if d_to is not None else None,
+        }
         return jsonify({
             'success': True,
+            'fetched_at': now_ts,
+            'snapshot': {'as_of': str(today), 'label': 'Current herd (live from the database)'},
+            'trends': trends_meta,
             'totals': totals,
             'health_distribution': health_distribution,
             'weight_monthly': weight_monthly,
