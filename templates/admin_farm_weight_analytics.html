@@ -252,7 +252,22 @@
         </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script>
+        let farmWeightDistChart = null;
+        let farmWeightTrendsChart = null;
+
+        function destroyFarmCharts() {
+            if (farmWeightDistChart) {
+                try { farmWeightDistChart.destroy(); } catch (e) { /* noop */ }
+                farmWeightDistChart = null;
+            }
+            if (farmWeightTrendsChart) {
+                try { farmWeightTrendsChart.destroy(); } catch (e) { /* noop */ }
+                farmWeightTrendsChart = null;
+            }
+        }
+
         // DOM Elements
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const closeSidebarBtn = document.getElementById('close-sidebar');
@@ -266,6 +281,7 @@
 
         // Initialize theme
         function updateThemeIcon() {
+            if (!sunIcon || !moonIcon) return;
             const isDark = document.documentElement.classList.contains('dark');
             sunIcon.classList.toggle('hidden', !isDark);
             moonIcon.classList.toggle('hidden', isDark);
@@ -343,6 +359,10 @@
 
         // Load analytics data
         async function loadAnalyticsData() {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js failed to load');
+                return;
+            }
             try {
                 console.log('Loading analytics data...');
                 
@@ -403,11 +423,13 @@
         // Create charts
         function createCharts(categories) {
             console.log('Creating charts with categories:', categories);
+            if (typeof Chart === 'undefined') return;
             
             if (!categories || categories.length === 0) {
                 console.warn('No categories data available for charts');
                 return;
             }
+            destroyFarmCharts();
 
             // Weight Distribution Chart
             const weightCtx = document.getElementById('weightDistributionChart');
@@ -419,7 +441,7 @@
                     
                     console.log('Weight distribution chart data:', { labels, data });
                     
-                    new Chart(weightCtx, {
+                    farmWeightDistChart = new Chart(weightCtx, {
                         type: 'doughnut',
                         data: {
                             labels: labels,
@@ -469,7 +491,7 @@
                     
                     console.log('Performance trends chart data:', { categoryNames, dailyGains, minWeights });
 
-                    new Chart(trendsCtx, {
+                    farmWeightTrendsChart = new Chart(trendsCtx, {
                         type: 'line',
                         data: {
                             labels: categoryNames,
@@ -528,32 +550,42 @@
         // Create charts with real weight comparison data
         function createRealWeightCharts(weightRecords, summary) {
             console.log('Creating charts with real weight data:', { weightRecords, summary });
-            
+            if (typeof Chart === 'undefined') return;
+            destroyFarmCharts();
+
             if (!weightRecords || weightRecords.length === 0) {
                 console.warn('No weight records available for charts');
                 createFallbackCharts();
                 return;
             }
 
+            const isDark = document.documentElement.classList.contains('dark');
+            const tickColor = isDark ? '#9ca3af' : '#6b7280';
+            const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
             // Weight Distribution Chart - Performance Status
             const weightCtx = document.getElementById('weightDistributionChart');
             if (weightCtx) {
                 try {
-                    const performanceData = [
-                        summary.meeting_target,
-                        summary.close_to_target,
-                        summary.below_target
-                    ];
-                    const performanceLabels = ['Meeting Target', 'Close to Target', 'Below Target'];
-                    const performanceColors = [
-                        'rgb(34, 197, 94)',   // Green for meeting target
-                        'rgb(245, 158, 11)',  // Yellow for close to target
-                        'rgb(239, 68, 68)'    // Red for below target
-                    ];
+                    const m = Number(summary?.meeting_target) || 0;
+                    const c = Number(summary?.close_to_target) || 0;
+                    const b = Number(summary?.below_target) || 0;
+                    const total = m + c + b;
+                    const performanceData = total > 0 ? [m, c, b] : [1];
+                    const performanceLabels = total > 0
+                        ? ['Meeting target', 'Close to target', 'Below target']
+                        : ['No records with expected weight'];
+                    const performanceColors = total > 0
+                        ? [
+                            'rgb(34, 197, 94)',
+                            'rgb(245, 158, 11)',
+                            'rgb(239, 68, 68)'
+                        ]
+                        : ['rgb(156, 163, 175)'];
                     
                     console.log('Performance distribution data:', { performanceData, performanceLabels });
                     
-                    new Chart(weightCtx, {
+                    farmWeightDistChart = new Chart(weightCtx, {
                         type: 'doughnut',
                         data: {
                             labels: performanceLabels,
@@ -571,12 +603,15 @@
                                     position: 'bottom',
                                     labels: {
                                         padding: 20,
-                                        usePointStyle: true
+                                        usePointStyle: true,
+                                        color: isDark ? '#e5e7eb' : '#374151'
                                     }
                                 },
                                 title: {
-                                    display: true,
-                                    text: 'Weight Performance Distribution'
+                                    display: total === 0,
+                                    text: 'Add weigh-ins with both actual and expected weight to see the split.',
+                                    color: tickColor,
+                                    font: { size: 12 }
                                 }
                             }
                         }
@@ -595,71 +630,81 @@
                     const dateGroups = {};
                     weightRecords.forEach(record => {
                         const date = record.weighing_date;
+                        if (!date) return;
                         if (!dateGroups[date]) {
                             dateGroups[date] = { actual: [], expected: [] };
                         }
-                        dateGroups[date].actual.push(parseFloat(record.actual_weight));
-                        dateGroups[date].expected.push(parseFloat(record.expected_weight));
+                        const rawA = record.actual_weight != null && record.actual_weight !== '' ? record.actual_weight : record.weight;
+                        const a = parseFloat(rawA);
+                        if (Number.isFinite(a)) dateGroups[date].actual.push(a);
+                        if (record.expected_weight != null && record.expected_weight !== '') {
+                            const e = parseFloat(record.expected_weight);
+                            if (Number.isFinite(e)) dateGroups[date].expected.push(e);
+                        }
                     });
                     
                     const dates = Object.keys(dateGroups).sort();
                     const avgActual = dates.map(date => {
                         const values = dateGroups[date].actual;
-                        return values.reduce((sum, val) => sum + val, 0) / values.length;
+                        if (!values.length) return null;
+                        return values.reduce((s, v) => s + v, 0) / values.length;
                     });
                     const avgExpected = dates.map(date => {
                         const values = dateGroups[date].expected;
-                        return values.reduce((sum, val) => sum + val, 0) / values.length;
+                        if (!values.length) return null;
+                        return values.reduce((s, v) => s + v, 0) / values.length;
+                    });
+                    const xLabels = dates.map(d => {
+                        const x = new Date(d + (String(d).length <= 10 ? 'T12:00:00' : ''));
+                        return isNaN(x.getTime()) ? d : x.toLocaleDateString();
                     });
                     
                     console.log('Performance trends data:', { dates, avgActual, avgExpected });
                     
-                    new Chart(trendsCtx, {
+                    farmWeightTrendsChart = new Chart(trendsCtx, {
                         type: 'line',
                         data: {
-                            labels: dates.map(date => new Date(date).toLocaleDateString()),
+                            labels: xLabels,
                             datasets: [{
-                                label: 'Average Actual Weight (kg)',
+                                label: 'Actual (kg, daily avg.)',
                                 data: avgActual,
                                 borderColor: 'rgb(59, 130, 246)',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                tension: 0.4,
-                                fill: false
-                            }, {
-                                label: 'Average Expected Weight (kg)',
-                                data: avgExpected,
-                                borderColor: 'rgb(34, 197, 94)',
-                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                tension: 0.4,
+                                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                                tension: 0.35,
                                 fill: false,
-                                borderDash: [5, 5]
+                                spanGaps: false
+                            }, {
+                                label: 'Expected (kg, daily avg.)',
+                                data: avgExpected,
+                                borderColor: 'rgb(16, 185, 129)',
+                                backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                                tension: 0.35,
+                                fill: false,
+                                borderDash: [6, 4],
+                                spanGaps: true
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
                             plugins: {
                                 legend: {
-                                    position: 'top'
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Actual vs Expected Weight Trends'
+                                    position: 'top',
+                                    labels: { color: isDark ? '#e5e7eb' : '#374151' }
                                 }
                             },
                             scales: {
                                 y: {
-                                    beginAtZero: true,
-                                    title: {
-                                        display: true,
-                                        text: 'Weight (kg)'
-                                    }
+                                    beginAtZero: false,
+                                    title: { display: true, text: 'Weight (kg)', color: tickColor },
+                                    ticks: { color: tickColor },
+                                    grid: { color: gridColor }
                                 },
                                 x: {
-                                    title: {
-                                        display: true,
-                                        text: 'Date'
-                                    }
+                                    title: { display: true, text: 'Date', color: tickColor },
+                                    ticks: { color: tickColor, maxRotation: 45 },
+                                    grid: { color: gridColor }
                                 }
                             }
                         }
@@ -752,8 +797,11 @@
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            loadAnalyticsData();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => loadAnalyticsData());
+            });
         });
     </script>
-    {% include 'includes/farm_shell_footer.html' %}\n</body>
+    {% include 'includes/farm_shell_footer.html' %}
+</body>
 </html>

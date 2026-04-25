@@ -209,13 +209,25 @@
                 </div>
             </div>
 
+            <!-- No animal/litter in URL -->
+            <div id="no-id-state" class="hidden text-center py-12">
+                <div class="inline-flex flex-col items-center space-y-4 max-w-md">
+                    <i class="fas fa-link text-4xl text-amber-500"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">No animal or litter selected</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Open this page with <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">?animal_id=…</code> or <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">?litter_id=…</code> in the URL (for example from Weight Assessment).</p>
+                    </div>
+                    <a href="{% if user.role == 'manager' %}/manager/farm/weight-assessment{% else %}/admin/farm/weight-assessment{% endif %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">Go to weight assessment</a>
+                </div>
+            </div>
+
             <!-- Error State -->
             <div id="error-state" class="hidden text-center py-12">
                 <div class="inline-flex flex-col items-center space-y-4">
                     <i class="fas fa-exclamation-triangle text-4xl text-red-500"></i>
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Error Loading Analysis</h3>
-                        <p class="text-gray-600 dark:text-gray-400">Unable to load weight data. Please try again.</p>
+                        <p id="error-state-message" class="text-gray-600 dark:text-gray-400">Unable to load weight data. Please try again.</p>
                     </div>
                     <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
                         <i class="fas fa-refresh mr-2"></i>
@@ -226,10 +238,25 @@
         </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script>
-        // Global variables
-        let animalId = '{{ animal_id }}';
-        let litterId = '{{ litter_id }}';
+        // URL query wins so links like ?animal_id=393 work even if the page is opened oddly; server template is fallback
+        const urlParams = new URLSearchParams(window.location.search);
+        const qAnimal = urlParams.get('animal_id');
+        const qLitter = urlParams.get('litter_id');
+        const serverAnimalId = {{ animal_id|tojson if animal_id is not none else 'null' }};
+        const serverLitterId = {{ litter_id|tojson if litter_id is not none else 'null' }};
+
+        function pickId(q, serverVal) {
+            if (q != null && String(q).trim() !== '') return String(q).trim();
+            if (serverVal == null) return null;
+            const s = String(serverVal);
+            if (s === '' || s === 'undefined') return null;
+            return s;
+        }
+        let animalId = pickId(qAnimal, serverAnimalId);
+        let litterId = pickId(qLitter, serverLitterId);
+
         let weightData = [];
         let mainChart = null;
 
@@ -311,28 +338,36 @@
             });
         }
 
+        function showNoIdState() {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('analysis-content').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            const n = document.getElementById('no-id-state');
+            if (n) n.classList.remove('hidden');
+        }
+
         // Load weight data
         async function loadWeightData() {
+            if (!animalId && !litterId) {
+                showNoIdState();
+                return;
+            }
             try {
-                let response;
-                if (animalId && animalId !== 'None') {
-                    response = await fetch(`/api/animal/${animalId}/weights`);
-                } else if (litterId && litterId !== 'None') {
-                    response = await fetch(`/api/litter/${litterId}/weights`);
-                } else {
-                    throw new Error('No animal or litter ID provided');
-                }
+                const path = animalId
+                    ? `/api/animal/${encodeURIComponent(animalId)}/weights`
+                    : `/api/litter/${encodeURIComponent(litterId)}/weights`;
+                const response = await fetch(path);
+                const data = await response.json().catch(() => ({}));
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        weightData = data.weights;
-                        displayAnalysis();
-                    } else {
-                        showError();
-                    }
+                if (response.status === 401 || data.error) {
+                    showError(data.error || 'Not authorized. Please sign in again.');
+                    return;
+                }
+                if (response.ok && data.success) {
+                    weightData = Array.isArray(data.weights) ? data.weights : [];
+                    displayAnalysis();
                 } else {
-                    showError();
+                    showError(data.message || 'Could not load weight data.');
                 }
             } catch (error) {
                 console.error('Error loading weight data:', error);
@@ -342,26 +377,100 @@
 
         // Display analysis
         function displayAnalysis() {
-            if (weightData.length === 0) {
-                showError();
-                return;
-            }
-
-            // Hide loading state
             document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            const noid = document.getElementById('no-id-state');
+            if (noid) noid.classList.add('hidden');
             document.getElementById('analysis-content').classList.remove('hidden');
 
-            // Update header
             updateHeader();
-            
-            // Calculate metrics
-            calculateMetrics();
-            
-            // Create main chart
-            createMainChart();
-            
-            // Display records
+            if (weightData.length === 0) {
+                setEmptyMetrics();
+                if (typeof Chart !== 'undefined') {
+                    try {
+                        createMainChart();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                displayRecords();
+                return;
+            }
+            try {
+                calculateMetrics();
+            } catch (e) {
+                console.error(e);
+                setEmptyMetrics();
+            }
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not loaded');
+            } else {
+                try {
+                    createMainChart();
+                } catch (e) {
+                    console.error('Chart error', e);
+                }
+            }
             displayRecords();
+        }
+
+        function setEmptyMetrics() {
+            document.getElementById('latest-weight').textContent = '—';
+            document.getElementById('average-weight').textContent = '—';
+            document.getElementById('total-gain').textContent = '—';
+            document.getElementById('daily-gain').textContent = '—';
+            const statusIcon = document.getElementById('status-icon');
+            const statusText = document.getElementById('status-text');
+            if (statusIcon) {
+                statusIcon.className = 'fas fa-minus-circle text-gray-400';
+                statusText.textContent = 'No data';
+                statusText.className = 'text-sm font-medium text-gray-500 dark:text-gray-400';
+            }
+        }
+
+        function recordKg(w) {
+            const v = w.actual_weight != null && w.actual_weight !== '' ? w.actual_weight : w.weight;
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        /** Age in days at weigh-in: API `age_days`, else days between birth_date and weighing_date. */
+        function ageAtWeighInDays(w) {
+            if (w.age_days != null && w.age_days !== '') {
+                const n = parseInt(w.age_days, 10);
+                if (Number.isFinite(n) && n >= 0) return n;
+            }
+            const bd = w.birth_date;
+            const wd = w.weighing_date;
+            if (bd && wd) {
+                const b = new Date(String(bd).slice(0, 10) + 'T12:00:00');
+                const d = new Date(String(wd).slice(0, 10) + 'T12:00:00');
+                if (!isNaN(b.getTime()) && !isNaN(d.getTime())) {
+                    const days = Math.round((d - b) / 86400000);
+                    if (Number.isFinite(days) && days >= 0) return days;
+                }
+            }
+            return null;
+        }
+
+        function formatAgeAtWeighIn(w) {
+            const d = ageAtWeighInDays(w);
+            if (d != null) return `${d} days old`;
+            if (animalId) return 'age unknown (add birth date on the pig)';
+            return '—';
+        }
+
+        /** Time of weigh-in, or from created_at string if present. */
+        function formatWeighingTimeLine(w) {
+            if (w.weighing_time && String(w.weighing_time).trim() && String(w.weighing_time).toLowerCase() !== 'n/a') {
+                return String(w.weighing_time).trim();
+            }
+            if (w.created_at) {
+                const s = String(w.created_at);
+                const t = s.match(/(\d{1,2}):(\d{2})/);
+                if (t) return `${t[1].length === 1 ? '0' + t[1] : t[1]}:${t[2]}`;
+            }
+            return '';
         }
 
         // Update header information
@@ -370,13 +479,13 @@
             const headerSubtitle = document.getElementById('header-subtitle');
             const headerIcon = document.getElementById('header-icon');
 
-            if (animalId && animalId !== 'None') {
-                headerTitle.textContent = 'Animal Weight Analysis';
-                headerSubtitle.textContent = 'Individual performance tracking';
+            if (animalId) {
+                headerTitle.textContent = 'Animal weight analysis';
+                headerSubtitle.textContent = `Pig #${animalId} — individual performance`;
                 headerIcon.className = 'fas fa-weight text-white text-2xl';
-            } else if (litterId && litterId !== 'None') {
-                headerTitle.textContent = 'Litter Weight Analysis';
-                headerSubtitle.textContent = 'Litter performance tracking';
+            } else if (litterId) {
+                headerTitle.textContent = 'Litter weight analysis';
+                headerSubtitle.textContent = `Litter #${litterId} — group performance`;
                 headerIcon.className = 'fas fa-baby text-white text-2xl';
             }
         }
@@ -386,47 +495,58 @@
             const totalRecords = weightData.length;
             const latestWeight = weightData[0];
             const oldestWeight = weightData[weightData.length - 1];
-            
-            // Calculate weight gain
-            const weightGain = latestWeight.weight - oldestWeight.weight;
-            const daysDifference = Math.ceil((new Date(latestWeight.weighing_date) - new Date(oldestWeight.weighing_date)) / (1000 * 60 * 60 * 24));
-            const averageDailyGain = daysDifference > 0 ? (weightGain / daysDifference).toFixed(2) : 0;
-            
-            // Calculate average weight
-            const totalWeight = weightData.reduce((sum, w) => sum + (w.actual_weight || w.weight), 0);
+
+            const latestVal = recordKg(latestWeight);
+            const oldestVal = recordKg(oldestWeight);
+            const weightGain = latestVal - oldestVal;
+            const tLatest = new Date(latestWeight.weighing_date + (String(latestWeight.weighing_date).length <= 10 ? 'T12:00:00' : ''));
+            const tOldest = new Date(oldestWeight.weighing_date + (String(oldestWeight.weighing_date).length <= 10 ? 'T12:00:00' : ''));
+            const daysDifference = Math.max(0, Math.round((tLatest - tOldest) / (1000 * 60 * 60 * 24)));
+            let averageDailyGain = 0;
+            if (daysDifference > 0) {
+                averageDailyGain = parseFloat((weightGain / daysDifference).toFixed(2));
+            } else {
+                averageDailyGain = 0;
+            }
+
+            const totalWeight = weightData.reduce((sum, w) => sum + recordKg(w), 0);
             const averageWeight = (totalWeight / totalRecords).toFixed(1);
-            
-            // Update metrics display
-            document.getElementById('latest-weight').textContent = `${latestWeight.weight} kg`;
+
+            document.getElementById('latest-weight').textContent = `${latestVal.toFixed(1)} kg`;
             document.getElementById('average-weight').textContent = `${averageWeight} kg`;
-            document.getElementById('total-gain').textContent = `${weightGain.toFixed(1)} kg`;
-            document.getElementById('daily-gain').textContent = `${averageDailyGain} kg/day`;
-            
-            // Update status
-            updateStatus(averageDailyGain);
+            document.getElementById('total-gain').textContent = totalRecords > 1 ? `${weightGain.toFixed(1)} kg` : '— (need 2+ weigh-ins)';
+            document.getElementById('daily-gain').textContent = daysDifference > 0
+                ? `${averageDailyGain.toFixed(2)} kg/day`
+                : '— (need span of days)';
+
+            updateStatus(averageDailyGain, daysDifference);
         }
 
         // Update status indicator
-        function updateStatus(dailyGain) {
+        function updateStatus(dailyGain, daysDifference) {
             const statusIcon = document.getElementById('status-icon');
             const statusText = document.getElementById('status-text');
-            
+            if (daysDifference <= 0) {
+                statusIcon.className = 'fas fa-minus-circle text-gray-400';
+                statusText.textContent = 'No trend yet';
+                statusText.className = 'text-sm font-medium text-gray-500 dark:text-gray-400';
+                return;
+            }
+            const threshold = animalId ? 0.3 : 0.2;
             let status = 'Good';
             let color = 'text-green-600 dark:text-green-400';
             let icon = 'fas fa-check-circle text-green-500';
-            
-            const threshold = animalId && animalId !== 'None' ? 0.3 : 0.2;
-            
+
             if (dailyGain < threshold * 0.5) {
                 status = 'Poor';
                 color = 'text-red-600 dark:text-red-400';
                 icon = 'fas fa-times-circle text-red-500';
             } else if (dailyGain < threshold) {
-                status = 'Needs Attention';
+                status = 'Needs attention';
                 color = 'text-yellow-600 dark:text-yellow-400';
                 icon = 'fas fa-exclamation-triangle text-yellow-500';
             }
-            
+
             statusIcon.className = icon;
             statusText.textContent = status;
             statusText.className = `text-sm font-medium ${color}`;
@@ -434,45 +554,86 @@
 
         // Create main weight chart
         function createMainChart() {
-            const ctx = document.getElementById('mainWeightChart');
-            if (!ctx) return;
+            const canvas = document.getElementById('mainWeightChart');
+            if (!canvas || typeof Chart === 'undefined') return;
 
-            // Prepare chart data
-            const chartData = weightData.map(weight => ({
-                date: weight.weighing_date,
-                actual: weight.actual_weight || weight.weight,
-                expected: weight.expected_weight || 0,
-                age: weight.age_days || 0
-            })).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            // Destroy existing chart
             if (mainChart) {
-                mainChart.destroy();
+                try { mainChart.destroy(); } catch (e) { /* noop */ }
+                mainChart = null;
             }
 
-            mainChart = new Chart(ctx, {
+            if (weightData.length === 0) {
+                mainChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: [' '],
+                        datasets: [{
+                            data: [0],
+                            borderColor: 'transparent',
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'No weight records for this subject yet',
+                                color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+                                font: { size: 14 }
+                            }
+                        },
+                        scales: { x: { display: false }, y: { display: false, min: 0, max: 1 } }
+                    }
+                });
+                return;
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const tickColor = isDark ? '#9ca3af' : '#6b7280';
+            const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
+            const chartData = weightData.map(weight => ({
+                date: weight.weighing_date,
+                actual: recordKg(weight),
+                expected: weight.expected_weight != null && weight.expected_weight !== '' ? parseFloat(weight.expected_weight) : null,
+                age: weight.age_days || 0
+            })).sort((a, b) => new Date(a.date + (String(a.date).length <= 10 ? 'T12:00:00' : '')) - new Date(b.date + (String(b.date).length <= 10 ? 'T12:00:00' : '')));
+
+            const expSeries = chartData.map(d => (d.expected != null && Number.isFinite(d.expected) ? d.expected : null));
+
+            const xLabels = chartData.map(d => {
+                const x = new Date(d.date + (String(d.date).length <= 10 ? 'T12:00:00' : ''));
+                return isNaN(x.getTime()) ? String(d.date) : x.toLocaleDateString();
+            });
+
+            mainChart = new Chart(canvas, {
                 type: 'line',
                 data: {
-                    labels: chartData.map(d => new Date(d.date).toLocaleDateString()),
+                    labels: xLabels,
                     datasets: [{
-                        label: 'Actual Weight',
+                        label: 'Actual (kg)',
                         data: chartData.map(d => d.actual),
                         borderColor: 'rgb(59, 130, 246)',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.4,
+                        tension: 0.35,
                         fill: false,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        spanGaps: false
                     }, {
-                        label: 'Expected Weight',
-                        data: chartData.map(d => d.expected),
-                        borderColor: 'rgb(34, 197, 94)',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        tension: 0.4,
+                        label: 'Expected (kg)',
+                        data: expSeries,
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                        tension: 0.35,
                         fill: false,
-                        borderDash: [5, 5],
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        borderDash: [6, 4],
+                        pointRadius: 2,
+                        pointHoverRadius: 4,
+                        spanGaps: true
                     }]
                 },
                 options: {
@@ -480,50 +641,42 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top',
+                            labels: { color: isDark ? '#e5e7eb' : '#374151' }
                         },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
+                            filter: (item) => item.parsed.y != null,
                             callbacks: {
                                 label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    label += context.parsed.y + ' kg';
-                                    return label;
+                                    const y = context.parsed.y;
+                                    if (y == null || y === undefined) return '';
+                                    return `${context.dataset.label || ''}: ${y} kg`;
                                 }
                             }
                         }
                     },
                     scales: {
                         y: {
-                            beginAtZero: true,
+                            beginAtZero: false,
                             title: {
                                 display: true,
                                 text: 'Weight (kg)',
-                                font: {
-                                    size: 12,
-                                    weight: 'bold'
-                                }
+                                color: tickColor
                             },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            }
+                            ticks: { color: tickColor },
+                            grid: { color: gridColor }
                         },
                         x: {
                             title: {
                                 display: true,
                                 text: 'Date',
-                                font: {
-                                    size: 12,
-                                    weight: 'bold'
-                                }
+                                color: tickColor
                             },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            }
+                            ticks: { color: tickColor, maxRotation: 45 },
+                            grid: { color: gridColor }
                         }
                     },
                     interaction: {
@@ -543,20 +696,22 @@
                 recordsContainer.innerHTML = `
                     <div class="text-center text-gray-500 dark:text-gray-400 py-8">
                         <i class="fas fa-weight text-2xl mb-2"></i>
-                        <p>No weight records found</p>
+                        <p>No weight records for this ${animalId ? 'animal' : 'litter'} yet. Record a weigh-in from weight assessment to see history here.</p>
                     </div>
                 `;
                 return;
             }
 
             const recordsHtml = weightData.map(weight => {
-                const actualWeight = weight.actual_weight || weight.weight;
-                const expectedWeight = weight.expected_weight;
-                const ageDays = weight.age_days;
+                const actualWeight = recordKg(weight);
+                const expectedWeight = weight.expected_weight != null && weight.expected_weight !== ''
+                    ? parseFloat(weight.expected_weight) : null;
+                const ageLine = formatAgeAtWeighIn(weight);
+                const timeLine = formatWeighingTimeLine(weight);
                 
                 // Calculate comparison
                 let comparison = '';
-                if (expectedWeight && expectedWeight > 0) {
+                if (expectedWeight != null && expectedWeight > 0) {
                     const diff = actualWeight - expectedWeight;
                     const percent = ((diff / expectedWeight) * 100).toFixed(1);
                     const comparisonClass = diff > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
@@ -578,23 +733,23 @@
                                     <i class="fas fa-weight text-blue-600 dark:text-blue-400"></i>
                                 </div>
                                 <div>
-                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Weight Record</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">${weight.weighing_date} • ${ageDays || 'N/A'} days old</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Weight record</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">${weight.weighing_date} · ${ageLine}</div>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="text-xs text-gray-500 dark:text-gray-400">${weight.weighing_time || 'N/A'}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">${timeLine || 'Time not set'}</div>
                             </div>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-4 mb-3">
                             <div class="text-center">
                                 <div class="text-xs text-gray-600 dark:text-gray-300 mb-1">Actual Weight</div>
-                                <div class="text-lg font-bold text-blue-600 dark:text-blue-400">${actualWeight} kg</div>
+                                <div class="text-lg font-bold text-blue-600 dark:text-blue-400">${actualWeight.toFixed(1)} kg</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-xs text-gray-600 dark:text-gray-300 mb-1">Expected Weight</div>
-                                <div class="text-lg font-bold text-green-600 dark:text-green-400">${expectedWeight || 'N/A'} kg</div>
+                                <div class="text-lg font-bold text-green-600 dark:text-green-400">${expectedWeight != null && !isNaN(expectedWeight) ? expectedWeight.toFixed(1) : '—'} kg</div>
                             </div>
                         </div>
                         
@@ -614,15 +769,23 @@
         }
 
         // Show error state
-        function showError() {
+        function showError(message) {
             document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('analysis-content').classList.add('hidden');
+            const noid = document.getElementById('no-id-state');
+            if (noid) noid.classList.add('hidden');
             document.getElementById('error-state').classList.remove('hidden');
+            const p = document.getElementById('error-state-message');
+            if (p && message) p.textContent = message;
         }
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            loadWeightData();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => loadWeightData());
+            });
         });
     </script>
-    {% include 'includes/farm_shell_footer.html' %}\n</body>
+    {% include 'includes/farm_shell_footer.html' %}
+</body>
 </html>

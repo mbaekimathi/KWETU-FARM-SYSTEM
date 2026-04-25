@@ -20649,7 +20649,12 @@ def get_animal_weights(animal_id):
             SELECT w.id, w.animal_id, w.litter_id, w.weight, w.expected_weight, w.weight_type, w.weighing_date, 
                    w.weighing_time, w.notes, 
                    w.created_at, w.updated_at,
-                   p.tag_id, p.name, p.breed
+                   p.tag_id, p.name, p.breed, p.birth_date,
+                   CASE
+                       WHEN p.birth_date IS NOT NULL AND w.weighing_date IS NOT NULL
+                       THEN DATEDIFF(w.weighing_date, p.birth_date)
+                       ELSE NULL
+                   END AS age_days
             FROM weight_records w
             LEFT JOIN pigs p ON w.animal_id = p.id
             WHERE w.animal_id = %s
@@ -20662,17 +20667,29 @@ def get_animal_weights(animal_id):
         for weight in weights:
             if weight.get('weighing_date'):
                 weight['weighing_date'] = str(weight['weighing_date'])
-            if weight.get('weighing_time'):
-                # Convert timedelta to HH:MM format
-                if hasattr(weight['weighing_time'], 'total_seconds'):
-                    # It's a timedelta object
-                    total_seconds = int(weight['weighing_time'].total_seconds())
+            if weight.get('birth_date'):
+                weight['birth_date'] = str(weight['birth_date'])
+            if weight.get('age_days') is not None:
+                try:
+                    weight['age_days'] = int(weight['age_days'])
+                except (TypeError, ValueError):
+                    pass
+            wt = weight.get('weighing_time')
+            if wt is not None:
+                # TIME column may be timedelta; datetime.time has hour/minute
+                if hasattr(wt, 'total_seconds'):
+                    total_seconds = int(wt.total_seconds()) % 86400
                     hours = total_seconds // 3600
                     minutes = (total_seconds % 3600) // 60
                     weight['weighing_time'] = f"{hours:02d}:{minutes:02d}"
+                elif hasattr(wt, 'hour') and hasattr(wt, 'minute'):
+                    weight['weighing_time'] = f"{int(wt.hour):02d}:{int(wt.minute):02d}"
                 else:
-                    # It's already a string or time object
-                    weight['weighing_time'] = str(weight['weighing_time'])
+                    weight['weighing_time'] = str(wt)
+            created_before_str = weight.get('created_at')
+            if (weight.get('weighing_time') is None or weight.get('weighing_time') == '') and created_before_str is not None:
+                if hasattr(created_before_str, 'hour'):
+                    weight['weighing_time'] = f"{created_before_str.hour:02d}:{created_before_str.minute:02d}"
             if weight.get('created_at'):
                 weight['created_at'] = str(weight['created_at'])
             if weight.get('updated_at'):
@@ -21797,17 +21814,21 @@ def get_litter_weights(litter_id):
         for weight in weights:
             if weight.get('weighing_date'):
                 weight['weighing_date'] = str(weight['weighing_date'])
-            if weight.get('weighing_time'):
-                # Convert timedelta to HH:MM format
-                if hasattr(weight['weighing_time'], 'total_seconds'):
-                    # It's a timedelta object
-                    total_seconds = int(weight['weighing_time'].total_seconds())
+            wt = weight.get('weighing_time')
+            if wt is not None:
+                if hasattr(wt, 'total_seconds'):
+                    total_seconds = int(wt.total_seconds()) % 86400
                     hours = total_seconds // 3600
                     minutes = (total_seconds % 3600) // 60
                     weight['weighing_time'] = f"{hours:02d}:{minutes:02d}"
+                elif hasattr(wt, 'hour') and hasattr(wt, 'minute'):
+                    weight['weighing_time'] = f"{int(wt.hour):02d}:{int(wt.minute):02d}"
                 else:
-                    # It's already a string or time object
-                    weight['weighing_time'] = str(weight['weighing_time'])
+                    weight['weighing_time'] = str(wt)
+            created_before_str = weight.get('created_at')
+            if (weight.get('weighing_time') is None or weight.get('weighing_time') == '') and created_before_str is not None:
+                if hasattr(created_before_str, 'hour'):
+                    weight['weighing_time'] = f"{created_before_str.hour:02d}:{created_before_str.minute:02d}"
             if weight.get('created_at'):
                 weight['created_at'] = str(weight['created_at'])
             if weight.get('updated_at'):
@@ -22468,16 +22489,33 @@ def test_weight_categories():
 
 @app.route('/api/analytics/weight-comparison', methods=['GET'])
 def get_weight_comparison_data():
-    """Get actual vs expected weight comparison data for analytics"""
+    """Get actual vs expected weight comparison data for analytics.
+    Optional: ?scope=all|pigs|litters|batches
+      - all:     every qualifying weigh-in (default, backward compatible)
+      - pigs:    animal weigh-ins, excluding batch-type animals
+      - litters: weigh-ins recorded on a litter
+      - batches: animal weigh-ins where the pig is pig_type = batch
+    """
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
+        scope = (request.args.get('scope') or 'all').lower().strip()
+        if scope not in ('all', 'pigs', 'litters', 'batches'):
+            scope = 'all'
+        scope_filter = ''
+        if scope == 'pigs':
+            scope_filter = " AND w.animal_id IS NOT NULL AND (p.pig_type IS NULL OR p.pig_type <> 'batch')"
+        elif scope == 'batches':
+            scope_filter = " AND w.animal_id IS NOT NULL AND p.pig_type = 'batch'"
+        elif scope == 'litters':
+            scope_filter = " AND w.litter_id IS NOT NULL"
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get weight records with actual vs expected comparison
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT 
                 w.id,
                 w.animal_id,
@@ -22505,8 +22543,9 @@ def get_weight_comparison_data():
             LEFT JOIN litters l ON w.litter_id = l.id
             WHERE w.weight IS NOT NULL 
             AND w.expected_weight IS NOT NULL
+            {scope_filter}
             ORDER BY w.weighing_date DESC
-            LIMIT 100
+            LIMIT 500
         """)
         
         weight_records = cursor.fetchall()
@@ -22534,6 +22573,7 @@ def get_weight_comparison_data():
         
         return jsonify({
             'success': True,
+            'scope': scope,
             'weight_records': weight_records,
             'summary': {
                 'total_records': total_records,
