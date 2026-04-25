@@ -21122,6 +21122,98 @@ def manager_farm_health_analytics():
     return render_template('admin_farm_health_analytics.html', user=user_data)
 
 
+def _build_health_analytics_animals_list(cursor, today):
+    """Shared list used by /api/health-analytics/animals and /aggregate (today: date)."""
+    cursor.execute("""
+        SELECT p.id, p.tag_id, p.pig_type, p.breed, p.gender,
+               p.age_days, p.birth_date, p.purchase_date, p.pig_source,
+               (SELECT hr.health_status FROM pig_health_records hr
+                  WHERE hr.animal_id = p.id
+                  ORDER BY hr.check_date DESC, hr.id DESC LIMIT 1) AS current_health,
+               (SELECT w.weight FROM weight_records w
+                  WHERE w.animal_id = p.id
+                  ORDER BY w.weighing_date DESC, w.id DESC LIMIT 1) AS current_weight,
+               (SELECT COUNT(*) FROM pig_health_records hr WHERE hr.animal_id = p.id) AS health_records,
+               (SELECT COUNT(*) FROM weight_records w WHERE w.animal_id = p.id) AS weight_records,
+               (SELECT COUNT(*) FROM vaccination_records v
+                   WHERE v.animal_id = p.id AND v.animal_type = 'pig') AS medication_records
+        FROM pigs p
+        ORDER BY p.tag_id ASC
+    """)
+    pig_rows = cursor.fetchall() or []
+
+    cursor.execute("""
+        SELECT l.id, l.litter_id AS tag_id, l.farrowing_date, l.avg_weight,
+               l.health_status AS current_health,
+               p.tag_id AS sow_tag_id, p.breed AS sow_breed,
+               (SELECT COUNT(*) FROM litter_health_records hr WHERE hr.litter_id = l.id) AS health_records,
+               (SELECT COUNT(*) FROM weight_records w WHERE w.litter_id = l.id) AS weight_records,
+               (SELECT COUNT(*) FROM vaccination_records v
+                   WHERE v.animal_id = l.id AND v.animal_type = 'litter') AS medication_records
+        FROM litters l
+        LEFT JOIN pigs p ON l.sow_id = p.id
+        ORDER BY l.farrowing_date DESC
+    """)
+    litter_rows = cursor.fetchall() or []
+
+    animals = []
+    for r in pig_rows:
+        pig_type = (r.get('pig_type') or '').lower()
+        subject_type = 'batch' if pig_type == 'batch' else 'pig'
+        origin = r.get('birth_date') or r.get('purchase_date')
+        age_days = None
+        if origin:
+            try:
+                age_days = (today - origin).days
+            except Exception:
+                age_days = r.get('age_days')
+        else:
+            age_days = r.get('age_days')
+        animals.append({
+            'subject_type': subject_type,
+            'id': r['id'],
+            'tag': r.get('tag_id') or f"#{r['id']}",
+            'label': r.get('tag_id') or f"#{r['id']}",
+            'breed': r.get('breed') or 'Unknown',
+            'gender': r.get('gender') or '',
+            'current_health': r.get('current_health') or 'healthy',
+            'current_weight': float(r['current_weight']) if r.get('current_weight') is not None else None,
+            'age_days': age_days,
+            'origin_date': str(origin) if origin else None,
+            'origin_label': 'Purchased' if (r.get('pig_source') or '').lower() == 'purchased' else 'Born',
+            'health_records': int(r.get('health_records') or 0),
+            'weight_records': int(r.get('weight_records') or 0),
+            'medication_records': int(r.get('medication_records') or 0),
+        })
+
+    for r in litter_rows:
+        origin = r.get('farrowing_date')
+        age_days = None
+        if origin:
+            try:
+                age_days = (today - origin).days
+            except Exception:
+                age_days = None
+        animals.append({
+            'subject_type': 'litter',
+            'id': r['id'],
+            'tag': r.get('tag_id') or f"L#{r['id']}",
+            'label': r.get('tag_id') or f"L#{r['id']}",
+            'breed': r.get('sow_breed') or 'Unknown',
+            'gender': '',
+            'current_health': r.get('current_health') or 'healthy',
+            'current_weight': float(r['avg_weight']) if r.get('avg_weight') is not None else None,
+            'age_days': age_days,
+            'origin_date': str(origin) if origin else None,
+            'origin_label': 'Farrowed',
+            'sow_tag': r.get('sow_tag_id') or '',
+            'health_records': int(r.get('health_records') or 0),
+            'weight_records': int(r.get('weight_records') or 0),
+            'medication_records': int(r.get('medication_records') or 0),
+        })
+    return animals
+
+
 @app.route('/api/health-analytics/animals', methods=['GET'])
 def health_analytics_animals():
     """Return a unified list of pigs, batches, and litters that can be analyzed.
@@ -21134,110 +21226,149 @@ def health_analytics_animals():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
+        from datetime import date
+        today = date.today()
         conn = get_db_connection()
         cursor = conn.cursor()
+        animals = _build_health_analytics_animals_list(cursor, today)
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'animals': animals})
+    except Exception as e:
+        print(f"Error loading health analytics animals: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
 
-        # Pigs (individual + batch). The pigs table has no `health_status` or
-        # `current_weight` columns, so we derive both from the most-recent
-        # pig_health_records / weight_records rows.
-        cursor.execute("""
-            SELECT p.id, p.tag_id, p.pig_type, p.breed, p.gender,
-                   p.age_days, p.birth_date, p.purchase_date, p.pig_source,
-                   (SELECT hr.health_status FROM pig_health_records hr
-                      WHERE hr.animal_id = p.id
-                      ORDER BY hr.check_date DESC, hr.id DESC LIMIT 1) AS current_health,
-                   (SELECT w.weight FROM weight_records w
-                      WHERE w.animal_id = p.id
-                      ORDER BY w.weighing_date DESC, w.id DESC LIMIT 1) AS current_weight,
-                   (SELECT COUNT(*) FROM pig_health_records hr WHERE hr.animal_id = p.id) AS health_records,
-                   (SELECT COUNT(*) FROM weight_records w WHERE w.animal_id = p.id) AS weight_records,
-                   (SELECT COUNT(*) FROM vaccination_records v
-                       WHERE v.animal_id = p.id AND v.animal_type = 'pig') AS medication_records
-            FROM pigs p
-            ORDER BY p.tag_id ASC
-        """)
-        pig_rows = cursor.fetchall() or []
+
+def _health_distribution_tallies(animals):
+    """Return { pig: {status: n, ...}, batch: {...}, litter: {...} } for current health."""
+    from collections import defaultdict
+    out = {
+        'pig': defaultdict(int),
+        'batch': defaultdict(int),
+        'litter': defaultdict(int),
+    }
+    for a in animals:
+        st = a.get('subject_type') or 'pig'
+        if st not in out:
+            st = 'pig'
+        h = a.get('current_health') or 'unknown'
+        h = h.lower().strip() if isinstance(h, str) else 'unknown'
+        out[st][h] += 1
+    return {k: dict(v) for k, v in out.items()}
+
+
+@app.route('/api/health-analytics/aggregate', methods=['GET'])
+def health_analytics_aggregate():
+    """Farm-wide monthly trends + health distribution (no per-animal pick required)."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    from datetime import date
+    from collections import defaultdict
+
+    try:
+        today = date.today()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        animals = _build_health_analytics_animals_list(cursor, today)
+        health_distribution = _health_distribution_tallies(animals)
+        totals = {
+            'pigs': sum(1 for a in animals if a['subject_type'] == 'pig'),
+            'batches': sum(1 for a in animals if a['subject_type'] == 'batch'),
+            'litters': sum(1 for a in animals if a['subject_type'] == 'litter'),
+            'animals': len(animals),
+        }
 
         cursor.execute("""
-            SELECT l.id, l.litter_id AS tag_id, l.farrowing_date, l.avg_weight,
-                   l.health_status AS current_health,
-                   p.tag_id AS sow_tag_id, p.breed AS sow_breed,
-                   (SELECT COUNT(*) FROM litter_health_records hr WHERE hr.litter_id = l.id) AS health_records,
-                   (SELECT COUNT(*) FROM weight_records w WHERE w.litter_id = l.id) AS weight_records,
-                   (SELECT COUNT(*) FROM vaccination_records v
-                       WHERE v.animal_id = l.id AND v.animal_type = 'litter') AS medication_records
-            FROM litters l
-            LEFT JOIN pigs p ON l.sow_id = p.id
-            ORDER BY l.farrowing_date DESC
+            SELECT DATE_FORMAT(weighing_date, '%%Y-%%m') AS ym,
+                   COUNT(*) AS weigh_ins,
+                   AVG(weight) AS avg_weight,
+                   AVG(expected_weight) AS avg_expected
+            FROM weight_records
+            WHERE weighing_date IS NOT NULL
+            GROUP BY DATE_FORMAT(weighing_date, '%%Y-%%m')
+            ORDER BY ym ASC
         """)
-        litter_rows = cursor.fetchall() or []
+        weight_monthly = []
+        for row in cursor.fetchall() or []:
+            aw = row.get('avg_weight')
+            ae = row.get('avg_expected')
+            weight_monthly.append({
+                'month': row.get('ym'),
+                'weigh_ins': int(row.get('weigh_ins') or 0),
+                'avg_weight': float(aw) if aw is not None else None,
+                'avg_expected': float(ae) if ae is not None else None,
+            })
+
+        cursor.execute("""
+            SELECT DATE_FORMAT(h.check_date, '%%Y-%%m') AS ym, h.health_status, COUNT(*) AS c
+            FROM (
+                SELECT check_date, health_status FROM pig_health_records
+                UNION ALL
+                SELECT check_date, health_status FROM litter_health_records
+            ) h
+            WHERE h.check_date IS NOT NULL
+            GROUP BY DATE_FORMAT(h.check_date, '%%Y-%%m'), h.health_status
+            ORDER BY ym ASC, h.health_status
+        """)
+        health_statuses = ['healthy', 'recovering', 'sick', 'quarantine', 'injured', 'critical', 'unknown']
+        by_ym = defaultdict(lambda: defaultdict(int))
+        for r in cursor.fetchall() or []:
+            ym = r.get('ym')
+            if not ym:
+                continue
+            st = (r.get('health_status') or 'unknown')
+            st = st.lower().strip() if isinstance(st, str) else 'unknown'
+            if st not in health_statuses:
+                st = 'unknown'
+            by_ym[ym][st] = int(r.get('c') or 0)
+        health_monthly = []
+        for ym in sorted(by_ym.keys()):
+            d = {'month': ym}
+            for s in health_statuses:
+                d[s] = by_ym[ym].get(s, 0)
+            health_monthly.append(d)
+
+        cursor.execute("""
+            SELECT DATE_FORMAT(completed_date, '%%Y-%%m') AS ym, animal_type, COUNT(*) AS c
+            FROM vaccination_records
+            WHERE completed_date IS NOT NULL
+            GROUP BY DATE_FORMAT(completed_date, '%%Y-%%m'), animal_type
+            ORDER BY ym ASC
+        """)
+        med_by_month = defaultdict(lambda: {'pig': 0, 'litter': 0, 'other': 0})
+        for r in cursor.fetchall() or []:
+            at = (r.get('animal_type') or 'other') or 'other'
+            if isinstance(at, str):
+                at = at.lower().strip()
+            else:
+                at = 'other'
+            if at not in ('pig', 'litter'):
+                at = 'other'
+            med_by_month[r.get('ym')][at] += int(r.get('c') or 0)
+        medication_monthly = []
+        for ym in sorted(med_by_month.keys()):
+            o = med_by_month[ym]
+            medication_monthly.append({
+                'month': ym,
+                'pig': o['pig'],
+                'litter': o['litter'],
+                'other': o['other'],
+                'total': o['pig'] + o['litter'] + o['other'],
+            })
 
         cursor.close()
         conn.close()
-
-        from datetime import date as _date
-        today = _date.today()
-
-        animals = []
-        for r in pig_rows:
-            pig_type = (r.get('pig_type') or '').lower()
-            subject_type = 'batch' if pig_type == 'batch' else 'pig'
-            origin = r.get('birth_date') or r.get('purchase_date')
-            age_days = None
-            if origin:
-                try:
-                    age_days = (today - origin).days
-                except Exception:
-                    age_days = r.get('age_days')
-            else:
-                age_days = r.get('age_days')
-            animals.append({
-                'subject_type': subject_type,
-                'id': r['id'],
-                'tag': r.get('tag_id') or f"#{r['id']}",
-                'label': r.get('tag_id') or f"#{r['id']}",
-                'breed': r.get('breed') or 'Unknown',
-                'gender': r.get('gender') or '',
-                'current_health': r.get('current_health') or 'healthy',
-                'current_weight': float(r['current_weight']) if r.get('current_weight') is not None else None,
-                'age_days': age_days,
-                'origin_date': str(origin) if origin else None,
-                'origin_label': 'Purchased' if (r.get('pig_source') or '').lower() == 'purchased' else 'Born',
-                'health_records': int(r.get('health_records') or 0),
-                'weight_records': int(r.get('weight_records') or 0),
-                'medication_records': int(r.get('medication_records') or 0),
-            })
-
-        for r in litter_rows:
-            origin = r.get('farrowing_date')
-            age_days = None
-            if origin:
-                try:
-                    age_days = (today - origin).days
-                except Exception:
-                    age_days = None
-            animals.append({
-                'subject_type': 'litter',
-                'id': r['id'],
-                'tag': r.get('tag_id') or f"L#{r['id']}",
-                'label': r.get('tag_id') or f"L#{r['id']}",
-                'breed': r.get('sow_breed') or 'Unknown',
-                'gender': '',
-                'current_health': r.get('current_health') or 'healthy',
-                'current_weight': float(r['avg_weight']) if r.get('avg_weight') is not None else None,
-                'age_days': age_days,
-                'origin_date': str(origin) if origin else None,
-                'origin_label': 'Farrowed',
-                'sow_tag': r.get('sow_tag_id') or '',
-                'health_records': int(r.get('health_records') or 0),
-                'weight_records': int(r.get('weight_records') or 0),
-                'medication_records': int(r.get('medication_records') or 0),
-            })
-
-        return jsonify({'success': True, 'animals': animals})
-
+        return jsonify({
+            'success': True,
+            'totals': totals,
+            'health_distribution': health_distribution,
+            'weight_monthly': weight_monthly,
+            'health_monthly': health_monthly,
+            'medication_monthly': medication_monthly,
+        })
     except Exception as e:
-        print(f"Error loading health analytics animals: {str(e)}")
+        print(f"Error in health analytics aggregate: {str(e)}")
         return jsonify({'success': False, 'message': str(e)})
 
 
