@@ -43,7 +43,8 @@
         .dark .ft-divide > * + * { border-top-color: rgb(51 65 85); }
 
         .ft-sow-tree {
-            border-radius: 1rem; padding: 1rem 1rem 1.1rem; position: relative; overflow: hidden;
+            border-radius: 1rem; padding: 1.25rem 0.9rem 1.35rem; position: relative; overflow: visible;
+            max-width: 32rem; margin-left: auto; margin-right: auto;
             background: linear-gradient(145deg, rgb(255 255 255) 0%, rgb(253 242 248 / 0.65) 40%, rgb(239 246 255 / 0.5) 100%);
             border: 1px solid rgb(251 207 232 / 0.85);
             box-shadow: 0 10px 40px -12px rgb(236 72 153 / 0.35), 0 4px 14px rgb(15 23 42 / 0.06);
@@ -53,6 +54,19 @@
             border-color: rgb(157 23 77 / 0.35);
             box-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.45);
         }
+        .ft-tree-root {
+            text-align: center; position: relative; z-index: 2; padding: 0 0.5rem 0.35rem;
+        }
+        .ft-tree-root .ft-node { justify-content: center; }
+        .ft-tree-drop {
+            display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2;
+            margin: 0 0 0.05rem; min-height: 0.55rem; justify-content: flex-end;
+        }
+        .ft-tree-drop__line {
+            width: 4px; min-height: 0.5rem; border-radius: 3px;
+            background: linear-gradient(180deg, #f472b6, #c084fc 90%, #a78bfa);
+        }
+        .dark .ft-tree-drop__line { background: linear-gradient(180deg, #db2777, #7c3aed); }
 
         .ft-node { display: flex; align-items: flex-start; gap: 0.85rem; min-width: 0; }
         .ft-node__glyph {
@@ -84,23 +98,91 @@
         }
 
         .ft-trunk {
-            position: relative; margin-left: 1.2rem; padding-left: 1.15rem; margin-top: 0.65rem;
+            position: relative;
+            margin: 0;
+            padding: 0.2rem 0.2rem 0.3rem;
+            z-index: 1;
         }
+        /* Center spine: one vertical through all pairings, aligned with .ft-tree-drop */
         .ft-trunk::before {
-            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 6px;
-            background: linear-gradient(180deg, #ec4899 0%, #8b5cf6 38%, #3b82f6 68%, #10b981 100%);
-            box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+            content: ''; position: absolute; left: 50%;
+            transform: translateX(-50%);
+            top: 0; bottom: 0.4rem; width: 4px; border-radius: 4px; z-index: 0; pointer-events: none;
+            background: linear-gradient(180deg, #c084fc 0%, #8b5cf6 20%, #3b82f6 55%, #10b981 100%);
+            box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
         }
-        .dark .ft-trunk::before { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08); }
+        .dark .ft-trunk::before { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1); }
 
-        .ft-branch { position: relative; padding-bottom: 1rem; }
-        .ft-branch:last-child { padding-bottom: 0.2rem; }
-        .ft-branch::before {
-            content: ''; position: absolute; left: -1.08rem; top: 1.2rem;
-            width: 0.85rem; height: 3px; border-radius: 2px;
-            background: linear-gradient(90deg, #a78bfa, #60a5fa);
+        .ft-branch {
+            position: relative; z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+            gap: 0.2rem 0.35rem; align-items: start;
+            padding: 0.5rem 0 1.1rem;
         }
-        .dark .ft-branch::before { background: linear-gradient(90deg, #7c3aed, #3b82f6); }
+        .ft-branch:last-child { padding-bottom: 0.25rem; }
+        .ft-branch__gutter { min-width: 0; }
+        .ft-branch__spine {
+            position: relative; z-index: 2; grid-row: 1;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 2.5rem; padding-top: 0.15rem; justify-self: center;
+        }
+        .ft-branch__hub {
+            width: 11px; height: 11px; border-radius: 999px; flex-shrink: 0;
+            background: linear-gradient(135deg, #f0abfc, #a78bfa);
+            border: 2px solid rgb(255 255 255 / 0.85);
+            box-shadow: 0 2px 8px rgb(124 58 237 / 0.45); z-index: 2;
+        }
+        .dark .ft-branch__hub {
+            border-color: rgb(15 23 42 / 0.9);
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+        }
+        /* One horizontal to the side that holds BOTH sire and litters */
+        .ft-branch__spine::before,
+        .ft-branch__spine::after {
+            content: '';
+            position: absolute; top: 0.48rem; height: 2px; border-radius: 2px; z-index: 1; pointer-events: none;
+        }
+        .ft-branch--right .ft-branch__spine::after {
+            left: 50%; width: min(5.5rem, 40vw); margin-left: 6px;
+            background: linear-gradient(90deg, #8b5cf6, #60a5fa, #3b82f6);
+        }
+        .ft-branch--right .ft-branch__spine::before { display: none; }
+        .ft-branch--left .ft-branch__spine::before {
+            right: 50%; width: min(5.5rem, 40vw); margin-right: 6px;
+            background: linear-gradient(90deg, #3b82f6, #34d399, #10b981);
+        }
+        .ft-branch--left .ft-branch__spine::after { display: none; }
+        /* Sire + litters stacked on the same side; alternate L/R by branch */
+        .ft-branch__cluster {
+            min-width: 0; z-index: 2; max-width: min(20rem, 100%);
+            display: flex; flex-direction: column; gap: 0.4rem; align-self: start; grid-row: 1;
+        }
+        .ft-branch--right .ft-branch__cluster { grid-column: 3; justify-self: end; align-items: flex-end; }
+        .ft-branch--left .ft-branch__cluster { grid-column: 1; justify-self: start; align-items: flex-start; }
+        .ft-branch--right .ft-branch__gutter { grid-column: 1; }
+        .ft-branch--right .ft-branch__spine { grid-column: 2; }
+        .ft-branch--left .ft-branch__gutter { grid-column: 3; }
+        .ft-branch--left .ft-branch__spine { grid-column: 2; }
+        .ft-cluster__sire .ft-node--sire-rev { flex-direction: row-reverse; }
+        .ft-cluster__sire { width: 100%; max-width: 19.5rem; }
+        .ft-cluster__sire--right { text-align: right; }
+        .ft-cluster__sire--right .ft-node { justify-content: flex-end; }
+        .ft-cluster__sire--left { text-align: left; }
+        .ft-cluster__sire--left .ft-node { justify-content: flex-start; }
+        .ft-cluster__sire-line--right { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.35rem; }
+        .ft-cluster__sire-line--left { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.35rem; }
+        .ft-cluster__vlink {
+            width: 2px; align-self: stretch; min-height: 0.35rem;
+            border-radius: 2px; margin: 0.15rem 0;
+            background: linear-gradient(180deg, #60a5fa, #34d399);
+            opacity: 0.7;
+        }
+        .ft-branch--right .ft-cluster__vlink { align-self: flex-end; margin-right: 0.85rem; }
+        .ft-branch--left .ft-cluster__vlink { align-self: flex-start; margin-left: 0.85rem; }
+        .ft-cluster__litters { width: 100%; max-width: 19.5rem; }
+        .ft-branch__litters-wrap--empty { opacity: 0.9; }
+        .ft-branch__litters-wrap--empty .ft-litter-stack { min-height: 0; }
 
         .ft-breeding-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
         .ft-chip {
@@ -122,7 +204,8 @@
         .ft-chip--red { background: rgb(254 226 226); color: rgb(153 27 27); border-color: rgb(252 165 165); }
         .dark .ft-chip--red { background: rgb(127 29 29 / 0.45); color: rgb(254 202 202); border-color: rgb(248 113 113 / 0.45); }
 
-        .ft-litter-stack { margin-top: 0.5rem; margin-left: 0.15rem; }
+        .ft-litter-stack { margin-top: 0; margin-left: 0; }
+        .ft-branch__column--litter .ft-litter-row:first-of-type { margin-top: 0.15rem; }
         .ft-litter-row {
             display: flex; align-items: center; gap: 0.6rem;
             padding: 0.45rem 0.55rem; margin-bottom: 0.35rem; border-radius: 0.65rem;
@@ -145,13 +228,17 @@
         .ft-pill--rose { background: rgb(190 18 60); color: rgb(255 228 230); }
 
         .ft-fail-trunk {
-            margin-top: 0.75rem; margin-left: 1.2rem; padding: 0.65rem 0.75rem; border-radius: 0.75rem;
+            margin: 0.75rem auto 0; max-width: 24rem; padding: 0.65rem 0.75rem; border-radius: 0.75rem;
             background: linear-gradient(135deg, rgb(254 242 242 / 0.95), rgb(255 255 255));
             border: 1px dashed rgb(248 113 113); border-left: 4px solid #f87171;
+            position: relative; z-index: 2;
         }
         .dark .ft-fail-trunk {
             background: linear-gradient(135deg, rgb(127 29 29 / 0.35), rgb(15 23 42 / 0.4));
             border-color: rgb(239 68 68 / 0.45);
+        }
+        .ft-tree-page {
+            max-width: 40rem; margin-left: auto; margin-right: auto; width: 100%;
         }
     </style>
 </head>
@@ -168,11 +255,11 @@
     <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
 <main class="pt-16 md:pl-64 min-h-screen">
-        <div class="px-4 py-4 sm:px-6 sm:py-5 max-w-4xl mx-auto">
+        <div class="px-4 py-4 sm:px-6 sm:py-5 max-w-4xl mx-auto ft-tree-page">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4 pb-4 border-b border-pink-200/60 dark:border-indigo-800/60">
                 <div class="min-w-0">
                     <h1 class="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-pink-600 via-violet-600 to-sky-600 dark:from-pink-300 dark:via-violet-300 dark:to-sky-300 bg-clip-text text-transparent">Family tree</h1>
-                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">Sow → sire → litters. Quick scan; details stay in breeding records.</p>
+                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 text-center sm:text-left">A <strong class="text-pink-700 dark:text-pink-300">central spine</strong> connects each breeding: <strong>sire and litters stay on the same side</strong>; the next breeding group flips to the <strong>opposite</strong> side.</p>
                     <div class="flex flex-wrap gap-2 mt-3">
                         <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-200 border border-pink-200/80 dark:border-pink-800/50 shadow-sm"><i class="fas fa-venus text-[0.65rem] opacity-80"></i><span id="total-sows-count">0</span> sows</span>
                         <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/50 shadow-sm"><i class="fas fa-mars text-[0.65rem] opacity-80"></i><span id="total-boars-count">0</span> boars</span>
@@ -464,8 +551,8 @@
             }
             
             const treeHTML = `
-                <p class="ft-hint"><strong class="text-pink-700 dark:text-pink-300">Top → down:</strong> pink = sow, blue = sire, green = litters. Red block = mating with no litter.</p>
-                <div class="ft-legend-row" role="list" aria-label="Legend">
+                <p class="ft-hint text-center sm:text-left"><strong class="text-pink-700 dark:text-pink-300">Read top → down:</strong> central spine; each <strong>sire + his litters</strong> sit together on one side of the spine; the <strong>next</strong> sire group alternates <strong>left / right</strong>. Red = failed matings only.</p>
+                <div class="ft-legend-row justify-center sm:justify-start" role="list" aria-label="Legend">
                     <span class="ft-legend-item ft-legend-item--sow" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-venus"></i></span> Sow</span>
                     <span class="ft-legend-item ft-legend-item--sire" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-mars"></i></span> Sire</span>
                     <span class="ft-legend-item ft-legend-item--litter" role="listitem"><span class="ft-legend-dot" aria-hidden="true"><i class="fas fa-leaf"></i></span> Litter</span>
@@ -483,14 +570,15 @@
                         return `
                             <section class="first:pt-0" role="article" aria-labelledby="ft-sow-${index}">
                                 <div class="ft-sow-tree">
-                                    <div class="ft-node" id="ft-sow-${index}">
+                                    <div class="ft-tree-root">
+                                        <div class="ft-node" id="ft-sow-${index}">
                                         <span class="ft-node__glyph ft-node__glyph--sow" aria-hidden="true"><i class="fas fa-venus"></i></span>
-                                        <div class="min-w-0 flex-1">
-                                            <div class="flex flex-wrap items-baseline gap-2">
+                                        <div class="min-w-0 flex-1 text-left sm:text-center">
+                                            <div class="flex flex-wrap items-baseline gap-2 justify-center">
                                                 <span class="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white tracking-tight">${escapeHtml(sow?.tag_id || 'N/A')}</span>
                                                 <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/80 dark:bg-slate-800/90 text-pink-800 dark:text-pink-200 border border-pink-200 dark:border-pink-800/60 shadow-sm">${escapeHtml(sow?.breed || '—')}</span>
                                             </div>
-                                            <div class="flex flex-wrap gap-1.5 mt-2">
+                                            <div class="flex flex-wrap gap-1.5 mt-2 justify-center">
                                                 <span class="ft-chip ft-chip--pink">Sow</span>
                                                 <span class="ft-chip ft-chip--muted">${sireCount} sire${sireCount === 1 ? '' : 's'}</span>
                                                 <span class="ft-chip ft-chip--muted">${totalLitters} litter${totalLitters === 1 ? '' : 's'}</span>
@@ -498,27 +586,60 @@
                                             </div>
                                         </div>
                                     </div>
+                                    </div>
+                                    <div class="ft-tree-drop" aria-hidden="true"><div class="ft-tree-drop__line"></div></div>
                                     <div class="ft-trunk" aria-label="Branches from this sow">
-                                        ${pairings.map((pairing) => {
+                                        ${pairings.map((pairing, pIdx) => {
                                         const boar = pairing.boar;
                                         const litters = pairing.litters || [];
                                         const breedings = pairing.breedings || [];
+                                        const sideRight = (pIdx % 2) === 0;
+                                        const branchMod = sideRight ? 'ft-branch--right' : 'ft-branch--left';
+                                        const sireAlign = sideRight ? 'ft-cluster__sire--right' : 'ft-cluster__sire--left';
+                                        const sireLine = sideRight ? 'ft-cluster__sire-line--right' : 'ft-cluster__sire-line--left';
+                                        const nodeRev = sideRight ? ' ft-node--sire-rev' : '';
                                         const sireTitle = boar && boar.tag_id
                                             ? `<span class="text-lg font-black font-mono text-slate-900 dark:text-white">${escapeHtml(boar.tag_id)}</span>${boar.breed ? ' <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-900 dark:text-sky-200 border border-sky-200/80 dark:border-sky-700/50">' + escapeHtml(boar.breed) + '</span>' : ''}`
                                             : '<span class="text-slate-500 font-medium">Sire not recorded</span>';
-                                        return `
-                                            <div class="ft-branch" role="group">
-                                                <div class="ft-node">
-                                                    <span class="ft-node__glyph ft-node__glyph--sire" aria-hidden="true"><i class="fas fa-mars"></i></span>
-                                                    <div class="min-w-0 flex-1">
-                                                        <div class="flex flex-wrap items-center gap-2">
-                                                            <span class="text-[0.65rem] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">Sire</span>
-                                                            ${sireTitle}
+                                        const hasLit = litters && litters.length > 0;
+                                        const clusterInner = `
+                                                <div class="ft-cluster__sire ${sireAlign}">
+                                                    <div class="ft-node min-w-0${nodeRev}">
+                                                        <span class="ft-node__glyph ft-node__glyph--sire" aria-hidden="true"><i class="fas fa-mars"></i></span>
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="${sireLine}">
+                                                                <span class="text-[0.65rem] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">Sire</span>
+                                                                ${sireTitle}
+                                                            </div>
+                                                            ${renderBreedingsList(breedings)}
                                                         </div>
-                                                        ${renderBreedingsList(breedings)}
+                                                    </div>
+                                                </div>
+                                                ${hasLit ? '<div class="ft-cluster__vlink" aria-hidden="true"></div>' : ''}
+                                                <div class="ft-cluster__litters">
+                                                    <div class="ft-branch__litters-wrap${hasLit ? '' : ' ft-branch__litters-wrap--empty'}" aria-label="Litters for this sire">
                                                         ${renderLitterLeaves(litters)}
                                                     </div>
                                                 </div>
+                                        `;
+                                        if (sideRight) {
+                                        return `
+                                            <div class="ft-branch ${branchMod}" role="group" aria-label="Sire and litters (right of spine)">
+                                                <div class="ft-branch__gutter" aria-hidden="true"></div>
+                                                <div class="ft-branch__spine" aria-hidden="true">
+                                                    <div class="ft-branch__hub" title=""></div>
+                                                </div>
+                                                <div class="ft-branch__cluster">${clusterInner}</div>
+                                            </div>
+                                        `;
+                                        }
+                                        return `
+                                            <div class="ft-branch ${branchMod}" role="group" aria-label="Sire and litters (left of spine)">
+                                                <div class="ft-branch__cluster">${clusterInner}</div>
+                                                <div class="ft-branch__spine" aria-hidden="true">
+                                                    <div class="ft-branch__hub" title=""></div>
+                                                </div>
+                                                <div class="ft-branch__gutter" aria-hidden="true"></div>
                                             </div>
                                         `;
                                     }).join('')}
