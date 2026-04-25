@@ -385,52 +385,160 @@
             }
         }
 
+        function getRecoveryGraphBadge(d) {
+            if (d.weight_vs_expected && d.weight_vs_expected !== 'unknown') {
+                if (d.weight_vs_expected === 'on_target') {
+                    return { text: 'On target (vs expected)', wrap: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' };
+                }
+                if (d.weight_vs_expected === 'above') {
+                    return { text: 'Above expected', wrap: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200' };
+                }
+                if (d.weight_vs_expected === 'below') {
+                    return { text: 'Below expected', wrap: 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200' };
+                }
+            }
+            const latest = Number(d.latest_weight);
+            const s = Number(d.start_weight);
+            if (Number.isNaN(latest) || Number.isNaN(s)) {
+                return { text: '—', wrap: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' };
+            }
+            if (Math.abs(latest - s) < 0.01) {
+                return { text: 'Stable (actual)', wrap: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
+            }
+            if (latest > s) {
+                return { text: 'Increasing (actual)', wrap: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
+            }
+            return { text: 'Decreasing (actual)', wrap: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+        }
+
+        function buildRecoveryWeightFooterHTML(recoveryData) {
+            if (recoveryData.start_weight === null && recoveryData.latest_weight === null) {
+                return '';
+            }
+            const F = getRecoverySummaryFooterClass(recoveryData);
+            const ch = recoveryData.weight_change != null
+                ? ' — change ' + (recoveryData.weight_change > 0 ? '+' : '') + String(recoveryData.weight_change) + ' kg'
+                : '';
+            const ve = recoveryData.expected_latest_weight != null
+                ? '. <strong>vs expected</strong> at latest age: ' + Number(recoveryData.expected_latest_weight).toFixed(2) + ' kg'
+                : '';
+            const pct = recoveryData.actual_vs_expected_pct != null
+                ? ' (' + (recoveryData.actual_vs_expected_pct > 0 ? '+' : '') + String(recoveryData.actual_vs_expected_pct) + '% vs expected).'
+                : (recoveryData.expected_latest_weight != null ? '.' : '');
+            return (
+                '<div class="mb-0 mt-4 p-4 rounded-xl border shadow-sm ' + F.box + '">' +
+                '<p class="text-sm leading-relaxed ' + F.text + '">' +
+                '<span class="font-semibold">Litter weight summary</span> · ' +
+                'actual ' + (recoveryData.start_weight ?? '-') + ' kg (farrowing) &rarr; ' + (recoveryData.latest_weight ?? '-') + ' kg (latest)' +
+                ch + ve + pct +
+                '</p></div>'
+            );
+        }
+
+        function getRecoverySummaryFooterClass(d) {
+            if (d.weight_vs_expected && d.weight_vs_expected !== 'unknown') {
+                if (d.weight_vs_expected === 'on_target') {
+                    return { box: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700', text: 'text-emerald-800 dark:text-emerald-200' };
+                }
+                if (d.weight_vs_expected === 'above') {
+                    return { box: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-700', text: 'text-sky-800 dark:text-sky-200' };
+                }
+                if (d.weight_vs_expected === 'below') {
+                    return { box: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700', text: 'text-amber-900 dark:text-amber-200' };
+                }
+            }
+            if (d.weight_trend_direction === 'up') {
+                return { box: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700', text: 'text-green-800 dark:text-green-200' };
+            }
+            if (d.weight_trend_direction === 'down') {
+                return { box: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700', text: 'text-red-800 dark:text-red-200' };
+            }
+            return { box: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700', text: 'text-blue-800 dark:text-blue-200' };
+        }
+
         function renderWeightTrendGraph(recoveryData) {
             const start = Number(recoveryData.start_weight);
             const latest = Number(recoveryData.latest_weight);
+            const exp0 = recoveryData.expected_start_weight != null && recoveryData.expected_start_weight !== undefined
+                ? Number(recoveryData.expected_start_weight) : NaN;
+            const exp1 = recoveryData.expected_latest_weight != null && recoveryData.expected_latest_weight !== undefined
+                ? Number(recoveryData.expected_latest_weight) : NaN;
+            const hasExpected = !Number.isNaN(exp0) && !Number.isNaN(exp1);
+            const badge = getRecoveryGraphBadge(recoveryData);
 
             if (Number.isNaN(start) || Number.isNaN(latest)) {
                 return `
-                    <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Weight trend graph is unavailable (missing weight points).</p>
+                    <div class="mb-2 p-5 rounded-2xl border border-dashed border-gray-200 dark:border-gray-600 bg-slate-50/80 dark:bg-gray-800/40 text-center">
+                        <i class="fas fa-chart-line text-2xl text-gray-300 dark:text-gray-600 mb-2 block" aria-hidden="true"></i>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Weight trend is unavailable — add start and latest litter weights to see the chart.</p>
                     </div>
                 `;
             }
 
-            const values = [start, latest];
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            const range = (max - min) || 1;
+            const yVals = [start, latest];
+            if (hasExpected) {
+                yVals.push(exp0, exp1);
+            }
+            const rawMin = Math.min(...yVals);
+            const rawMax = Math.max(...yVals);
+            const rangeRaw = (rawMax - rawMin) || 1;
+            const yPad = rangeRaw * 0.1;
+            const min = rawMin - yPad;
+            const maxR = rawMax + yPad;
+            const span = (maxR - min) || 1;
             const width = 420;
-            const height = 140;
-            const padX = 24;
+            const height = 152;
+            const padX = 32;
             const padY = 20;
             const x1 = padX;
             const x2 = width - padX;
-            const yFromValue = (v) => (height - padY) - ((v - min) / range) * (height - (padY * 2));
+            const yFromValue = (v) => (height - padY) - ((v - min) / span) * (height - (padY * 2));
             const y1 = yFromValue(start);
             const y2 = yFromValue(latest);
+            const expY0 = hasExpected ? yFromValue(exp0) : 0;
+            const expY1 = hasExpected ? yFromValue(exp1) : 0;
             const trendColor = latest >= start ? '#16a34a' : '#dc2626';
+            const refNote = recoveryData.weight_reference_date && recoveryData.age_days_at_latest != null
+                ? `<p class="text-xs text-slate-600 dark:text-slate-400 mt-0 mb-3 pl-1 border-l-2 border-violet-300 dark:border-violet-600/60 py-0.5">Expected line uses <strong class="text-slate-800 dark:text-slate-200">${recoveryData.age_days_at_latest} day(s)</strong> from farrowing; latest actual as of <strong class="text-slate-800 dark:text-slate-200">${recoveryData.weight_reference_date}</strong>.</p>`
+                : (hasExpected ? '<p class="text-xs text-slate-600 dark:text-slate-400 mt-0 mb-3 pl-1 border-l-2 border-violet-300 dark:border-violet-600/60 py-0.5">Expected curve uses your farm <strong>weight categories</strong> (same as register farrowing).</p>' : '');
+            const noCatHint = !hasExpected ? '<div class="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/50 mb-3 text-xs text-amber-800 dark:text-amber-200/90"><i class="fas fa-info-circle mt-0.5 text-amber-500" aria-hidden="true"></i><span>Add <strong>weight categories</strong> under farm weight settings to show the expected (dashed) line.</span></div>' : '';
+            const legend = hasExpected ? `
+                <div class="flex flex-wrap items-center gap-3 sm:gap-5 text-xs text-gray-600 dark:text-gray-300 mb-3">
+                    <span class="inline-flex items-center gap-2 font-medium px-2.5 py-1 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-gray-200/60 dark:border-gray-600/50"><span class="inline-block w-8 h-1 rounded-sm shadow-sm" style="background:${trendColor}"></span> Actual</span>
+                    <span class="inline-flex items-center gap-2 font-medium px-2.5 py-1 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-gray-200/60 dark:border-gray-600/50"><span class="inline-block w-8 h-0.5 border-t-2 border-dashed" style="border-color:#7c3aed"></span> Expected</span>
+                </div>
+            ` : '';
 
             return `
-                <div class="mb-4 p-4 bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Litter Weight Trend</h4>
-                        <span class="text-xs px-2 py-1 rounded-full ${latest >= start ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">
-                            ${latest >= start ? 'Increasing' : 'Decreasing'}
-                        </span>
+                <div class="mb-2 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white to-slate-50/90 dark:from-gray-800 dark:to-slate-900/80 border border-gray-200/80 dark:border-gray-600/80 shadow-sm ring-1 ring-black/5 dark:ring-white/5">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                        <div>
+                            <h4 class="text-base font-bold text-gray-900 dark:text-white tracking-tight">Litter weight trend</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Actual (solid) vs expected from weight categories (dashed)</p>
+                        </div>
+                        <span class="text-xs font-semibold px-3 py-1.5 rounded-full self-start shadow-sm ${badge.wrap}">${badge.text}</span>
                     </div>
-                    <div class="overflow-x-auto">
-                        <svg viewBox="0 0 ${width} ${height}" class="w-full min-w-[320px] h-36">
-                            <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" stroke="#9ca3af" stroke-width="1.5" />
-                            <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" stroke="#9ca3af" stroke-width="1.5" />
+                    ${refNote}
+                    ${noCatHint}
+                    ${legend}
+                    <div class="overflow-x-auto -mx-1 px-1 rounded-xl bg-white/50 dark:bg-gray-900/30 py-2 border border-gray-100/80 dark:border-gray-700/50">
+                        <svg viewBox="0 0 ${width} ${height}" class="w-full min-w-[320px]" style="min-height:8.5rem" role="img" aria-label="Litter weight actual versus expected">
+                            <text x="2" y="${padY + 3}" fill="#6b7280" font-size="10">${maxR.toFixed(1)}</text>
+                            <text x="2" y="${height - padY - 2}" fill="#6b7280" font-size="10">${min.toFixed(1)}</text>
+                            <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" stroke="#9ca3af" stroke-width="1.2" />
+                            <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" stroke="#9ca3af" stroke-width="1.2" />
+                            ${hasExpected ? `<line x1="${x1}" y1="${expY0}" x2="${x2}" y2="${expY1}" stroke="#a855f7" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round" opacity="0.95" />
+                            <circle cx="${x1}" cy="${expY0}" r="4" fill="#a855f7" opacity="0.9" />
+                            <circle cx="${x2}" cy="${expY1}" r="4" fill="#a855f7" opacity="0.9" />
+                            <text x="${x1}" y="${Math.max(14, expY0 - 8)}" fill="#6b21a8" font-size="10" text-anchor="start">Exp ${exp0.toFixed(2)}</text>
+                            <text x="${x2}" y="${Math.max(14, expY1 - 8)}" fill="#6b21a8" font-size="10" text-anchor="end">Exp ${exp1.toFixed(2)}</text>` : ''}
                             <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${trendColor}" stroke-width="3" stroke-linecap="round" />
                             <circle cx="${x1}" cy="${y1}" r="5" fill="${trendColor}" />
                             <circle cx="${x2}" cy="${y2}" r="5" fill="${trendColor}" />
-                            <text x="${x1}" y="${Math.max(14, y1 - 10)}" fill="#374151" font-size="11" text-anchor="start">Start ${start} kg</text>
-                            <text x="${x2}" y="${Math.max(14, y2 - 10)}" fill="#374151" font-size="11" text-anchor="end">Latest ${latest} kg</text>
-                            <text x="${x1}" y="${height - 6}" fill="#6b7280" font-size="11" text-anchor="start">Farrowing</text>
-                            <text x="${x2}" y="${height - 6}" fill="#6b7280" font-size="11" text-anchor="end">Current</text>
+                            <text x="${x1}" y="${Math.max(14, y1 - 20)}" fill="#374151" font-size="11" text-anchor="start" font-weight="600">Start ${start} kg</text>
+                            <text x="${x2}" y="${hasExpected ? Math.max(14, y2 + 20) : Math.max(14, y2 - 10)}" fill="#374151" font-size="11" text-anchor="end" font-weight="600">Latest ${latest} kg</text>
+                            <text x="${x1}" y="${height - 4}" fill="#6b7280" font-size="10" text-anchor="start">Farrowing</text>
+                            <text x="${x2}" y="${height - 4}" fill="#6b7280" font-size="10" text-anchor="end">Current</text>
                         </svg>
                     </div>
                 </div>
@@ -440,70 +548,96 @@
         // Show recovery status modal
         function showRecoveryStatusModal(recoveryData, farrowingId) {
             const modalHTML = `
-                <div id="recovery-status-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Sow and Litter Progress</h3>
-                            <button onclick="closeRecoveryStatusModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                <i class="fas fa-times text-xl"></i>
-                            </button>
+                <div id="recovery-status-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="recovery-modal-title">
+                    <div class="absolute inset-0 bg-slate-900/55 dark:bg-slate-950/70 backdrop-blur-[2px] transition-opacity" aria-hidden="true" onclick="closeRecoveryStatusModal()"></div>
+                    <div class="relative w-full max-w-2xl max-h-[min(90vh,720px)] flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+                        <div class="relative shrink-0 overflow-hidden border-b border-white/10 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-5 py-5 sm:px-6 sm:py-5">
+                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+                            <div class="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
+                            <div class="pointer-events-none absolute -left-4 bottom-0 h-20 w-20 rounded-full bg-cyan-400/20 blur-xl"></div>
+                            <div class="relative z-10 flex items-start justify-between gap-3">
+                                <div class="flex items-start gap-3 min-w-0">
+                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg ring-2 ring-white/30">
+                                        <i class="fas fa-clipboard-list text-xl" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 id="recovery-modal-title" class="text-lg sm:text-xl font-bold text-white tracking-tight drop-shadow-sm">Sow &amp; litter progress</h3>
+                                        <p class="mt-0.5 text-sm text-emerald-50/90">Farrowing cycle — ${recoveryData.sow_tag_id || 'Sow'}${recoveryData.litter_id ? ' · Litter ' + recoveryData.litter_id : ''}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeRecoveryStatusModal()" class="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl text-white/90 bg-white/10 hover:bg-white/20 ring-1 ring-white/20 transition focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Close">
+                                    <i class="fas fa-times text-lg"></i>
+                                </button>
+                            </div>
                         </div>
-                        
-                        <div class="p-6">
-                            <!-- Information Table -->
-                            <div class="overflow-x-auto mb-6">
-                                <table class="w-full border-collapse">
-                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 w-1/3">Sow Tag ID</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.sow_tag_id}</td>
+
+                        <div class="overflow-y-auto flex-1 min-h-0 p-4 sm:p-6 space-y-5 bg-gradient-to-b from-slate-50/80 to-white dark:from-gray-800 dark:to-gray-800/95">
+                            <div>
+                                <h4 class="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2.5">
+                                    <span class="inline-block w-6 h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-300/30 rounded-full"></span>
+                                    Details
+                                </h4>
+                                <div class="overflow-hidden rounded-xl border border-gray-200/90 dark:border-gray-600/80 bg-white dark:bg-gray-800/50 shadow-sm">
+                                    <table class="w-full text-sm">
+                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700/80">
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="w-[38%] sm:w-1/3 px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Sow tag</td>
+                                            <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white font-mono">${recoveryData.sow_tag_id}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Breed</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.sow_breed}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Breed</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">${recoveryData.sow_breed}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Farrowing Date</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.farrowing_date}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Farrowing</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">${recoveryData.farrowing_date}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Recovery Date</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.recovery_date}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Recovery date</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">${recoveryData.recovery_date}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Current Status</td>
-                                            <td class="px-4 py-3 text-sm">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBreedingStatusColor(recoveryData.current_breeding_status)}">
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Status</td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getBreedingStatusColor(recoveryData.current_breeding_status)}">
                                                     ${recoveryData.current_breeding_status}
                                                 </span>
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Activities Status</td>
-                                            <td class="px-4 py-3 text-sm">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${recoveryData.all_activities_completed ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}">
-                                                    ${recoveryData.all_activities_completed ? 'All Completed' : 'Some Pending'}
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Activities</td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${recoveryData.all_activities_completed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' : 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200'}">
+                                                    ${recoveryData.all_activities_completed ? 'All completed' : 'Some pending'}
                                                 </span>
                                             </td>
                                         </tr>
                                         ${recoveryData.litter_id ? `
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Litter</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${recoveryData.litter_id}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Litter</td>
+                                            <td class="px-4 py-3 font-mono font-semibold text-cyan-700 dark:text-cyan-300">${recoveryData.litter_id}</td>
                                         </tr>
                                         ` : ''}
                                         ${(recoveryData.start_weight !== null || recoveryData.latest_weight !== null) ? `
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Weight Trend</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                                                <div class="flex flex-wrap items-center gap-2">
-                                                    <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Start: ${recoveryData.start_weight ?? '-'} kg</span>
-                                                    <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Latest: ${recoveryData.latest_weight ?? '-'} kg</span>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors align-top">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Weight</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">
+                                                <div class="flex flex-wrap items-center gap-1.5">
+                                                    <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/80 font-medium">Start ${recoveryData.start_weight ?? '-'} kg</span>
+                                                    <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/80 font-medium">Latest ${recoveryData.latest_weight ?? '-'} kg</span>
+                                                    ${recoveryData.expected_latest_weight != null ? `
+                                                    <span class="text-xs px-2.5 py-1 rounded-lg bg-violet-100 text-violet-900 dark:bg-violet-900/40 dark:text-violet-200 font-medium">Exp ${Number(recoveryData.expected_latest_weight).toFixed(2)} kg</span>
+                                                    ` : ''}
                                                     ${recoveryData.weight_change !== null ? `
-                                                        <span class="text-xs px-2 py-1 rounded-full ${recoveryData.weight_trend_direction === 'up' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : recoveryData.weight_trend_direction === 'down' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}">
+                                                        <span class="text-xs px-2.5 py-1 rounded-lg font-medium ${recoveryData.weight_trend_direction === 'up' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : recoveryData.weight_trend_direction === 'down' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200'}">
                                                             ${recoveryData.weight_trend_direction === 'up' ? '▲' : recoveryData.weight_trend_direction === 'down' ? '▼' : '■'}
                                                             ${recoveryData.weight_change > 0 ? '+' : ''}${recoveryData.weight_change} kg
                                                             ${recoveryData.weight_change_pct !== null ? `(${recoveryData.weight_change_pct > 0 ? '+' : ''}${recoveryData.weight_change_pct}%)` : ''}
+                                                        </span>
+                                                    ` : ''}
+                                                    ${recoveryData.actual_vs_expected_kg != null && recoveryData.actual_vs_expected_pct != null ? `
+                                                        <span class="text-xs px-2.5 py-1 rounded-lg font-medium ${recoveryData.weight_vs_expected === 'on_target' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' : recoveryData.weight_vs_expected === 'above' ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200' : 'bg-amber-100 text-amber-900 dark:text-amber-200'}">
+                                                            vs exp ${recoveryData.actual_vs_expected_kg > 0 ? '+' : ''}${recoveryData.actual_vs_expected_kg} kg (${recoveryData.actual_vs_expected_pct > 0 ? '+' : ''}${recoveryData.actual_vs_expected_pct}%)
                                                         </span>
                                                     ` : ''}
                                                 </div>
@@ -511,57 +645,64 @@
                                         </tr>
                                         ` : ''}
                                         ${recoveryData.days_until_recovery > 0 ? `
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Days Until Recovery</td>
-                                            <td class="px-4 py-3 text-sm text-yellow-600 dark:text-yellow-400 font-semibold">${recoveryData.days_until_recovery} day(s)</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Days to recovery</td>
+                                            <td class="px-4 py-3 font-bold text-amber-600 dark:text-amber-400">${recoveryData.days_until_recovery} day(s)</td>
                                         </tr>
                                         ` : ''}
-                                    </tbody>
-                                </table>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                            
-                            ${renderWeightTrendGraph(recoveryData)}
-                            
-                            <!-- Status Messages -->
+
+                            <div>
+                                <h4 class="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2.5">
+                                    <span class="inline-block w-6 h-0.5 bg-gradient-to-r from-cyan-500 to-cyan-300/30 rounded-full"></span>
+                                    Weight chart
+                                </h4>
+                                ${renderWeightTrendGraph(recoveryData)}
+                            </div>
+
+                            <div class="space-y-3 pt-1">
                             ${recoveryData.days_until_recovery > 0 ? `
-                                <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-                                    <p class="text-sm text-yellow-800 dark:text-yellow-200">
-                                        <strong>Recovery in Progress:</strong> Sow will be ready for next breeding in ${recoveryData.days_until_recovery} day(s)
-                                    </p>
-                                </div>
-                            ` : ''}
-                            
-                            ${recoveryData.sow_ready ? `
-                                <div class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
-                                    <p class="text-sm text-green-800 dark:text-green-200 mb-2">
-                                        <strong>Ready for Next Breeding!</strong> All activities completed and recovery period finished.
-                                    </p>
-                                    <p class="text-xs text-green-700 dark:text-green-300 mb-3">
-                                        <strong>Note:</strong> Before marking the sow as available, you'll need to register the litter from this farrowing to ensure proper tracking.
-                                    </p>
-                                    <button onclick="markSowAvailable(${farrowingId})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">
-                                        Mark Sow as Available
-                                    </button>
-                                </div>
-                            ` : ''}
-                            
-                            ${!recoveryData.all_activities_completed ? `
-                                <div class="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
-                                    <p class="text-sm text-orange-800 dark:text-orange-200">
-                                        <strong>Activities Pending:</strong> Complete all farrowing activities before marking sow as available
+                                <div class="flex gap-3 p-4 rounded-xl border border-amber-200/80 dark:border-amber-800/50 bg-amber-50/90 dark:bg-amber-950/30 shadow-sm">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300">
+                                        <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+                                    </div>
+                                    <p class="text-sm text-amber-900 dark:text-amber-100 leading-snug">
+                                        <span class="font-bold">Recovery in progress</span> — ready for the next breeding in <strong>${recoveryData.days_until_recovery}</strong> day(s).
                                     </p>
                                 </div>
                             ` : ''}
 
-                            ${(recoveryData.start_weight !== null || recoveryData.latest_weight !== null) ? `
-                                <div class="mb-2 p-3 rounded-lg border ${recoveryData.weight_trend_direction === 'up' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' : recoveryData.weight_trend_direction === 'down' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'}">
-                                    <p class="text-sm ${recoveryData.weight_trend_direction === 'up' ? 'text-green-800 dark:text-green-200' : recoveryData.weight_trend_direction === 'down' ? 'text-red-800 dark:text-red-200' : 'text-blue-800 dark:text-blue-200'}">
-                                        <strong>Litter Weight Trend:</strong>
-                                        Start ${recoveryData.start_weight ?? '-'} kg -> Latest ${recoveryData.latest_weight ?? '-'} kg
-                                        ${recoveryData.weight_change !== null ? `(${recoveryData.weight_change > 0 ? '+' : ''}${recoveryData.weight_change} kg)` : ''}
+                            ${recoveryData.sow_ready ? `
+                                <div class="flex flex-col sm:flex-row sm:items-start gap-3 p-4 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/90 dark:bg-emerald-950/25 shadow-sm">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                        <i class="fas fa-seedling" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-bold text-emerald-900 dark:text-emerald-100">Ready for next breeding</p>
+                                        <p class="text-xs text-emerald-800/90 dark:text-emerald-200/80 mt-1">Register the litter from this farrowing for full traceability before marking the sow available.</p>
+                                        <button type="button" onclick="markSowAvailable(${farrowingId})" class="mt-3 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-600/20 transition focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                            <i class="fas fa-check" aria-hidden="true"></i> Mark sow as available
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${!recoveryData.all_activities_completed ? `
+                                <div class="flex gap-3 p-4 rounded-xl border border-orange-200/80 dark:border-orange-800/50 bg-orange-50/90 dark:bg-orange-950/30 shadow-sm">
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-200">
+                                        <i class="fas fa-tasks" aria-hidden="true"></i>
+                                    </div>
+                                    <p class="text-sm text-orange-900 dark:text-orange-100 leading-snug">
+                                        <span class="font-bold">Activities pending</span> — complete all farrowing activities before opening the next breeding for this sow.
                                     </p>
                                 </div>
                             ` : ''}
+                            </div>
+
+                            ${buildRecoveryWeightFooterHTML(recoveryData)}
                         </div>
                     </div>
                 </div>
@@ -592,127 +733,131 @@
             const daysSinceFarrowing = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
             const matingDaysAgo = Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24));
             
+            const fmtMate = formatModalDate(record.mating_date);
+            const fmtFar = formatModalDate(record.farrowing_date);
             const modalHTML = `
-                <div id="litter-details-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <!-- Modal Header -->
-                        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                    Litter ${record.litter_id || 'N/A'} - Details
-                                </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Record ID: #${record.id}</p>
+                <div id="litter-details-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="litter-details-title">
+                    <div class="absolute inset-0 bg-slate-900/55 dark:bg-slate-950/70 backdrop-blur-[2px]" aria-hidden="true" onclick="closeLitterDetailsModal()"></div>
+                    <div class="relative w-full max-w-3xl max-h-[min(92vh,800px)] flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+                        <div class="relative shrink-0 border-b border-white/10 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700 px-5 py-5 sm:px-6 sm:py-5">
+                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+                            <div class="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/10 blur-2xl"></div>
+                            <div class="relative z-10 flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-start gap-3">
+                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg ring-2 ring-white/25">
+                                        <i class="fas fa-paw text-lg" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 id="litter-details-title" class="text-lg sm:text-xl font-bold text-white tracking-tight">Litter ${record.litter_id || 'N/A'}</h3>
+                                        <p class="mt-0.5 text-sm text-sky-100/90">Record #${record.id} · Unweaned litter details</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeLitterDetailsModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/25 transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Close">
+                                    <i class="fas fa-times text-lg"></i>
+                                </button>
                             </div>
-                            <button onclick="closeLitterDetailsModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                <i class="fas fa-times text-xl"></i>
-                            </button>
                         </div>
-                        
-                        <!-- Modal Body -->
-                        <div class="p-6">
-                            <!-- Information Table -->
-                            <div class="overflow-x-auto">
-                                <table class="w-full border-collapse">
-                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                        <!-- Parent Information -->
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 w-1/3">Sow Tag ID</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.sow_tag_id || 'N/A'}</td>
+
+                        <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-gradient-to-b from-slate-50/90 to-white dark:from-gray-800 dark:to-gray-800/95">
+                            <h4 class="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 flex items-center gap-2.5">
+                                <span class="inline-block h-0.5 w-6 rounded-full bg-gradient-to-r from-cyan-500 to-sky-300/40"></span>
+                                Summary
+                            </h4>
+                            <div class="overflow-hidden rounded-xl border border-gray-200/90 dark:border-gray-600/80 bg-white dark:bg-gray-800/50 shadow-sm">
+                                <table class="w-full text-sm">
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700/80">
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="w-[36%] sm:w-1/3 px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Sow tag</td>
+                                            <td class="px-4 py-3 font-mono font-semibold text-gray-900 dark:text-white">${record.sow_tag_id || 'N/A'}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Sow Breed</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.sow_breed || 'Unknown'}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Sow breed</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">${record.sow_breed || 'Unknown'}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Boar Tag ID</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.boar_tag_id || 'N/A'}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Boar tag</td>
+                                            <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">${record.boar_tag_id || 'N/A'}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Boar Breed</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.boar_breed || 'Unknown'}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Boar breed</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">${record.boar_breed || 'Unknown'}</td>
                                         </tr>
-                                        
-                                        <!-- Dates -->
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Mating Date</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.mating_date || 'N/A'} <span class="text-gray-500 dark:text-gray-400 ml-2">(${matingDaysAgo} days ago)</span></td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Mating</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">
+                                                <span class="font-medium">${fmtMate}</span>
+                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">· ${matingDaysAgo}d ago</span>
+                                            </td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Farrowing Date</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.farrowing_date || 'N/A'} <span class="text-gray-500 dark:text-gray-400 ml-2">(${daysSinceFarrowing} days ago)</span></td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Farrowing</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">
+                                                <span class="font-medium">${fmtFar}</span>
+                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">· ${daysSinceFarrowing}d ago</span>
+                                            </td>
                                         </tr>
-                                        
-                                        <!-- Litter Statistics -->
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Alive Piglets</td>
-                                            <td class="px-4 py-3 text-sm font-semibold text-orange-600 dark:text-orange-400">${record.alive_piglets || 0}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Alive</td>
+                                            <td class="px-4 py-3">
+                                                <span class="text-lg font-bold text-amber-600 dark:text-amber-400 tabular-nums">${record.alive_piglets || 0}</span>
+                                                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400">live piglets</span>
+                                            </td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Still Births</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.still_births || 0}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Still / dead / weak</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white tabular-nums">${record.still_births || 0} / ${record.dead_piglets || 0} / ${record.weak_piglets || 0}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Dead Piglets</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.dead_piglets || 0}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Avg weight</td>
+                                            <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">${record.avg_weight || 0} kg</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Weak Piglets</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.weak_piglets || 0}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Average Weight</td>
-                                            <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">${record.avg_weight || 0} kg</td>
-                                        </tr>
-                                        
-                                        <!-- Notes -->
                                         ${record.health_notes ? `
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 align-top">Health Notes</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.health_notes}</td>
+                                        <tr class="align-top hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Health</td>
+                                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200 leading-relaxed">${record.health_notes}</td>
                                         </tr>
                                         ` : ''}
                                         ${record.litter_notes ? `
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 align-top">Litter Notes</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.litter_notes}</td>
+                                        <tr class="align-top hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Litter notes</td>
+                                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200 leading-relaxed">${record.litter_notes}</td>
                                         </tr>
                                         ` : ''}
                                         ${record.notes ? `
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 align-top">Additional Notes</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.notes}</td>
+                                        <tr class="align-top hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Other</td>
+                                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200 leading-relaxed">${record.notes}</td>
                                         </tr>
                                         ` : ''}
-                                        
-                                        <!-- Footer Info -->
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Recorded By</td>
-                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${record.created_by_name || 'Unknown'}</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Recorded by</td>
+                                            <td class="px-4 py-3 text-gray-900 dark:text-white">${record.created_by_name || 'Unknown'}</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Status</td>
+                                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Status</td>
                                             <td class="px-4 py-3">
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                                                    <div class="w-1.5 h-1.5 rounded-full mr-1.5 bg-orange-500"></div>
-                                                    UNWEANED
+                                                <span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true"></span> Unweaned
                                                 </span>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                            
-                            <!-- Action Buttons -->
-                            <div class="flex flex-wrap gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                <button onclick="showEditFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.farrowing_date}', ${record.alive_piglets || 0}, ${record.dead_piglets || 0}, ${record.weak_piglets || 0}, '${(record.notes || '').replace(/'/g, "\\'")}'); closeLitterDetailsModal();" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
-                                    <i class="fas fa-edit mr-2"></i>Edit
-                                </button>
-                                <button onclick="viewFarrowingActivities(${record.id}); closeLitterDetailsModal();" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">
-                                    <i class="fas fa-tasks mr-2"></i>View Activities
-                                </button>
-                                <button onclick="checkRecoveryStatus(${record.id}); closeLitterDetailsModal();" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-lg transition-colors">
-                                    <i class="fas fa-heartbeat mr-2"></i>Check Recovery
-                                </button>
+
+                            <div class="flex flex-col gap-2 border-t border-gray-200/80 pt-5 dark:border-gray-600/80 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 sm:order-2">Quick actions</p>
+                                <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-2 sm:order-1">
+                                    <button type="button" onclick="viewFarrowingActivities(${record.id}); closeLitterDetailsModal();" class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                        <i class="fas fa-list-check" aria-hidden="true"></i> Activities
+                                    </button>
+                                    <button type="button" onclick="showEditFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.farrowing_date}', ${record.alive_piglets || 0}, ${record.dead_piglets || 0}, ${record.weak_piglets || 0}, '${(record.notes || '').replace(/'/g, "\\'")}'); closeLitterDetailsModal();" class="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-500">
+                                        <i class="fas fa-edit" aria-hidden="true"></i> Edit
+                                    </button>
+                                    <button type="button" onclick="checkRecoveryStatus(${record.id}); closeLitterDetailsModal();" class="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-orange-300 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-900 shadow-sm transition hover:bg-orange-100 dark:border-orange-700/50 dark:bg-orange-950/40 dark:text-orange-200 dark:hover:bg-orange-900/30 focus:outline-none focus:ring-2 focus:ring-orange-400/80">
+                                        <i class="fas fa-heartbeat" aria-hidden="true"></i> Recovery
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -774,6 +919,21 @@
             }
         }
 
+        /** User-friendly date for modals (avoids long GMT debug strings) */
+        function formatModalDate(isoOrStr) {
+            if (isoOrStr == null || isoOrStr === '') return '—';
+            const d = new Date(isoOrStr);
+            if (isNaN(d.getTime())) return String(isoOrStr);
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function formatActivityCompletedAt(isoOrStr) {
+            if (isoOrStr == null || isoOrStr === '') return '';
+            const d = new Date(isoOrStr);
+            if (isNaN(d.getTime())) return String(isoOrStr);
+            return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
         // Check if the activity day has been reached
         function isActivityDayReached(dueDate) {
             const today = new Date();
@@ -804,7 +964,7 @@
             }
         }
 
-        // Get activity status text based on due date
+        // Get activity status text based on due date (short label; detail in title attr if needed)
         function getActivityStatusText(dueDate) {
             const today = new Date();
             const due = new Date(dueDate);
@@ -814,12 +974,26 @@
             due.setHours(0, 0, 0, 0);
             
             if (today > due) {
-                return 'Overdue - Can Still Complete';
+                return 'Overdue';
             } else if (today.getTime() === due.getTime()) {
-                return 'Ready to Complete';
+                return 'Due today';
             } else {
-                return 'Day Not Yet Reached';
+                return 'Upcoming';
             }
+        }
+
+        function getActivityStatusPillClass(dueDate) {
+            const today = new Date();
+            const due = new Date(dueDate);
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            if (today > due) {
+                return 'inline-flex items-center rounded-full border border-amber-200/80 bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/50 dark:text-amber-200';
+            }
+            if (today.getTime() === due.getTime()) {
+                return 'inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200';
+            }
+            return 'inline-flex items-center rounded-full border border-slate-200/80 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
         }
 
         // Check if activity can be completed (on due day or overdue, but not future)
@@ -845,11 +1019,11 @@
             due.setHours(0, 0, 0, 0);
             
             if (today > due) {
-                return 'Mark Complete (Overdue)';
+                return 'Complete';
             } else if (today.getTime() === due.getTime()) {
-                return 'Mark Complete';
+                return 'Complete';
             } else {
-                return 'Day Not Reached';
+                return 'Not yet';
             }
         }
 
@@ -863,11 +1037,11 @@
             due.setHours(0, 0, 0, 0);
             
             if (today > due) {
-                return 'bg-orange-600 hover:bg-orange-700 text-white'; // Overdue - orange
+                return 'inline-flex min-w-[7rem] justify-center items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm bg-orange-600 hover:bg-orange-500 text-white shadow-sm shadow-orange-600/20 transition focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50';
             } else if (today.getTime() === due.getTime()) {
-                return 'bg-green-600 hover:bg-green-700 text-white'; // Due today - green
+                return 'inline-flex min-w-[7rem] justify-center items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-600/20 transition focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50';
             } else {
-                return 'bg-gray-400 text-gray-200 cursor-not-allowed'; // Future - gray
+                return 'inline-flex min-w-[7rem] justify-center items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-300 cursor-not-allowed';
             }
         }
 
@@ -946,69 +1120,93 @@
 
         function showActivitiesModal(activities, farrowingId) {
             const modalHTML = `
-                <div id="activities-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Farrowing Activities</h3>
-                            <button onclick="closeActivitiesModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                <i class="fas fa-times text-xl"></i>
-                            </button>
+                <div id="activities-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="farrowing-activities-title">
+                    <div class="absolute inset-0 bg-slate-900/55 dark:bg-slate-950/70 backdrop-blur-[2px]" aria-hidden="true" onclick="closeActivitiesModal()"></div>
+                    <div class="relative w-full max-w-4xl max-h-[min(92vh,820px)] flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+                        <div class="relative shrink-0 border-b border-white/10 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 px-5 py-5 sm:px-6 sm:py-5">
+                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/15 to-transparent"></div>
+                            <div class="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-amber-300/20 blur-2xl"></div>
+                            <div class="relative z-10 flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-start gap-3">
+                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg ring-2 ring-white/25">
+                                        <i class="fas fa-clipboard-list text-lg" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 id="farrowing-activities-title" class="text-lg sm:text-xl font-bold text-white tracking-tight">Farrowing activities</h3>
+                                        <p class="mt-0.5 text-sm text-amber-50/90">Farrowing #${farrowingId} · ${activities.length} step${activities.length === 1 ? '' : 's'}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeActivitiesModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/20 transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Close">
+                                    <i class="fas fa-times text-lg"></i>
+                                </button>
+                            </div>
                         </div>
-                        
-                        <div class="p-6">
-                            <div class="overflow-x-auto">
-                                <table class="w-full border-collapse">
+
+                        <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 bg-gradient-to-b from-slate-50/90 to-white dark:from-gray-800 dark:to-gray-800/95">
+                            <div class="overflow-x-auto rounded-xl border border-gray-200/90 dark:border-gray-600/80 bg-white dark:bg-gray-800/50 shadow-sm">
+                                <table class="w-full min-w-[640px] text-sm table-fixed">
                                     <thead>
-                                        <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Day</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Activity</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Due Date</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                        <tr class="bg-slate-100/90 dark:bg-slate-800/80">
+                                            <th class="w-[72px] px-3 py-3.5 text-left text-[0.65rem] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Day</th>
+                                            <th class="px-3 py-3.5 text-left text-[0.65rem] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Activity</th>
+                                            <th class="w-[108px] px-3 py-3.5 text-left text-[0.65rem] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Due</th>
+                                            <th class="w-[140px] px-3 py-3.5 text-left text-[0.65rem] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Status</th>
+                                            <th class="w-[120px] px-3 py-3.5 text-center text-[0.65rem] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        ${activities.map(activity => `
-                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" data-activity-id="${activity.id}" data-activity-ids="${(activity.activity_ids || [activity.id]).join(',')}">
-                                                <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Day ${activity.due_day}</td>
-                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white activity-name">${activity.activity_name}</td>
-                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${activity.due_date}</td>
-                                                <td class="px-4 py-3 text-sm">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-gray-700/80">
+                                        ${activities.map(activity => {
+                                            const dueDisp = formatModalDate(activity.due_date);
+                                            const metaParts = [];
+                                            if (activity.completed_date) metaParts.push(formatActivityCompletedAt(activity.completed_date));
+                                            if (activity.completed_by_name) metaParts.push(String(activity.completed_by_name));
+                                            const metaDone = metaParts.join(' · ');
+                                            return `
+                                            <tr class="align-top transition-colors hover:bg-amber-50/40 dark:hover:bg-gray-700/20" data-activity-id="${activity.id}" data-activity-ids="${(activity.activity_ids || [activity.id]).join(',')}">
+                                                <td class="px-3 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100">D${activity.due_day}</td>
+                                                <td class="px-3 py-3.5 text-sm text-slate-800 dark:text-slate-100 leading-snug activity-name">${activity.activity_name}</td>
+                                                <td class="px-3 py-3.5 text-sm text-slate-600 dark:text-slate-300 font-medium tabular-nums whitespace-nowrap">${dueDisp}</td>
+                                                <td class="px-3 py-3.5 text-sm">
                                                     ${activity.completed ? `
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                                            Completed
-                                                        </span>
-                                                        ${activity.completed_date ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${activity.completed_date}</div>` : ''}
-                                                        ${activity.completed_by_name ? `<div class="text-xs text-gray-500 dark:text-gray-400">by ${activity.completed_by_name}</div>` : ''}
+                                                        <div class="space-y-1">
+                                                            <span class="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200">Done</span>
+                                                            ${metaDone ? `<p class="text-xs leading-snug text-slate-500 dark:text-slate-400">${metaDone}</p>` : ''}
+                                                        </div>
                                                     ` : `
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                                            ${getActivityStatusText(activity.due_date)}
-                                                        </span>
+                                                        <span class="${getActivityStatusPillClass(activity.due_date)}" title="${getActivityStatusText(activity.due_date)} — complete when the due day has been reached.">${getActivityStatusText(activity.due_date)}</span>
                                                     `}
                                                 </td>
-                                                <td class="px-4 py-3 text-sm text-center">
+                                                <td class="px-3 py-3.5 text-center">
                                                     ${!activity.completed ? `
-                                                        <button onclick="completeActivity('${(activity.activity_ids || [activity.id]).join(',')}')" 
-                                                                class="px-3 py-1.5 text-sm rounded-lg transition-colors ${getButtonStyle(activity.due_date)}"
-                                                                ${!canCompleteActivity(activity.due_date) ? 'disabled' : ''}>
-                                                            ${getButtonText(activity.due_date)}
+                                                        <button type="button" onclick="completeActivity('${(activity.activity_ids || [activity.id]).join(',')}')"
+                                                                class="${getButtonStyle(activity.due_date)}"
+                                                                ${!canCompleteActivity(activity.due_date) ? 'disabled' : ''}
+                                                                title="${!canCompleteActivity(activity.due_date) ? 'Complete on or after the due date' : 'Mark as complete'}">
+                                                            <i class="fas fa-check text-xs" aria-hidden="true"></i> ${getButtonText(activity.due_date)}
                                                         </button>
-                                                    ` : '<span class="text-gray-400 dark:text-gray-500">-</span>'}
+                                                    ` : '<span class="text-slate-300 dark:text-slate-600" aria-label="No action">—</span>'}
                                                 </td>
                                             </tr>
                                             ${(activity.notes || (activity.completed && activity.activity_name === 'Weaning' && (activity.weaning_weight || activity.weaning_date))) ? `
-                                            <tr class="bg-gray-50 dark:bg-gray-700/30">
-                                                <td colspan="5" class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400">
-                                                    ${activity.notes ? `<div><strong>Notes:</strong> ${activity.notes}</div>` : ''}
-                                                    ${activity.completed && activity.activity_name === 'Weaning' && activity.weaning_weight ? `<div><strong>Weaning Weight:</strong> ${activity.weaning_weight} kg</div>` : ''}
-                                                    ${activity.completed && activity.activity_name === 'Weaning' && activity.weaning_date ? `<div><strong>Weaning Date:</strong> ${new Date(activity.weaning_date).toLocaleString()}</div>` : ''}
+                                            <tr class="bg-slate-50/80 dark:bg-gray-900/30">
+                                                <td colspan="5" class="px-3 pb-3 pt-0">
+                                                    <div class="ml-1 flex gap-2 rounded-r-xl border-l-4 border-amber-400/90 bg-amber-50/90 py-2.5 pl-3 pr-3 dark:border-amber-600/60 dark:bg-amber-950/25">
+                                                        <i class="fas fa-sticky-note mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden="true"></i>
+                                                        <div class="min-w-0 space-y-1.5 text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                                                            ${activity.notes ? `<p><span class="font-semibold text-slate-800 dark:text-slate-100">Note:</span> ${activity.notes}</p>` : ''}
+                                                            ${activity.completed && activity.activity_name === 'Weaning' && activity.weaning_weight ? `<p><span class="font-semibold">Wean wt:</span> ${activity.weaning_weight} kg</p>` : ''}
+                                                            ${activity.completed && activity.activity_name === 'Weaning' && activity.weaning_date ? `<p><span class="font-semibold">Wean date:</span> ${formatActivityCompletedAt(activity.weaning_date)}</p>` : ''}
+                                                        </div>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             ` : ''}
-                                        `).join('')}
+                                        `;
+                                        }).join('')}
                                     </tbody>
                                 </table>
                             </div>
+                            <p class="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">Overdue items stay available to complete. Tap <strong>Complete</strong> when work is done.</p>
                         </div>
                     </div>
                 </div>
@@ -1197,7 +1395,8 @@
             const expected = parseFloat(expEl.textContent);
             const actual   = parseFloat(wInput.value);
             if (Number.isNaN(expected) || Number.isNaN(actual) || expected <= 0) {
-                outEl.innerHTML = '';
+                outEl.textContent = '';
+                outEl.className = activityWeighInState.modalKind === 'weaning' ? 'mt-1.5 min-h-[1.25rem] text-xs' : 'mt-1 text-xs';
                 activityWeighInState.manualHealthOverride = false;
                 applyActivityAutoHealthStatus(null);
                 return;
@@ -1209,7 +1408,8 @@
             else if (pct > 5)            cls = 'text-blue-600 dark:text-blue-400';
             else                         cls = 'text-amber-600 dark:text-amber-400';
             const sign = diff >= 0 ? '+' : '';
-            outEl.className = 'mt-1 text-xs font-semibold ' + cls;
+            const marginCls = activityWeighInState.modalKind === 'weaning' ? 'mt-1.5 min-h-[1.25rem] ' : 'mt-1 ';
+            outEl.className = marginCls + 'text-xs font-semibold ' + cls;
             outEl.textContent = `${sign}${diff.toFixed(2)} kg vs expected (${sign}${pct.toFixed(1)}%)`;
             applyActivityAutoHealthStatus(pct);
         }
@@ -1221,9 +1421,10 @@
             const hint   = document.getElementById(hintId);
             if (!select) return;
 
+            const weaningHint = activityWeighInState.modalKind === 'weaning' ? 'mt-1.5 min-h-[1.25rem] ' : 'mt-1 ';
             if (activityWeighInState.manualHealthOverride) {
                 if (hint) {
-                    hint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+                    hint.className = weaningHint + 'text-xs text-gray-500 dark:text-gray-400';
                     hint.textContent = 'Manually selected — clear the weight or change the status to re-enable auto-detection.';
                 }
                 return;
@@ -1250,7 +1451,7 @@
                     sick:       'text-amber-600 dark:text-amber-400',
                     critical:   'text-red-600 dark:text-red-400'
                 };
-                hint.className = 'mt-1 text-xs font-semibold ' + (toneMap[suggested] || 'text-gray-500 dark:text-gray-400');
+                hint.className = weaningHint + 'text-xs font-semibold ' + (toneMap[suggested] || 'text-gray-500 dark:text-gray-400');
                 hint.innerHTML = `<i class="fas fa-wand-magic-sparkles mr-1"></i>Auto-detected: ${labelMap[suggested] || suggested} — you can override.`;
             }
         }
@@ -1260,7 +1461,8 @@
             const hintId = activityWeighInState.modalKind === 'weaning' ? 'weaningHealthHint' : 'activityHealthHint';
             const hint = document.getElementById(hintId);
             if (hint) {
-                hint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+                const weaningHint = activityWeighInState.modalKind === 'weaning' ? 'mt-1.5 min-h-[1.25rem] ' : 'mt-1 ';
+                hint.className = weaningHint + 'text-xs text-gray-500 dark:text-gray-400';
                 hint.textContent = 'Manually selected — clear the weight or change the status to re-enable auto-detection.';
             }
             toggleActivityNotesRequired();
@@ -1357,105 +1559,157 @@
             }
         }
 
+        /** Weaning modal: completion date matches the calendar day of the weaning event. */
+        function syncWeaningCompletedDateFromWeaningDateTime() {
+            const w = document.getElementById('weaningDateTime');
+            const c = document.getElementById('weaningCompletedDate');
+            if (!w || !c || !w.value) return;
+            c.value = w.value.slice(0, 10);
+            recalcActivityExpectedWeight();
+        }
+
+        function syncWeaningDateTimeFromCompletedDate() {
+            const c = document.getElementById('weaningCompletedDate');
+            const w = document.getElementById('weaningDateTime');
+            if (!c || !w) return;
+            if (!c.value) return;
+            let tPart;
+            if (w.value && w.value.includes('T')) {
+                tPart = w.value.substring(10);
+            } else {
+                const n = new Date();
+                tPart = 'T' + String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0');
+            }
+            w.value = c.value + tPart;
+            recalcActivityExpectedWeight();
+        }
+
         // Show weaning completion modal
         function showWeaningCompletionModal(activityIds) {
-            const todayIso = new Date().toISOString().slice(0,10);
+            const _now = new Date();
+            const _pad = (n) => String(n).padStart(2, '0');
+            const localTodayStr = `${_now.getFullYear()}-${_pad(_now.getMonth() + 1)}-${_pad(_now.getDate())}`;
             const ctx = activityWeighInState.context || {};
             const litterTag = ctx.litter_tag ? `Litter ${ctx.litter_tag}` : 'Litter';
             const sowTag = ctx.sow_tag_id ? ` · Sow ${ctx.sow_tag_id}` : '';
 
             const modalHTML = `
-                <div id="weaning-completion-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 max-h-[95vh] overflow-y-auto">
-                        <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Complete Weaning Activity</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">${litterTag}${sowTag}</p>
+                <div id="weaning-completion-modal" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="weaning-modal-title">
+                    <div class="absolute inset-0 bg-slate-900/55 dark:bg-slate-950/70 backdrop-blur-[2px]" aria-hidden="true"></div>
+                    <div class="relative w-full max-w-2xl max-h-[min(94vh,820px)] flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+                        <div class="relative shrink-0 border-b border-white/10 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-5 py-5 sm:px-6 sm:py-5">
+                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/12 to-transparent"></div>
+                            <div class="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-cyan-300/15 blur-2xl"></div>
+                            <div class="relative z-10 flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-start gap-3">
+                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg ring-2 ring-white/25">
+                                        <i class="fas fa-baby" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 id="weaning-modal-title" class="text-lg sm:text-xl font-bold text-white tracking-tight">Complete weaning</h3>
+                                        <p class="mt-0.5 text-sm text-emerald-50/90">${litterTag}${sowTag}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeWeaningCompletionModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/20 transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Close">
+                                    <i class="fas fa-times text-lg"></i>
+                                </button>
                             </div>
-                            <button onclick="closeWeaningCompletionModal()" class="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <i class="fas fa-times"></i>
-                            </button>
                         </div>
 
-                        <form id="weaningCompletionForm" class="px-6 py-5 space-y-4">
+                        <form id="weaningCompletionForm" class="flex min-h-0 flex-1 flex-col">
                             <input type="hidden" id="weaningActivityIds" value="${activityIds.join(',')}">
 
-                            <!-- Activity Completion Date -->
-                            <div>
-                                <label for="weaningCompletedDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    <i class="fas fa-calendar-day mr-2 text-blue-500"></i>Completion Date <span class="text-red-500">*</span>
-                                </label>
-                                <input type="date" id="weaningCompletedDate" name="completed_date" max="${todayIso}" value="${todayIso}"
-                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Date the weaning activity was actually carried out.</p>
-                            </div>
+                            <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-gradient-to-b from-slate-50/90 to-white dark:from-gray-800 dark:to-gray-800/95">
 
-                            <!-- Age + Expected weight tiles (auto) -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div class="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                                    <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Litter Age At Date</p>
-                                    <p id="weaningAgeAtDate" class="text-lg font-bold text-gray-900 dark:text-white">—</p>
+                                <h4 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2.5">
+                                    <span class="inline-block h-0.5 w-6 rounded-full bg-gradient-to-r from-emerald-500 to-teal-300/50"></span>
+                                    When &amp; reference
+                                </h4>
+                                <div>
+                                    <label for="weaningCompletedDate" class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                                        <i class="fas fa-calendar-check text-emerald-600 dark:text-emerald-400" aria-hidden="true"></i>
+                                        Activity completion date <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="date" id="weaningCompletedDate" name="completed_date" max="${localTodayStr}"
+                                           class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-600 dark:bg-slate-700/50 dark:text-white" required>
+                                    <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Main field — <strong>defaults to today</strong> (the day you record the activity). Change it if the task was completed on another day. Litter age &amp; expected weight use this date.</p>
                                 </div>
-                                <div class="p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
-                                    <p class="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-300">Expected Weight (kg)</p>
-                                    <p id="weaningExpectedWeight" class="text-lg font-bold text-indigo-700 dark:text-indigo-200">—</p>
-                                    <p id="weaningCategoryName" class="text-xs text-indigo-600/80 dark:text-indigo-300/70"></p>
+
+                                <div>
+                                    <label for="weaningDateTime" class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                                        <i class="fas fa-clock text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
+                                        Weaning date &amp; time <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="datetime-local" id="weaningDateTime" name="weaning_date"
+                                           class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 dark:border-slate-600 dark:bg-slate-700/50 dark:text-white" required>
+                                    <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Starts on the <strong>same calendar day</strong> as the completion date (with current time). Edit if the real weaning moment was at a different time or day.</p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div class="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-600/80 dark:bg-slate-800/60">
+                                        <p class="text-[0.65rem] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Litter age at date</p>
+                                        <p id="weaningAgeAtDate" class="mt-1.5 text-xl font-bold tabular-nums text-slate-900 dark:text-white">—</p>
+                                    </div>
+                                    <div class="rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/90 to-sky-50/50 p-4 shadow-sm ring-1 ring-indigo-100/80 dark:border-indigo-800/50 dark:from-indigo-950/40 dark:to-slate-900/30 dark:ring-indigo-900/30">
+                                        <p class="text-[0.65rem] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Expected weight (kg)</p>
+                                        <p id="weaningExpectedWeight" class="mt-1.5 text-xl font-bold tabular-nums text-indigo-800 dark:text-indigo-200">—</p>
+                                        <p id="weaningCategoryName" class="mt-0.5 text-xs font-medium text-indigo-600/90 dark:text-indigo-300/80"></p>
+                                    </div>
+                                </div>
+
+                                <h4 class="pt-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2.5">
+                                    <span class="inline-block h-0.5 w-6 rounded-full bg-gradient-to-r from-amber-400 to-amber-200/40"></span>
+                                    Wean-in details
+                                </h4>
+                                <div>
+                                    <label for="weaningWeight" class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                                        <i class="fas fa-weight text-emerald-500" aria-hidden="true"></i>
+                                        Litter average weight (kg) <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" id="weaningWeight" name="weaning_weight" min="0.1" max="100.0" step="0.1" placeholder="e.g. 16.5"
+                                           class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-600 dark:bg-slate-700/50 dark:text-white" required>
+                                    <p id="weaningWeightComparison" class="mt-1.5 min-h-[1.25rem] text-xs"></p>
+                                </div>
+
+                                <div>
+                                    <label for="weaningHealthStatus" class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                                        <i class="fas fa-stethoscope text-rose-500" aria-hidden="true"></i>
+                                        Litter health <span class="text-red-500">*</span>
+                                    </label>
+                                    <select id="weaningHealthStatus" required class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-300/40 dark:border-slate-600 dark:bg-slate-700/50 dark:text-white">
+                                        <option value="healthy">Healthy</option>
+                                        <option value="recovering">Recovering</option>
+                                        <option value="sick">Sick</option>
+                                        <option value="critical">Critical</option>
+                                        <option value="quarantine">Quarantine</option>
+                                        <option value="injured">Injured</option>
+                                    </select>
+                                    <p id="weaningHealthHint" class="mt-1.5 min-h-[1.25rem] text-xs text-slate-600 dark:text-slate-300"></p>
+                                </div>
+
+                                <div>
+                                    <label for="weaningNotes" class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                                        <i class="fas fa-sticky-note text-amber-500" aria-hidden="true"></i>
+                                        Notes
+                                        <span id="weaningNotesRequired" class="hidden text-red-500">*</span>
+                                    </label>
+                                    <textarea id="weaningNotes" name="notes" rows="3" placeholder="Observations, treatments, or follow-up for this litter…"
+                                              class="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200/50 dark:border-slate-600 dark:bg-slate-700/50 dark:text-white"></textarea>
+                                    <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Required if health is not <em class="not-italic font-semibold">Healthy</em> — explain why and what was done.</p>
                                 </div>
                             </div>
 
-                            <!-- Weaning Weight (= actual weigh-in) -->
-                            <div>
-                                <label for="weaningWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    <i class="fas fa-weight mr-2 text-emerald-500"></i>Weaning Weight (kg) <span class="text-red-500">*</span>
-                                </label>
-                                <input type="number" id="weaningWeight" name="weaning_weight" min="0.1" max="100.0" step="0.1"
-                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white" required>
-                                <p id="weaningWeightComparison" class="mt-1 text-xs"></p>
-                            </div>
-
-                            <!-- Weaning Date and Time (biological event) -->
-                            <div>
-                                <label for="weaningDateTime" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Weaning Date & Time <span class="text-red-500">*</span>
-                                </label>
-                                <input type="datetime-local" id="weaningDateTime" name="weaning_date"
-                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
-                            </div>
-
-                            <!-- Health status (auto-suggested) -->
-                            <div>
-                                <label for="weaningHealthStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    <i class="fas fa-heart-pulse mr-2 text-pink-500"></i>Litter Health Status <span class="text-red-500">*</span>
-                                </label>
-                                <select id="weaningHealthStatus" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white">
-                                    <option value="healthy">Healthy</option>
-                                    <option value="recovering">Recovering</option>
-                                    <option value="sick">Sick</option>
-                                    <option value="critical">Critical</option>
-                                    <option value="quarantine">Quarantine</option>
-                                    <option value="injured">Injured</option>
-                                </select>
-                                <p id="weaningHealthHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
-                            </div>
-
-                            <!-- Notes -->
-                            <div>
-                                <label for="weaningNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    <i class="fas fa-notes-medical mr-2 text-amber-500"></i>Notes
-                                    <span id="weaningNotesRequired" class="hidden text-red-500">*</span>
-                                </label>
-                                <textarea id="weaningNotes" name="notes" rows="3" placeholder="Additional notes about the weaning..."
-                                          class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Required whenever the health status is not <em>Healthy</em>.</p>
-                            </div>
-
-                            <div class="flex justify-end space-x-3 pt-2">
-                                <button type="button" onclick="closeWeaningCompletionModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors">
-                                    Cancel
-                                </button>
-                                <button type="button" onclick="submitWeaningCompletion()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                    Complete Weaning
-                                </button>
+                            <div class="shrink-0 border-t border-slate-200/80 bg-white/90 px-4 py-4 sm:px-6 dark:border-slate-600/60 dark:bg-slate-800/90">
+                                <div class="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                                    <button type="button" onclick="closeWeaningCompletionModal()"
+                                            class="order-2 inline-flex w-full items-center justify-center rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/80 sm:order-1 sm:w-auto">
+                                        Cancel
+                                    </button>
+                                    <button type="button" onclick="submitWeaningCompletion()"
+                                            class="order-1 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-600/25 transition hover:from-emerald-500 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/80 sm:order-2 sm:w-auto">
+                                        <i class="fas fa-check" aria-hidden="true"></i> Save weaning
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -1467,13 +1721,17 @@
             activityWeighInState.modalKind = 'weaning';
             activityWeighInState.manualHealthOverride = false;
 
-            // Default biological weaning date/time to now.
+            // Completion date is primary (defaults to local today); weaning datetime matches that day at current time.
             const now = new Date();
             const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-            document.getElementById('weaningDateTime').value = localDateTime;
+            const wdt = document.getElementById('weaningDateTime');
+            const cdt = document.getElementById('weaningCompletedDate');
+            cdt.value = localDateTime.slice(0, 10);
+            wdt.value = localDateTime;
 
-            // Wire listeners
-            document.getElementById('weaningCompletedDate').oninput = recalcActivityExpectedWeight;
+            wdt.addEventListener('input', syncWeaningCompletedDateFromWeaningDateTime);
+            wdt.addEventListener('change', syncWeaningCompletedDateFromWeaningDateTime);
+            cdt.oninput = syncWeaningDateTimeFromCompletedDate;
             document.getElementById('weaningWeight').oninput = recalcActivityWeightComparison;
             document.getElementById('weaningHealthStatus').onchange = onActivityHealthStatusChange;
 

@@ -157,19 +157,32 @@
                 <div class="lg:col-span-1">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
                         <div class="text-center">
-                            <div class="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-white font-bold text-2xl">👑</span>
+                            <div class="relative w-28 h-28 mx-auto mb-4">
+                                <img id="profile-avatar-img" src="{% if user.profile_image_url %}{{ user.profile_image_url }}{% endif %}" alt=""
+                                     class="w-28 h-28 rounded-full object-cover border-2 border-white shadow-md ring-2 ring-gray-200 dark:ring-gray-600 {% if not user.profile_image_url %}hidden{% endif %}">
+                                <div id="profile-avatar-fallback" class="w-28 h-28 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border-2 border-white shadow-md ring-2 ring-gray-200 dark:ring-gray-600 {% if user.profile_image_url %}hidden{% endif %}">
+                                    <span class="text-2xl font-bold text-white tracking-tight">{{ user.initials }}</span>
+                                </div>
                             </div>
+                            <input type="file" id="profile-photo-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="sr-only" aria-label="Upload profile photo">
+                            <button type="button" id="profile-photo-btn" class="inline-flex items-center gap-2 px-3 py-1.5 mb-3 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200/80 dark:border-blue-800/50">
+                                <i class="fas fa-camera text-xs" aria-hidden="true"></i> Change photo
+                            </button>
+                            <p id="profile-photo-status" class="text-xs text-gray-500 dark:text-gray-400 min-h-[1.25rem]" role="status"></p>
+
                             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ user.name }}</h2>
-                            <p class="text-gray-600 dark:text-gray-400">{{ user.role.title() }}</p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ user.email }}</p>
-                            
+                            <p class="text-gray-600 dark:text-gray-400 capitalize">{{ (user.role|replace('_', ' '))|title if user.role else '—' }}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">{{ user.email }}</p>
+                            {% if user.phone %}
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ user.phone }}</p>
+                            {% endif %}
+
                             <div class="mt-4">
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                     <svg class="w-2 h-2 mr-1" fill="currentColor" viewBox="0 0 8 8">
                                         <circle cx="4" cy="4" r="3"></circle>
                                     </svg>
-                                    {{ user.status.title() }}
+                                    {{ user.status|replace('_', ' ')|title if user.status else '—' }}
                                 </span>
                             </div>
                         </div>
@@ -196,6 +209,12 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                                         <input type="email" value="{{ user.email }}" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" readonly>
                                     </div>
+                                    {% if user.phone %}
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone</label>
+                                        <input type="text" value="{{ user.phone }}" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" readonly>
+                                    </div>
+                                    {% endif %}
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
                                         <input type="text" value="{{ user.role.title() }}" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" readonly>
@@ -214,19 +233,52 @@
                                     <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                         <div>
                                             <h5 class="text-sm font-medium text-gray-900 dark:text-white">Password</h5>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">Last changed: Never</p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">Use a strong password you do not use elsewhere</p>
                                         </div>
-                                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                        <button type="button" id="change-password-open" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
                                             Change Password
                                         </button>
+                                    </div>
+
+                                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200/80 dark:border-gray-600">
+                                        <h5 class="text-sm font-medium text-gray-900 dark:text-white mb-1">Sign in with biometrics or passkey</h5>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Register this browser or device so you can use Windows Hello, Touch ID, Face ID, or a FIDO2 security key to sign in without typing your password. Works in Chrome, Edge, and Safari on HTTPS or <code class="text-xs">localhost</code> / <code class="text-xs">127.0.0.1</code>.</p>
+                                        <p id="webauthn-profile-hint" class="text-xs text-amber-700 dark:text-amber-300 mb-3 hidden" role="status"></p>
+                                        <div class="flex flex-col sm:flex-row gap-2 sm:items-end mb-3">
+                                            <div class="flex-1">
+                                                <label for="webauthn-device-label" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Label (optional)</label>
+                                                <input type="text" id="webauthn-device-label" maxlength="64" placeholder="e.g. Work laptop, iPhone" autocomplete="off"
+                                                    class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                                            </div>
+                                            <button type="button" id="webauthn-register-btn" class="shrink-0 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                Register this device
+                                            </button>
+                                        </div>
+                                        <p id="webauthn-register-status" class="text-sm min-h-[1.25rem] text-gray-600 dark:text-gray-400" role="status"></p>
+                                        <div class="mt-4 border-t border-gray-200 dark:border-gray-600 pt-3">
+                                            <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">Registered devices</h6>
+                                            <ul class="space-y-2" id="webauthn-credential-list">
+                                                {% for c in user.webauthn_credentials|default([]) %}
+                                                <li class="flex items-center justify-between gap-2 text-sm py-2 px-3 bg-white/80 dark:bg-gray-800/80 rounded-lg border border-gray-200/90 dark:border-gray-600" data-cred-id="{{ c.id }}">
+                                                    <div class="min-w-0">
+                                                        <div class="font-medium text-gray-900 dark:text-white truncate">{{ c.label or 'Device' }}</div>
+                                                        <div class="text-xs text-gray-500 dark:text-gray-400">Added {% if c.created_at %}{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</div>
+                                                    </div>
+                                                    <button type="button" class="webauthn-remove-cred text-xs text-red-600 dark:text-red-400 hover:underline shrink-0">Remove</button>
+                                                </li>
+                                                {% else %}
+                                                <li class="text-sm text-gray-500 dark:text-gray-400" id="webauthn-credential-empty">No devices yet. Register one to enable biometric sign-in on the login page.</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
                                     </div>
                                     
                                     <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                         <div>
                                             <h5 class="text-sm font-medium text-gray-900 dark:text-white">Two-Factor Authentication</h5>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security</p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security (email/SMS) — coming soon</p>
                                         </div>
-                                        <button class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                                        <button type="button" disabled class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed text-sm" title="Not yet available">
                                             Enable 2FA
                                         </button>
                                     </div>
@@ -265,6 +317,41 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change password modal -->
+    <div id="change-password-modal" class="fixed inset-0 z-[100] hidden" aria-hidden="true">
+        <div class="absolute inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm" data-change-password-backdrop></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="pointer-events-auto w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="change-password-title">
+                <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 id="change-password-title" class="text-lg font-semibold text-gray-900 dark:text-white">Change password</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Enter your current password, then your new one.</p>
+                </div>
+                <form id="change-password-form" class="p-5 space-y-4">
+                    <div>
+                        <label for="pw-current" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current password</label>
+                        <input type="password" id="pw-current" name="current_password" required autocomplete="current-password"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                    </div>
+                    <div>
+                        <label for="pw-new" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New password</label>
+                        <input type="password" id="pw-new" name="new_password" required minlength="6" autocomplete="new-password"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                    </div>
+                    <div>
+                        <label for="pw-confirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm new password</label>
+                        <input type="password" id="pw-confirm" name="confirm_password" required minlength="6" autocomplete="new-password"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                    </div>
+                    <p id="change-password-msg" class="text-sm min-h-[1.25rem]" role="status"></p>
+                    <div class="flex justify-end gap-2 pt-1">
+                        <button type="button" id="change-password-cancel" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
+                        <button type="submit" id="change-password-submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">Save new password</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -347,6 +434,253 @@
         
         updateTime();
         setInterval(updateTime, 1000);
+
+        (function() {
+            const input = document.getElementById('profile-photo-input');
+            const btn = document.getElementById('profile-photo-btn');
+            const img = document.getElementById('profile-avatar-img');
+            const fb = document.getElementById('profile-avatar-fallback');
+            const status = document.getElementById('profile-photo-status');
+            if (!input || !btn || !img || !fb) return;
+            btn.addEventListener('click', function() { input.click(); });
+            input.addEventListener('change', async function() {
+                const file = this.files[0];
+                if (!file) return;
+                status.textContent = 'Uploading…';
+                status.className = 'text-xs text-gray-500 dark:text-gray-400 min-h-[1.25rem]';
+                const fd = new FormData();
+                fd.append('profile_image', file);
+                try {
+                    const res = await fetch('/api/profile/photo', { method: 'POST', body: fd, credentials: 'same-origin' });
+                    const data = await res.json();
+                    if (data.success && data.profile_image_url) {
+                        const base = data.profile_image_url;
+                        const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+                        img.src = url;
+                        img.classList.remove('hidden');
+                        fb.classList.add('hidden');
+                        document.querySelectorAll('header .farm-chrome-avatar img').forEach((el) => {
+                            el.src = url;
+                            el.style.removeProperty('display');
+                            const fall = el.parentElement && el.parentElement.querySelector('.farm-chrome-avatar-fallback');
+                            if (fall) fall.classList.add('hidden');
+                        });
+                        status.textContent = 'Profile photo updated.';
+                        status.className = 'text-xs text-emerald-600 dark:text-emerald-400 min-h-[1.25rem]';
+                        setTimeout(function() { status.textContent = ''; }, 4000);
+                    } else {
+                        status.textContent = (data && data.error) ? data.error : 'Upload failed.';
+                        status.className = 'text-xs text-red-600 dark:text-red-400 min-h-[1.25rem]';
+                    }
+                } catch (e) {
+                    status.textContent = 'Network error. Try again.';
+                    status.className = 'text-xs text-red-600 min-h-[1.25rem]';
+                }
+                this.value = '';
+            });
+        })();
+
+        (function () {
+            const hint = document.getElementById('webauthn-profile-hint');
+            const regBtn = document.getElementById('webauthn-register-btn');
+            const status = document.getElementById('webauthn-register-status');
+            const labelIn = document.getElementById('webauthn-device-label');
+            const list = document.getElementById('webauthn-credential-list');
+            if (!regBtn) return;
+            if (!window.PublicKeyCredential) {
+                if (hint) { hint.classList.remove('hidden'); hint.textContent = 'Your browser does not support WebAuthn (biometric / passkey) sign-in.'; }
+                regBtn.disabled = true;
+                return;
+            }
+            if (typeof window.isSecureContext !== 'undefined' && !window.isSecureContext) {
+                if (hint) { hint.classList.remove('hidden'); hint.textContent = 'Open this site on https, or on http://127.0.0.1 or http://localhost (secure context) for WebAuthn.'; }
+            }
+            function b64uToBuf(s) {
+                if (!s) return new ArrayBuffer(0);
+                s = s.replace(/-/g, '+').replace(/_/g, '/');
+                const pad = s.length % 4 ? 4 - (s.length % 4) : 0;
+                if (pad) s += '='.repeat(pad);
+                const str = atob(s);
+                const buf = new ArrayBuffer(str.length);
+                const v = new Uint8Array(buf);
+                for (let i = 0; i < str.length; i++) v[i] = str.charCodeAt(i);
+                return buf;
+            }
+            function bufB64u(buf) {
+                const b = new Uint8Array(buf);
+                let s = '';
+                for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+                return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+            }
+            function prepCreate(o) {
+                if (!o || !o.challenge) throw new Error('Invalid options from server (missing challenge).');
+                if (!o.user || o.user.id === undefined || o.user.id === null) {
+                    throw new Error('Invalid options from server (missing user).');
+                }
+                const x = Object.assign({}, o);
+                x.challenge = b64uToBuf(x.challenge);
+                x.user = Object.assign({}, x.user, { id: b64uToBuf(x.user.id) });
+                if (x.excludeCredentials && x.excludeCredentials.length) {
+                    x.excludeCredentials = x.excludeCredentials.map(function (c) {
+                        return Object.assign({}, c, { id: b64uToBuf(c.id) });
+                    });
+                }
+                return x;
+            }
+            function regToJSON(cred) {
+                if (!cred || !cred.response) throw new Error('No credential from your device. Try again.');
+                const r = cred.response;
+                if (typeof r.clientDataJSON === 'undefined' || typeof r.attestationObject === 'undefined') {
+                    throw new Error('Browser did not return attestation data. Use Chrome, Edge, or Safari on https or 127.0.0.1.');
+                }
+                return {
+                    id: cred.id,
+                    rawId: bufB64u(cred.rawId),
+                    type: cred.type,
+                    response: {
+                        clientDataJSON: bufB64u(r.clientDataJSON),
+                        attestationObject: bufB64u(r.attestationObject)
+                    }
+                };
+            }
+            var webauthnRegisterBusy = false;
+            regBtn.addEventListener('click', async function () {
+                if (webauthnRegisterBusy) return;
+                if (status) { status.textContent = ''; status.className = 'text-sm min-h-[1.25rem] text-gray-600 dark:text-gray-400'; }
+                regBtn.disabled = true;
+                webauthnRegisterBusy = true;
+                try {
+                    const b = await fetch('/api/webauthn/register/begin', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+                    const rawBegin = await b.text();
+                    let d;
+                    try { d = JSON.parse(rawBegin); } catch (parseErr) {
+                        if (status) { status.textContent = 'Invalid response from server when starting registration.'; status.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                        return;
+                    }
+                    if (!d.success || !d.options) {
+                        if (status) { status.textContent = (d && d.error) || 'Could not start registration.'; status.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                        return;
+                    }
+                    const publicKey = prepCreate(d.options);
+                    const cred = await navigator.credentials.create({ publicKey: publicKey });
+                    const body = { credential: regToJSON(cred), label: (labelIn && labelIn.value) ? labelIn.value.trim() : 'This device' };
+                    const c2 = await fetch('/api/webauthn/register/complete', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    const raw = await c2.text();
+                    let d2;
+                    try { d2 = JSON.parse(raw); } catch (parseErr) {
+                        if (status) {
+                            status.textContent = c2.status >= 500
+                                ? 'Server error while saving. Check the app terminal, then try again.'
+                                : ('Unexpected response: ' + raw.substring(0, 120));
+                            status.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400';
+                        }
+                        return;
+                    }
+                    if (d2.success) {
+                        if (status) { status.textContent = d2.message || 'Device registered.'; status.className = 'text-sm min-h-[1.25rem] text-emerald-600 dark:text-emerald-400'; }
+                        window.location.reload();
+                    } else {
+                        if (status) { status.textContent = (d2 && d2.error) || 'Registration failed.'; status.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                    }
+                } catch (e) {
+                    var msg = (e && e.message) ? String(e.message) : String(e);
+                    if (e && e.name === 'NotAllowedError') msg = 'Request was cancelled or not allowed (try again when prompted).';
+                    if (status) { status.textContent = msg; status.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                } finally {
+                    regBtn.disabled = false;
+                    webauthnRegisterBusy = false;
+                }
+            });
+            if (list) {
+                list.addEventListener('click', async function (e) {
+                    const t = e.target;
+                    if (!t.classList || !t.classList.contains('webauthn-remove-cred')) return;
+                    e.preventDefault();
+                    const li = t.closest('li');
+                    const id = li && li.getAttribute('data-cred-id');
+                    if (!id) return;
+                    if (!window.confirm('Remove this device? You can register it again later from this page.')) return;
+                    t.disabled = true;
+                    try {
+                        const r = await fetch('/api/webauthn/credentials/' + id, { method: 'DELETE', credentials: 'same-origin' });
+                        const j = await r.json();
+                        if (j.success) { window.location.reload(); }
+                        else { window.alert((j && j.error) || 'Remove failed.'); t.disabled = false; }
+                    } catch (err) {
+                        window.alert('Network error.');
+                        t.disabled = false;
+                    }
+                });
+            }
+        })();
+
+        (function () {
+            const modal = document.getElementById('change-password-modal');
+            const openBtn = document.getElementById('change-password-open');
+            const cancel = document.getElementById('change-password-cancel');
+            const form = document.getElementById('change-password-form');
+            const msg = document.getElementById('change-password-msg');
+            const submit = document.getElementById('change-password-submit');
+            if (!modal || !openBtn || !form) return;
+            const backdrop = modal.querySelector('[data-change-password-backdrop]');
+            function showModal() {
+                modal.classList.remove('hidden');
+                modal.setAttribute('aria-hidden', 'false');
+                document.getElementById('pw-current').focus();
+            }
+            function hideModal() {
+                modal.classList.add('hidden');
+                modal.setAttribute('aria-hidden', 'true');
+                form.reset();
+                if (msg) { msg.textContent = ''; msg.className = 'text-sm min-h-[1.25rem]'; }
+            }
+            openBtn.addEventListener('click', function () { showModal(); });
+            if (cancel) cancel.addEventListener('click', hideModal);
+            if (backdrop) backdrop.addEventListener('click', hideModal);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) hideModal();
+            });
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const current_password = (document.getElementById('pw-current') && document.getElementById('pw-current').value) || '';
+                const new_password = (document.getElementById('pw-new') && document.getElementById('pw-new').value) || '';
+                const confirm_password = (document.getElementById('pw-confirm') && document.getElementById('pw-confirm').value) || '';
+                if (msg) { msg.textContent = ''; }
+                if (new_password.length < 6) {
+                    if (msg) { msg.textContent = 'New password must be at least 6 characters.'; msg.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                    return;
+                }
+                if (new_password !== confirm_password) {
+                    if (msg) { msg.textContent = 'New password and confirmation do not match.'; msg.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                    return;
+                }
+                if (submit) { submit.disabled = true; }
+                try {
+                    const res = await fetch('/api/profile/password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ current_password, new_password, confirm_password })
+                    });
+                    const data = await res.json().catch(function () { return {}; });
+                    if (data.success) {
+                        if (msg) { msg.textContent = data.message || 'Password updated.'; msg.className = 'text-sm min-h-[1.25rem] text-emerald-600 dark:text-emerald-400'; }
+                        setTimeout(hideModal, 1200);
+                    } else {
+                        if (msg) { msg.textContent = (data && data.error) ? data.error : 'Could not update password.'; msg.className = 'text-sm min-h-[1.25rem] text-red-600 dark:text-red-400'; }
+                    }
+                } catch (err) {
+                    if (msg) { msg.textContent = 'Network error. Try again.'; msg.className = 'text-sm min-h-[1.25rem] text-red-600'; }
+                } finally {
+                    if (submit) { submit.disabled = false; }
+                }
+            });
+        })();
 
         // Logout functionality
         document.getElementById('logout-btn').addEventListener('click', async function() {

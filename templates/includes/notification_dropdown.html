@@ -39,10 +39,15 @@
     var notificationBtn, notificationPopup, notificationBadge, notificationsList, closeNotifications;
     var pigFeedingUrl = "{{ '/manager/farm/pig-feeding-management' if user and user.role == 'manager' else '/admin/farm/pig-feeding-management' }}";
     var cowFeedingUrl = "{{ '/manager/farm/cow-feeding-management' if user and user.role == 'manager' else '/admin/farm/cow-feeding-management' }}";
+    var chickenFeedingUrl = "{{ '/manager/farm/chicken-feeding-management' if user and user.role == 'manager' else '/admin/farm/chicken-feeding-management' }}";
     var breedingUrl = "{{ '/manager/farm/breeding-records' if user and user.role == 'manager' else '/admin/farm/breeding-records' }}";
+    var cowBreedingUrl = "{{ '/manager/farm/cow-breeding' if user and user.role == 'manager' else '/admin/farm/cow-breeding' }}";
     var farrowingsUrl = "{{ '/manager/farm/completed-farrowings' if user and user.role == 'manager' else '/admin/farm/completed-farrowings' }}";
     var vaccinationUrl = "{{ '/manager/farm/vaccination-tracking' if user and user.role == 'manager' else '/admin/farm/vaccination-tracking' }}";
+    var cowVaccinationUrl = "{{ '/manager/farm/cow-vaccination-tracking' if user and user.role == 'manager' else '/admin/farm/cow-vaccination-tracking' }}";
     var insertWeightUrl = "{{ '/manager/farm/insert-weight' if user and user.role == 'manager' else '/admin/farm/insert-weight' }}";
+    var cowWeightUrl = "{{ '/manager/farm/cow-weight-assessment' if user and user.role == 'manager' else '/admin/farm/cow-weight-assessment' }}";
+    var chickenFlockUrl = "{{ '/manager/farm/chicken-flock-management' if user and user.role == 'manager' else '/admin/farm/chicken-flock-management' }}";
 
     function initNotifications() {
         notificationBtn = document.getElementById('notification-btn');
@@ -92,8 +97,8 @@
                         bgColor = 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20';
                         borderColor = 'border-green-200 dark:border-green-700';
                         icon = '<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>';
-                        title = 'Feeding Notifications';
-                        description = group.count + ' feeding time' + (group.count > 1 ? 's' : '') + ' require attention';
+                        title = 'Pig feeding';
+                        description = group.count + ' pig feeding time' + (group.count > 1 ? 's' : '') + ' require attention';
                         actionUrl = pigFeedingUrl;
                         actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span>View Feedings</span></a>';
                     } else if (group.type === 'cow_feeding') {
@@ -104,14 +109,30 @@
                         description = group.count + ' cow feeding time' + (group.count > 1 ? 's' : '') + ' due';
                         actionUrl = cowFeedingUrl;
                         actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span>Record Cow Feeding</span></a>';
+                    } else if (group.type === 'chicken_feeding') {
+                        bgColor = 'from-lime-50 to-yellow-50 dark:from-lime-900/20 dark:to-yellow-900/20';
+                        borderColor = 'border-lime-300 dark:border-lime-700';
+                        icon = '<svg class="w-5 h-5 text-lime-600" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z"></path></svg>';
+                        title = 'Chicken feeding';
+                        description = group.count + ' scheduled chicken feeding alert' + (group.count > 1 ? 's' : '');
+                        actionUrl = chickenFeedingUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-lime-500 to-yellow-600 text-white rounded-lg hover:from-lime-600 hover:to-yellow-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span>Chicken feeding</span></a>';
                     } else if (group.type === 'farrowing') {
                         bgColor = 'from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20';
                         borderColor = 'border-pink-200 dark:border-pink-700';
                         icon = '<svg class="w-5 h-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path></svg>';
-                        title = 'Farrowing Notifications';
+                        title = 'Pig farrowing';
                         description = group.count + ' sow' + (group.count > 1 ? 's' : '') + ' due to farrow soon';
                         actionUrl = breedingUrl;
                         actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-lg hover:from-pink-600 hover:to-rose-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><span>View Breeding Records</span></a>';
+                    } else if (group.type === 'cow_calving') {
+                        bgColor = 'from-amber-50 to-rose-50 dark:from-amber-900/20 dark:to-rose-900/20';
+                        borderColor = 'border-amber-300 dark:border-amber-600';
+                        icon = '<svg class="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3h12v12H4V3zm2 2v8h8V5H6z"></path></svg>';
+                        title = 'Cow calving';
+                        description = group.count + ' cow' + (group.count > 1 ? 's' : '') + ' due to calve soon';
+                        actionUrl = cowBreedingUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-600 text-white rounded-lg transition-all text-sm font-semibold flex items-center justify-center space-x-2"><span>Open cow breeding</span></a>';
                     } else if (group.type === 'weaning') {
                         bgColor = 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20';
                         borderColor = 'border-blue-200 dark:border-blue-700';
@@ -124,18 +145,49 @@
                         bgColor = 'from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20';
                         borderColor = 'border-yellow-200 dark:border-yellow-700';
                         icon = '<svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path></svg>';
-                        title = 'Vaccination Notifications';
-                        description = group.count + ' animal' + (group.count > 1 ? 's' : '') + ' due for vaccination';
+                        title = 'Pig vaccination';
+                        description = group.count + ' pig' + (group.count > 1 ? 's' : '') + ' due for vaccination';
                         actionUrl = vaccinationUrl;
-                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path></svg><span>View Vaccinations</span></a>';
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path></svg><span>Pig vaccinations</span></a>';
+                    } else if (group.type === 'cow_vaccination') {
+                        bgColor = 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20';
+                        borderColor = 'border-amber-300 dark:border-amber-600';
+                        icon = '<svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>';
+                        title = 'Cow vaccination';
+                        description = group.count + ' cow' + (group.count > 1 ? 's' : '') + ' due for vaccination';
+                        actionUrl = cowVaccinationUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center">Cow vaccinations</a>';
                     } else if (group.type === 'weight') {
                         bgColor = 'from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20';
                         borderColor = 'border-purple-200 dark:border-purple-700';
                         icon = '<svg class="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>';
-                        title = 'Weight Notifications';
-                        description = group.count + ' animal' + (group.count > 1 ? 's' : '') + ' need weight tracking';
+                        title = 'Pig weight';
+                        description = group.count + ' pig' + (group.count > 1 ? 's' : '') + ' need weight tracking';
                         actionUrl = insertWeightUrl;
-                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-lg hover:from-purple-600 hover:to-violet-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg><span>Insert Weight</span></a>';
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-lg hover:from-purple-600 hover:to-violet-700 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg><span>Insert pig weight</span></a>';
+                    } else if (group.type === 'cow_weight') {
+                        bgColor = 'from-sky-50 to-violet-50 dark:from-sky-900/20 dark:to-violet-900/20';
+                        borderColor = 'border-sky-300 dark:border-sky-600';
+                        icon = '<svg class="w-5 h-5 text-sky-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>';
+                        title = 'Cow weight';
+                        description = group.count + ' cow' + (group.count > 1 ? 's' : '') + ' need weight tracking';
+                        actionUrl = cowWeightUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-violet-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center">Cow weight</a>';
+                    } else if (group.type === 'chicken_flock') {
+                        bgColor = 'from-yellow-50 to-rose-50 dark:from-yellow-900/20 dark:to-rose-900/20';
+                        borderColor = 'border-yellow-300 dark:border-yellow-600';
+                        icon = '<span class="text-lg">🐔</span>';
+                        title = 'Chicken flocks';
+                        description = group.count + ' flock alert' + (group.count > 1 ? 's' : '') + ' (mortality, cull, or low headcount)';
+                        actionUrl = chickenFlockUrl;
+                        actionButton = '<a href="' + actionUrl + '" class="w-full mt-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-rose-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center">Open flocks</a>';
+                    } else {
+                        bgColor = 'from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-700/40';
+                        borderColor = 'border-slate-200 dark:border-slate-600';
+                        icon = '<svg class="w-5 h-5 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 004 16h12a1 1 0 00.707-1.707L15 11.586V8a6 6 0 00-6-6z"></path></svg>';
+                        title = (group.type || 'Notice').replace(/_/g, ' ');
+                        description = (group.count || 0) + ' item(s)';
+                        actionButton = '';
                     }
                     return '<div class="mb-3 p-4 bg-gradient-to-r ' + bgColor + ' rounded-xl border ' + borderColor + ' hover:shadow-lg transition-all duration-200"><div class="flex items-start justify-between mb-2"><div class="flex items-center space-x-2">' + icon + '<span class="text-sm font-bold text-slate-900 dark:text-white">' + title + '</span></div><span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-full font-semibold">' + group.count + '</span>' + (group.highest_priority === 'critical' ? '<span class="text-xs bg-red-500 text-white px-2 py-1 rounded-full ml-2">URGENT</span>' : '') + '</div><p class="text-xs text-slate-600 dark:text-slate-400 mb-2">' + description + '</p>' + actionButton + '</div>';
                 }).join('');

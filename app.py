@@ -1,13 +1,33 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import pymysql
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import hashlib
 import secrets
 import socket
 import subprocess
 
+import base64
 import db_migrations
+from feed_notifications_collector import collect_all_feed_notifications
+
+from webauthn import (
+    generate_authentication_options,
+    generate_registration_options,
+    verify_authentication_response,
+    verify_registration_response,
+)
+from webauthn.helpers import (
+    options_to_json_dict,
+    parse_authentication_credential_json,
+    parse_registration_credential_json,
+)
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    PublicKeyCredentialDescriptor,
+    PublicKeyCredentialType,
+    UserVerificationRequirement,
+)
 
 
 def load_dotenv_file(dotenv_path=".env"):
@@ -93,6 +113,20 @@ def get_current_employee_profile_image():
         return build_profile_image_url(row.get("profile_image"))
     except Exception:
         return None
+
+
+def _webauthn_rp_id():
+    """Relying party id must match the current host (e.g. 127.0.0.1 or localhost)."""
+    return (request.host or "localhost").split(":")[0].lower()
+
+
+def _webauthn_expected_origin():
+    return request.url_root.rstrip("/")
+
+
+def _webauthn_user_id_bytes(employee_id: int) -> bytes:
+    return int(employee_id).to_bytes(8, "big", signed=False)
+
 
 # Database configuration
 # Auto-detect environment and use environment-specific credential keys
@@ -385,6 +419,8 @@ def resync_farrowing_activity_due_dates_for_breeding(cursor, breeding_id, farrow
 
 def calculate_expected_weight(animal_id=None, litter_id=None, weighing_date=None):
     """Calculate expected weight based on age and weight categories"""
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -413,26 +449,58 @@ def calculate_expected_weight(animal_id=None, litter_id=None, weighing_date=None
             if result and result['farrowing_date']:
                 age_days = (weighing_date - result['farrowing_date']).days
         
-        if not age_days or age_days < 0:
+        if age_days is None or age_days < 0:
             return None
-        
-        # Find appropriate category
-        for category in categories:
-            if age_days >= category['start_age'] and age_days <= category['end_age']:
-                # Calculate expected weight based on daily gain
-                days_in_category = age_days - category['start_age']
-                expected_weight = category['min_weight'] + (days_in_category * category['daily_gain'])
-                cursor.close()
-                conn.close()
-                return round(expected_weight, 2)
-        
-        cursor.close()
-        conn.close()
-        return None
+
+        return _litter_expected_kg_for_age(age_days, categories)
         
     except Exception as e:
         print(f"Error calculating expected weight: {str(e)}")
         return None
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def _litter_expected_kg_for_age(age_days, categories):
+    """
+    Expected body weight (kg) for a piglet at age_days from farrowing, from weight_categories.
+    Matches register-farrowing UI: newborns (age 0) use the lowest category when no row covers day 0.
+    """
+    if age_days is None or age_days < 0 or not categories:
+        return None
+    for c in categories:
+        sa = int(c['start_age'])
+        ea = int(c['end_age'])
+        if sa <= age_days <= ea:
+            days_in = age_days - sa
+            return round(float(c['min_weight']) + days_in * float(c['daily_gain'] or 0), 2)
+    min_start = min(int(c['start_age']) for c in categories)
+    if age_days < min_start:
+        c0 = next((x for x in categories if int(x['start_age']) == min_start), None)
+        if c0:
+            days_in = max(0, age_days - int(c0['start_age']))
+            return round(float(c0['min_weight']) + days_in * float(c0['daily_gain'] or 0), 2)
+    return None
+
+
+def _as_date(d):
+    if d is None:
+        return None
+    if isinstance(d, datetime):
+        return d.date()
+    if isinstance(d, date):
+        return d
+    return d
+
 
 def _migration_001_sync_columns(cursor):
     """Ensure all expected columns exist (safe for local and hosted). Adds only if missing."""
@@ -497,6 +565,29 @@ def _migration_002_cow_breeding_ai(cursor):
         row = cursor.fetchone()
         if row and row.get('IS_NULLABLE') == 'NO':
             cursor.execute("ALTER TABLE calves MODIFY COLUMN sire_id INT NULL")
+
+
+def _migration_003_employee_webauthn(cursor):
+    """Store FIDO2 / WebAuthn (passkey & biometrics) credentials for employee login."""
+    if not db_migrations.ensure_table_exists(cursor, "employees"):
+        return
+    if db_migrations.ensure_table_exists(cursor, "employee_webauthn_credentials"):
+        return
+    cursor.execute("""
+        CREATE TABLE employee_webauthn_credentials (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT NOT NULL,
+            credential_id VARBINARY(1024) NOT NULL,
+            public_key BLOB NOT NULL,
+            sign_count INT UNSIGNED NOT NULL DEFAULT 0,
+            label VARCHAR(128) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TIMESTAMP NULL DEFAULT NULL,
+            INDEX idx_employee_webauthn_employee (employee_id),
+            UNIQUE KEY uq_webauthn_cred_id (credential_id(255)),
+            CONSTRAINT fk_webauthn_emp FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
 
 
 def create_database_and_tables():
@@ -1871,6 +1962,7 @@ def create_database_and_tables():
         MIGRATIONS = [
             ('001_sync_columns', _migration_001_sync_columns),
             ('002_cow_breeding_ai', _migration_002_cow_breeding_ai),
+            ('003_employee_webauthn', _migration_003_employee_webauthn),
         ]
         db_migrations.run_migrations(conn, MIGRATIONS)
         
@@ -1972,6 +2064,39 @@ def get_role_dashboard_url(role):
     }
     return role_urls.get(role, '/employee/dashboard')
 
+
+def _dashboard_department_link(department, animal_type, role):
+    """Target page for admin dashboard department notification rows."""
+    prefix = "/manager" if role == "manager" else "/admin"
+    d = (department or "").strip()
+    a = (animal_type or "").strip()
+    if d == "Breeding" and a == "Pigs":
+        return f"{prefix}/farm/breeding-records"
+    if d == "Breeding" and a == "Cows":
+        return f"{prefix}/farm/cow-breeding"
+    if d == "Health" and a == "Pigs":
+        return f"{prefix}/farm/pig-management"
+    if d == "Health" and a == "Cows":
+        return f"{prefix}/farm/cow-health"
+    if d == "Medical" and a == "Pigs":
+        return f"{prefix}/farm/pig-management"
+    if d == "Medical" and a == "Cows":
+        return f"{prefix}/farm/cow-management"
+    if a == "Chickens":
+        return f"{prefix}/farm/chicken-management"
+    return f"{prefix}/dashboard"
+
+
+def _enrich_dashboard_notifications(rows, role):
+    out = []
+    for row in rows or []:
+        r = dict(row) if not isinstance(row, dict) else row.copy()
+        r["link_url"] = _dashboard_department_link(
+            r.get("department"), r.get("animal_type"), role
+        )
+        out.append(r)
+    return out
+
 @app.context_processor
 def inject_role_url():
     """Inject a helper function to generate role-based URLs"""
@@ -1986,6 +2111,7 @@ def inject_role_url():
         role_url=role_url,
         app_version_label=get_git_version_label(),
         current_user_profile_image=get_current_employee_profile_image(),
+        build_profile_image_url=build_profile_image_url,
     )
 
 @app.route('/')
@@ -2417,56 +2543,42 @@ def admin_dashboard():
                 'Medical notifications for chickens (Coming Soon)' as description
             ORDER BY department, animal_type
         """)
-        upcoming_activities = cursor.fetchall()
+        upcoming_activities = _enrich_dashboard_notifications(
+            cursor.fetchall(), user_data['role']
+        )
         
-        # Chickens count (if table exists)
-        chickens_total = 0
+        # Chickens: prefer total birds (sum quantity) when column exists, else count rows
+        chickens_flock_rows = 0
+        chickens_headcount = 0
         chickens_batches = 0
+        try:
+            cursor.execute(
+                "SELECT COALESCE(SUM(quantity), 0) AS s FROM chickens WHERE current_status = 'active'"
+            )
+            r = cursor.fetchone()
+            chickens_headcount = int((r or {}).get('s') or 0)
+        except Exception:
+            pass
         try:
             cursor.execute("SELECT COUNT(*) as cnt FROM chickens WHERE current_status = 'active'")
             row = cursor.fetchone()
-            chickens_total = int(row['cnt']) if row and row.get('cnt') is not None else 0
-            cursor.execute("SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens WHERE current_status = 'active' AND batch_id IS NOT NULL")
+            chickens_flock_rows = int(row['cnt']) if row and row.get('cnt') is not None else 0
+            cursor.execute(
+                "SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens "
+                "WHERE current_status = 'active' AND batch_id IS NOT NULL"
+            )
             row = cursor.fetchone()
             chickens_batches = int(row['cnt']) if row and row.get('cnt') is not None else 0
         except Exception:
             pass
+        chickens_for_card = chickens_headcount if chickens_headcount else chickens_flock_rows
         
         # Farms count
         cursor.execute("SELECT COUNT(*) as cnt FROM farms WHERE status = 'active'")
         row = cursor.fetchone()
         farms_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
         
-        # Today's milk production
-        cursor.execute("""
-            SELECT COALESCE(SUM(milk_quantity), 0) as today_milk
-            FROM milk_production
-            WHERE production_date = CURDATE()
-        """)
-        row = cursor.fetchone()
-        today_milk = float(row['today_milk']) if row and row.get('today_milk') is not None else 0
-        
-        # Today's feed stock transactions (if feed_stock exists)
-        today_stock_in = 0
-        today_stock_out = 0
-        try:
-            cursor.execute("""
-                SELECT 
-                    SUM(CASE WHEN transaction_type = 'stock_in' THEN 1 ELSE 0 END) as cnt_in,
-                    SUM(CASE WHEN transaction_type = 'stock_out' THEN 1 ELSE 0 END) as cnt_out
-                FROM feed_stock
-                WHERE DATE(transaction_date) = CURDATE()
-            """)
-            row = cursor.fetchone()
-            if row:
-                today_stock_in = int(row.get('cnt_in') or 0)
-                today_stock_out = int(row.get('cnt_out') or 0)
-        except Exception:
-            pass
-        
-        # Calculate totals (include chickens)
-        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0) + chickens_total
-        total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)  # piglets + alive piglets from litters
+        total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)
         
         from datetime import datetime
         today_str = datetime.now().strftime('%A, %B %d, %Y')
@@ -2489,20 +2601,10 @@ def admin_dashboard():
                 'avg_milk_per_cow': milk_data['avg_milk_per_cow'] or 0
             },
             'chickens': {
-                'total_chickens': chickens_total,
+                'total_chickens': chickens_for_card,
                 'batches': chickens_batches
             },
             'farms_count': farms_count,
-            'today': {
-                'milk_liters': round(today_milk, 1),
-                'stock_in_count': today_stock_in,
-                'stock_out_count': today_stock_out
-            },
-            'totals': {
-                'total_animals': total_animals,
-                'daily_production': milk_data['avg_daily_milk_production'] or 0,  # average daily milk production
-                'system_health': 95  # This could be calculated based on various factors
-            },
             'upcoming_activities': upcoming_activities
         }
         
@@ -2519,8 +2621,6 @@ def admin_dashboard():
             'cows': {'total_cows': 0, 'female_cows': 0, 'male_cows': 0, 'avg_daily_milk_production': 0, 'cows_milked': 0, 'avg_milk_per_cow': 0},
             'chickens': {'total_chickens': 0, 'batches': 0},
             'farms_count': 0,
-            'today': {'milk_liters': 0, 'stock_in_count': 0, 'stock_out_count': 0},
-            'totals': {'total_animals': 0, 'daily_production': 0, 'system_health': 0},
             'upcoming_activities': []
         }
     
@@ -2661,56 +2761,42 @@ def manager_dashboard():
                 'Medical notifications for chickens (Coming Soon)' as description
             ORDER BY department, animal_type
         """)
-        upcoming_activities = cursor.fetchall()
+        upcoming_activities = _enrich_dashboard_notifications(
+            cursor.fetchall(), user_data['role']
+        )
         
-        # Chickens count (if table exists)
-        chickens_total = 0
+        # Chickens: prefer total birds (sum quantity) when column exists, else count rows
+        chickens_flock_rows = 0
+        chickens_headcount = 0
         chickens_batches = 0
+        try:
+            cursor.execute(
+                "SELECT COALESCE(SUM(quantity), 0) AS s FROM chickens WHERE current_status = 'active'"
+            )
+            r = cursor.fetchone()
+            chickens_headcount = int((r or {}).get('s') or 0)
+        except Exception:
+            pass
         try:
             cursor.execute("SELECT COUNT(*) as cnt FROM chickens WHERE current_status = 'active'")
             row = cursor.fetchone()
-            chickens_total = int(row['cnt']) if row and row.get('cnt') is not None else 0
-            cursor.execute("SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens WHERE current_status = 'active' AND batch_id IS NOT NULL")
+            chickens_flock_rows = int(row['cnt']) if row and row.get('cnt') is not None else 0
+            cursor.execute(
+                "SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens "
+                "WHERE current_status = 'active' AND batch_id IS NOT NULL"
+            )
             row = cursor.fetchone()
             chickens_batches = int(row['cnt']) if row and row.get('cnt') is not None else 0
         except Exception:
             pass
+        chickens_for_card = chickens_headcount if chickens_headcount else chickens_flock_rows
         
         # Farms count
         cursor.execute("SELECT COUNT(*) as cnt FROM farms WHERE status = 'active'")
         row = cursor.fetchone()
         farms_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
         
-        # Today's milk production
-        cursor.execute("""
-            SELECT COALESCE(SUM(milk_quantity), 0) as today_milk
-            FROM milk_production
-            WHERE production_date = CURDATE()
-        """)
-        row = cursor.fetchone()
-        today_milk = float(row['today_milk']) if row and row.get('today_milk') is not None else 0
-        
-        # Today's feed stock transactions (if feed_stock exists)
-        today_stock_in = 0
-        today_stock_out = 0
-        try:
-            cursor.execute("""
-                SELECT 
-                    SUM(CASE WHEN transaction_type = 'stock_in' THEN 1 ELSE 0 END) as cnt_in,
-                    SUM(CASE WHEN transaction_type = 'stock_out' THEN 1 ELSE 0 END) as cnt_out
-                FROM feed_stock
-                WHERE DATE(transaction_date) = CURDATE()
-            """)
-            row = cursor.fetchone()
-            if row:
-                today_stock_in = int(row.get('cnt_in') or 0)
-                today_stock_out = int(row.get('cnt_out') or 0)
-        except Exception:
-            pass
-        
-        # Calculate totals (include chickens)
-        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0) + chickens_total
-        total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)  # piglets + alive piglets from litters
+        total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)
         
         from datetime import datetime
         today_str = datetime.now().strftime('%A, %B %d, %Y')
@@ -2733,20 +2819,10 @@ def manager_dashboard():
                 'avg_milk_per_cow': milk_data['avg_milk_per_cow'] or 0
             },
             'chickens': {
-                'total_chickens': chickens_total,
+                'total_chickens': chickens_for_card,
                 'batches': chickens_batches
             },
             'farms_count': farms_count,
-            'today': {
-                'milk_liters': round(today_milk, 1),
-                'stock_in_count': today_stock_in,
-                'stock_out_count': today_stock_out
-            },
-            'totals': {
-                'total_animals': total_animals,
-                'daily_production': milk_data['avg_daily_milk_production'] or 0,  # average daily milk production
-                'system_health': 95  # This could be calculated based on various factors
-            },
             'upcoming_activities': upcoming_activities
         }
         
@@ -2763,8 +2839,6 @@ def manager_dashboard():
             'cows': {'total_cows': 0, 'female_cows': 0, 'male_cows': 0, 'avg_daily_milk_production': 0, 'cows_milked': 0, 'avg_milk_per_cow': 0},
             'chickens': {'total_chickens': 0, 'batches': 0},
             'farms_count': 0,
-            'today': {'milk_liters': 0, 'stock_in_count': 0, 'stock_out_count': 0},
-            'totals': {'total_animals': 0, 'daily_production': 0, 'system_health': 0},
             'upcoming_activities': []
         }
     
@@ -2977,6 +3051,7 @@ def api_login():
             session['employee_name'] = employee['full_name']
             session['employee_role'] = employee['role']
             session['employee_status'] = employee['status']
+            session['show_login_welcome'] = True
             
             # Log login activity
             log_activity(employee['id'], 'LOGIN', f'Employee {employee["full_name"]} logged in successfully')
@@ -3093,16 +3168,521 @@ def profile():
     if 'employee_id' not in session:
         return redirect(url_for('employee_login'))
     
-    # Get user data from session
+    eid = session['employee_id']
     user_data = {
-        'id': session['employee_id'],
-        'name': session['employee_name'],
-        'role': session['employee_role'],
-        'status': session['employee_status'],
-        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+        'id': eid,
+        'name': session.get('employee_name') or '',
+        'role': session.get('employee_role') or '',
+        'status': session.get('employee_status') or '',
+        'email': f"{(session.get('employee_name') or 'user').lower().replace(' ', '.')}@farm.com",
+        'phone': '',
+        'profile_image_url': None,
+        'webauthn_credentials': [],
     }
-    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT full_name, email, phone, profile_image FROM employees WHERE id = %s LIMIT 1",
+            (eid,),
+        )
+        row = cursor.fetchone()
+        if row and db_migrations.ensure_table_exists(cursor, "employee_webauthn_credentials"):
+            cursor.execute(
+                """
+                SELECT id, label, created_at, last_used_at
+                FROM employee_webauthn_credentials
+                WHERE employee_id = %s
+                ORDER BY created_at DESC
+                """,
+                (eid,),
+            )
+            user_data['webauthn_credentials'] = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+        if row:
+            if row.get('full_name'):
+                user_data['name'] = row['full_name']
+            if row.get('email'):
+                user_data['email'] = row['email']
+            if row.get('phone'):
+                user_data['phone'] = row['phone'] or ''
+            user_data['profile_image_url'] = build_profile_image_url(row.get('profile_image'))
+    except Exception as e:
+        print(f"Profile page DB load: {e}")
+        user_data['profile_image_url'] = get_current_employee_profile_image()
+        user_data['webauthn_credentials'] = []
+
+    nm = (user_data.get('name') or '').strip()
+    parts = nm.split()
+    user_data['initials'] = (''.join(p[0] for p in parts[:2]).upper()[:2]) or '?'
+
     return render_template('profile.html', user=user_data)
+
+
+@app.route('/api/profile/photo', methods=['POST'])
+def update_own_profile_photo():
+    """Allow the logged-in user to upload or change their own profile picture."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        profile_image_file = request.files.get('profile_image')
+        if not profile_image_file or not profile_image_file.filename:
+            return jsonify({'success': False, 'error': 'No image file provided'}), 400
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        file_extension = profile_image_file.filename.rsplit('.', 1)[1].lower() if '.' in profile_image_file.filename else ''
+        if file_extension not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'Invalid image type. Allowed: png, jpg, jpeg, gif, webp'}), 400
+        upload_dir = 'static/uploads/employees'
+        os.makedirs(upload_dir, exist_ok=True)
+        image_filename = f"{secrets.token_hex(16)}.{file_extension}"
+        profile_image_file.save(os.path.join(upload_dir, image_filename))
+        eid = session['employee_id']
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE employees SET profile_image = %s WHERE id = %s",
+            (image_filename, eid),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        try:
+            log_activity(eid, 'PROFILE_PHOTO', 'Profile picture updated')
+        except Exception:
+            pass
+        return jsonify({
+            'success': True,
+            'profile_image_url': build_profile_image_url(image_filename),
+        })
+    except Exception as e:
+        print(f"update_own_profile_photo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/profile/password", methods=["POST"])
+def update_own_profile_password():
+    """Change password for the logged-in employee; requires current password."""
+    if "employee_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    current_password = (data.get("current_password") or "").strip()
+    new_password = (data.get("new_password") or "").strip()
+    confirm_password = (data.get("confirm_password") or "").strip()
+    if not current_password or not new_password or not confirm_password:
+        return jsonify({"success": False, "error": "All password fields are required."}), 400
+    if new_password != confirm_password:
+        return jsonify({"success": False, "error": "New password and confirmation do not match."}), 400
+    if len(new_password) < 6:
+        return jsonify({"success": False, "error": "New password must be at least 6 characters."}), 400
+    eid = session["employee_id"]
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT password FROM employees WHERE id = %s LIMIT 1", (eid,))
+        row = cursor.fetchone()
+        if not row or not row.get("password"):
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Account not found."}), 404
+        if row["password"] != hash_password(current_password):
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Current password is incorrect."}), 400
+        cursor.execute(
+            "UPDATE employees SET password = %s WHERE id = %s",
+            (hash_password(new_password), eid),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        try:
+            log_activity(eid, "PROFILE_PASSWORD", "Password changed from profile")
+        except Exception:
+            pass
+        return jsonify({"success": True, "message": "Password updated successfully."})
+    except Exception as e:
+        print(f"update_own_profile_password: {e}")
+        return jsonify({"success": False, "error": "Could not update password. Please try again."}), 500
+
+
+def _db_webauthn_exclude_for_employee(cursor, eid: int):
+    """PublicKeyCredentialDescriptor list for register (exclude existing devices)."""
+    if not db_migrations.ensure_table_exists(cursor, "employee_webauthn_credentials"):
+        return []
+    cursor.execute(
+        "SELECT credential_id FROM employee_webauthn_credentials WHERE employee_id = %s",
+        (eid,),
+    )
+    out = []
+    for row in cursor.fetchall() or []:
+        raw = row.get("credential_id")
+        if raw:
+            out.append(
+                PublicKeyCredentialDescriptor(
+                    id=raw,
+                    type=PublicKeyCredentialType.PUBLIC_KEY,
+                )
+            )
+    return out
+
+
+@app.route("/api/webauthn/register/begin", methods=["POST"])
+def webauthn_register_begin():
+    """Start WebAuthn (passkey / biometrics) registration for the logged-in user."""
+    if "employee_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    eid = session["employee_id"]
+    rp_id = _webauthn_rp_id()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if not db_migrations.ensure_table_exists(cursor, "employee_webauthn_credentials"):
+            cursor.close()
+            conn.close()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Database is not ready for biometrics. Restart the app to apply migrations, then try again.",
+                }
+            ), 503
+        cursor.execute(
+            "SELECT id, full_name, email FROM employees WHERE id = %s AND is_active = TRUE AND status = 'active' LIMIT 1",
+            (eid,),
+        )
+        user_row = cursor.fetchone()
+        if not user_row:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Account not found or not active."}), 400
+        uname = (user_row.get("email") or f"u{eid}@local").strip()
+        dname = (user_row.get("full_name") or "User").strip() or "User"
+        exclude = _db_webauthn_exclude_for_employee(cursor, eid)
+        cursor.close()
+        conn.close()
+        # PREFERRED: works more reliably on Windows/Chrome/Edge; UV still set by biometrics in practice
+        reg_opts = generate_registration_options(
+            rp_id=rp_id,
+            rp_name="Pig Farm Management",
+            user_id=_webauthn_user_id_bytes(eid),
+            user_name=uname,
+            user_display_name=dname,
+            authenticator_selection=AuthenticatorSelectionCriteria(
+                user_verification=UserVerificationRequirement.PREFERRED
+            ),
+            exclude_credentials=exclude or None,
+        )
+        ch = reg_opts.challenge
+        session["webauthn_reg_challenge_b64"] = base64.b64encode(ch).decode("ascii")
+        session["webauthn_reg_rp_id"] = rp_id
+        return jsonify(
+            {
+                "success": True,
+                "options": options_to_json_dict(reg_opts),
+            }
+        )
+    except Exception as e:
+        print(f"webauthn_register_begin: {e}")
+        return jsonify({"success": False, "error": "Could not start registration."}), 500
+
+
+@app.route("/api/webauthn/register/complete", methods=["POST"])
+def webauthn_register_complete():
+    """Complete WebAuthn registration and store credential for this employee."""
+    if "employee_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    eid = session["employee_id"]
+    ch_b64 = session.get("webauthn_reg_challenge_b64")
+    rp_id_saved = session.get("webauthn_reg_rp_id")
+    if not ch_b64 or not rp_id_saved:
+        return jsonify({"success": False, "error": "Start registration first (refresh the page and try again)."}), 400
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({"success": False, "error": "Missing credential data."}), 400
+    label = (data.get("label") or "This device").strip()[:128] or "This device"
+    cred_body = data.get("credential") if isinstance(data.get("credential"), dict) else data
+    if not cred_body or not isinstance(cred_body, dict):
+        return jsonify({"success": False, "error": "Missing credential data."}), 400
+    try:
+        expected_challenge = base64.b64decode(ch_b64)
+        reg_cred = parse_registration_credential_json(cred_body)
+    except Exception as e:
+        print(f"webauthn_register_parse: {e}")
+        return jsonify({"success": False, "error": "Invalid credential payload."}), 400
+    try:
+        verified = verify_registration_response(
+            credential=reg_cred,
+            expected_challenge=expected_challenge,
+            expected_rp_id=rp_id_saved,
+            expected_origin=_webauthn_expected_origin(),
+            require_user_verification=False,
+        )
+    except Exception as e:
+        err_msg = str(e).strip() or type(e).__name__
+        print(f"webauthn_register_verify: {err_msg}", flush=True)
+        return jsonify(
+            {
+                "success": False,
+                "error": f"Server could not confirm this key: {err_msg[:200]}",
+            }
+        ), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if not db_migrations.ensure_table_exists(cursor, "employee_webauthn_credentials"):
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Sign-in with biometrics is not set up on this server yet."}), 503
+        cursor.execute(
+            """
+            INSERT INTO employee_webauthn_credentials
+            (employee_id, credential_id, public_key, sign_count, label)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                eid,
+                verified.credential_id,
+                verified.credential_public_key,
+                verified.sign_count,
+                label,
+            ),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"webauthn_register_store: {e}")
+        return jsonify({"success": False, "error": "Could not save this device. It may already be registered."}), 500
+    session.pop("webauthn_reg_challenge_b64", None)
+    session.pop("webauthn_reg_rp_id", None)
+    try:
+        log_activity(eid, "WEBAUTHN_REGISTER", "Biometric / passkey registered")
+    except Exception:
+        pass
+    return jsonify({"success": True, "message": "Biometric sign-in enabled for this device."})
+
+
+@app.route("/api/webauthn/credentials/<int:cred_id>", methods=["DELETE"])
+def webauthn_delete_credential(cred_id):
+    """Remove a WebAuthn credential (device) for the logged-in user."""
+    if "employee_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    eid = session["employee_id"]
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM employee_webauthn_credentials WHERE id = %s AND employee_id = %s",
+            (cred_id, eid),
+        )
+        n = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        conn.close()
+        if not n:
+            return jsonify({"success": False, "error": "Credential not found."}), 404
+        try:
+            log_activity(eid, "WEBAUTHN_REMOVE", f"WebAuthn credential {cred_id} removed")
+        except Exception:
+            pass
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"webauthn_delete: {e}")
+        return jsonify({"success": False, "error": "Could not remove device."}), 500
+
+
+@app.route("/api/webauthn/login/begin", methods=["POST"])
+def webauthn_login_begin():
+    """Start WebAuthn authentication: requires employee code and at least one registered credential."""
+    if session.get("employee_id"):
+        return jsonify({"success": False, "error": "Already signed in."}), 400
+    body = request.get_json(silent=True) or {}
+    code = (body.get("employee_code") or "").strip()
+    if len(code) != 6 or not code.isdigit():
+        return jsonify({"success": False, "error": "Enter a valid 6-digit employee code."}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, full_name, role, status FROM employees
+            WHERE employee_code = %s AND is_active = TRUE
+            LIMIT 1
+            """,
+            (code,),
+        )
+        employee = cursor.fetchone()
+        if not employee or employee.get("status") != "active":
+            cursor.close()
+            conn.close()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No active account for that code, or you still need to sign in with a password the first time.",
+                }
+            ), 400
+        eid = employee["id"]
+        if not db_migrations.ensure_table_exists(cursor, "employee_webauthn_credentials"):
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "No biometric sign-in set up. Register a device in Profile first."}), 400
+        cursor.execute(
+            "SELECT credential_id FROM employee_webauthn_credentials WHERE employee_id = %s",
+            (eid,),
+        )
+        rows = cursor.fetchall() or []
+        if not rows:
+            cursor.close()
+            conn.close()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No biometric or passkey registered. Open your Profile and add a device under Sign in with biometrics.",
+                }
+            ), 400
+        allow = [
+            PublicKeyCredentialDescriptor(id=row["credential_id"], type=PublicKeyCredentialType.PUBLIC_KEY)
+            for row in rows
+            if row.get("credential_id")
+        ]
+        rp_id = _webauthn_rp_id()
+        auth_opts = generate_authentication_options(
+            rp_id=rp_id,
+            allow_credentials=allow,
+            user_verification=UserVerificationRequirement.PREFERRED,
+        )
+        ch = auth_opts.challenge
+        session["webauthn_auth_challenge_b64"] = base64.b64encode(ch).decode("ascii")
+        session["webauthn_auth_rp_id"] = rp_id
+        session["webauthn_auth_employee_id"] = eid
+        cursor.close()
+        conn.close()
+        return jsonify(
+            {
+                "success": True,
+                "options": options_to_json_dict(auth_opts),
+            }
+        )
+    except Exception as e:
+        print(f"webauthn_login_begin: {e}")
+        return jsonify({"success": False, "error": "Could not start biometric sign-in."}), 500
+
+
+def _webauthn_finalize_login(employee: dict) -> str:
+    """Replicate /api/login success: side effects, session, log; returns dashboard path."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            update_pig_ages(cursor)
+        except Exception as age_error:
+            print(f"Warning: Could not update pig ages: {age_error}")
+        try:
+            update_breeding_statuses()
+        except Exception as breeding_error:
+            print(f"Warning: Could not update breeding statuses: {breeding_error}")
+        cursor.close()
+        conn.close()
+    except Exception as ex:
+        print(f"webauthn login side effects: {ex}")
+    session["employee_id"] = employee["id"]
+    session["employee_name"] = employee["full_name"]
+    session["employee_role"] = employee["role"]
+    session["employee_status"] = employee["status"]
+    session["show_login_welcome"] = True
+    log_activity(employee["id"], "LOGIN", f'Employee {employee["full_name"]} signed in with biometrics / passkey')
+    return get_role_dashboard_url(employee["role"])
+
+
+@app.route("/api/webauthn/login/complete", methods=["POST"])
+def webauthn_login_complete():
+    """Complete WebAuthn sign-in: verify assertion and start session."""
+    if session.get("employee_id"):
+        return jsonify({"success": False, "error": "Already signed in."}), 400
+    ch_b64 = session.get("webauthn_auth_challenge_b64")
+    rp_id_saved = session.get("webauthn_auth_rp_id")
+    eid = session.get("webauthn_auth_employee_id")
+    if not ch_b64 or not rp_id_saved or not eid:
+        return jsonify({"success": False, "error": "Start biometric sign-in again from the login page."}), 400
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({"success": False, "error": "Missing credential data."}), 400
+    cred_body = data.get("credential") if isinstance(data.get("credential"), dict) else data
+    if not isinstance(cred_body, dict):
+        return jsonify({"success": False, "error": "Missing credential data."}), 400
+    try:
+        expected_challenge = base64.b64decode(ch_b64)
+        auth_cred = parse_authentication_credential_json(cred_body)
+    except Exception as e:
+        print(f"webauthn_login_parse: {e}")
+        return jsonify({"success": False, "error": "Invalid credential data."}), 400
+    raw_id = auth_cred.raw_id
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, employee_id, credential_id, public_key, sign_count
+            FROM employee_webauthn_credentials
+            WHERE employee_id = %s AND credential_id = %s
+            LIMIT 1
+            """,
+            (eid, raw_id),
+        )
+        row = cursor.fetchone()
+        if not row or int(row.get("employee_id", 0)) != int(eid):
+            cursor.close()
+            conn.close()
+            for k in ("webauthn_auth_challenge_b64", "webauthn_auth_rp_id", "webauthn_auth_employee_id"):
+                session.pop(k, None)
+            return jsonify({"success": False, "error": "Unknown passkey. Register this device in Profile first."}), 400
+        try:
+            verified = verify_authentication_response(
+                credential=auth_cred,
+                expected_challenge=expected_challenge,
+                expected_rp_id=rp_id_saved,
+                expected_origin=_webauthn_expected_origin(),
+                credential_public_key=row["public_key"],
+                credential_current_sign_count=int(row.get("sign_count") or 0),
+                require_user_verification=False,
+            )
+        except Exception as e:
+            print(f"webauthn_login_verify: {e}")
+            cursor.close()
+            conn.close()
+            for k in ("webauthn_auth_challenge_b64", "webauthn_auth_rp_id", "webauthn_auth_employee_id"):
+                session.pop(k, None)
+            return jsonify({"success": False, "error": "Verification failed. Try again."}), 400
+        cursor.execute(
+            """
+            UPDATE employee_webauthn_credentials
+            SET sign_count = %s, last_used_at = NOW()
+            WHERE id = %s
+            """,
+            (verified.new_sign_count, row["id"]),
+        )
+        cursor.execute(
+            "SELECT * FROM employees WHERE id = %s AND is_active = TRUE LIMIT 1",
+            (eid,),
+        )
+        employee = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"webauthn_login_complete: {e}")
+        for k in ("webauthn_auth_challenge_b64", "webauthn_auth_rp_id", "webauthn_auth_employee_id"):
+            session.pop(k, None)
+        return jsonify({"success": False, "error": "Sign-in failed."}), 500
+    if not employee or employee.get("status") != "active":
+        for k in ("webauthn_auth_challenge_b64", "webauthn_auth_rp_id", "webauthn_auth_employee_id"):
+            session.pop(k, None)
+        return jsonify({"success": False, "error": "Account is not active."}), 400
+    for k in ("webauthn_auth_challenge_b64", "webauthn_auth_rp_id", "webauthn_auth_employee_id"):
+        session.pop(k, None)
+    redirect_url = _webauthn_finalize_login(employee)
+    return jsonify({"success": True, "redirect": redirect_url})
+
 
 @app.route('/settings')
 def settings():
@@ -12004,446 +12584,352 @@ def get_feed_animals():
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Failed to fetch animals: {str(e)}'}), 500
 
+
+def _group_feed_notifications(all_notifications):
+    """Group raw notification list by type; same ordering as /api/feed/notifications."""
+    notification_groups = {}
+    for notif in all_notifications:
+        notif_type = notif['type']
+        if notif_type not in notification_groups:
+            notification_groups[notif_type] = {
+                'type': notif_type,
+                'count': 0,
+                'notifications': [],
+                'highest_priority': 'low',
+                'priority_order': 3
+            }
+        notification_groups[notif_type]['count'] += 1
+        notification_groups[notif_type]['notifications'].append(notif)
+        priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+        notif_priority_order = priority_order.get(notif.get('priority', 'low'), 3)
+        if notif_priority_order < notification_groups[notif_type]['priority_order']:
+            notification_groups[notif_type]['priority_order'] = notif_priority_order
+            notification_groups[notif_type]['highest_priority'] = notif.get('priority', 'low')
+    grouped_notifications = list(notification_groups.values())
+    grouped_notifications.sort(key=lambda x: (x['priority_order'], -x['count']))
+    return grouped_notifications
+
+
+def _time_greeting(hour):
+    if 5 <= hour < 12:
+        return "Good morning"
+    if 12 <= hour < 17:
+        return "Good afternoon"
+    if 17 <= hour < 22:
+        return "Good evening"
+    return "Good night"
+
+
+def _apply_welcome_urgency(notif):
+    """Set urgency and urgency_label for the login welcome modal."""
+    t = notif.get('type')
+    if t == 'feeding':
+        notif['urgency'] = 'now'
+        notif['urgency_label'] = 'Due now'
+        return
+    if t == 'chicken_feeding':
+        notif['urgency'] = 'now'
+        notif['urgency_label'] = 'Due now'
+        return
+    if t == 'cow_feeding':
+        if notif.get('priority') == 'high':
+            notif['urgency'] = 'now'
+            notif['urgency_label'] = 'Window now'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Coming up'
+        return
+    if t == 'farrowing':
+        d = notif.get('days_until_farrowing')
+        try:
+            d = int(d) if d is not None else None
+        except (TypeError, ValueError):
+            d = None
+        if d is None:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Upcoming'
+        elif d < 0:
+            notif['urgency'] = 'overdue'
+            notif['urgency_label'] = f'Overdue by {abs(d)} day(s)'
+        elif d == 0:
+            notif['urgency'] = 'due_today'
+            notif['urgency_label'] = 'Due today'
+        elif d <= 1:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Within 1 day'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = f'In {d} days'
+        return
+    if t == 'cow_calving':
+        d = notif.get('days_until_calving')
+        try:
+            d = int(d) if d is not None else None
+        except (TypeError, ValueError):
+            d = None
+        if d is None:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Upcoming'
+        elif d < 0:
+            notif['urgency'] = 'overdue'
+            notif['urgency_label'] = f'Overdue by {abs(d)} day(s)'
+        elif d == 0:
+            notif['urgency'] = 'due_today'
+            notif['urgency_label'] = 'Due today'
+        elif d <= 1:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Within 1 day'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = f'In {d} days'
+        return
+    if t == 'weaning':
+        age = int(notif.get('age_days') or 0)
+        if age >= 30:
+            notif['urgency'] = 'overdue'
+            notif['urgency_label'] = f'Weaning overdue ({age}d)'
+        elif age >= 26:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Ready now'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = f'Age {age}d'
+        return
+    if t == 'vaccination':
+        age = notif.get('age_days')
+        sd = notif.get('schedule_day')
+        if age is None or sd is None:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Due'
+            return
+        diff = abs(int(age) - int(sd))
+        if diff == 0:
+            notif['urgency'] = 'due_today'
+            notif['urgency_label'] = 'Due today'
+        elif diff <= 1:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Due very soon'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'In window'
+        return
+    if t == 'cow_vaccination':
+        age = notif.get('age_days')
+        sd = notif.get('schedule_day')
+        if age is None or sd is None:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Due'
+            return
+        diff = abs(int(age) - int(sd))
+        if diff == 0:
+            notif['urgency'] = 'due_today'
+            notif['urgency_label'] = 'Due today'
+        elif diff <= 1:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Due very soon'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'In window'
+        return
+    if t == 'weight':
+        ds = int(notif.get('days_since_weight') or 0)
+        fq = int(notif.get('frequency_days') or 7)
+        if ds >= fq * 2:
+            notif['urgency'] = 'overdue'
+            notif['urgency_label'] = f'{ds}d since weigh-in'
+        elif ds >= fq:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Weighing due'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Due'
+        return
+    if t == 'cow_weight':
+        ds = int(notif.get('days_since_weight') or 0)
+        fq = int(notif.get('frequency_days') or 7)
+        if ds >= fq * 2:
+            notif['urgency'] = 'overdue'
+            notif['urgency_label'] = f'{ds}d since weigh-in'
+        elif ds >= fq:
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Weighing due'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Due'
+        return
+    if t == 'chicken_flock':
+        st = (notif.get('flock_status') or '').lower()
+        if st == 'dead':
+            notif['urgency'] = 'overdue'
+            notif['urgency_label'] = 'Mortality'
+        elif st == 'culled':
+            notif['urgency'] = 'due_soon'
+            notif['urgency_label'] = 'Culled'
+        else:
+            notif['urgency'] = 'upcoming'
+            notif['urgency_label'] = 'Low headcount'
+        return
+    notif['urgency'] = 'upcoming'
+    notif['urgency_label'] = 'Notice'
+
+
+def _welcome_preview_line(notif):
+    t = notif.get('type')
+    if t == 'feeding':
+        return f"{notif.get('farm_name') or 'Farm'} — {notif.get('feed_name', 'Feed')} @ {notif.get('time', '')} ({notif.get('animal_count', 0)} animals)"
+    if t == 'cow_feeding':
+        return f"Cows — {notif.get('feed_name', 'Feed')} @ {notif.get('time', '')}"
+    if t == 'chicken_feeding':
+        return f"{notif.get('farm_name') or 'Poultry'} — {notif.get('feed_name', 'Feed')} @ {notif.get('time', '')} ({notif.get('animal_count', 0)} birds)"
+    if t == 'farrowing':
+        return f"Sow {notif.get('sow_tag_id', '')} — {notif.get('urgency_label', '')} ({notif.get('farm_name', '') or 'Farm'})"
+    if t == 'weaning':
+        return f"Litter (sow {notif.get('sow_tag_id', '')}) — {notif.get('alive_piglets', '')} piglets, {notif.get('age_days', '')}d old"
+    if t == 'vaccination':
+        med = (notif.get('medicine_activity') or 'Vaccination') or ''
+        return f"Tag {notif.get('tag_id', '')} — {med[:48]}"
+    if t == 'weight':
+        return f"Tag {notif.get('tag_id', '')} — {notif.get('category_name', '')} ({notif.get('days_since_weight', '')}d since weight)"
+    if t == 'cow_calving':
+        return f"Cow {notif.get('ear_tag', '')} — calving in {notif.get('days_until_calving', '')}d"
+    if t == 'cow_vaccination':
+        med = (notif.get('medicine_activity') or 'Vaccination') or ''
+        return f"Ear tag {notif.get('ear_tag', '')} — {med[:48]}"
+    if t == 'cow_weight':
+        return f"Ear tag {notif.get('ear_tag', '')} — {notif.get('category_name', '')} ({notif.get('days_since_weight', '')}d since weight)"
+    if t == 'chicken_flock':
+        st = (notif.get('flock_status') or '').lower()
+        return f"{notif.get('batch_name', 'Flock')} ({notif.get('chicken_type', '')}) — {st}, qty {notif.get('quantity', '')}"
+    return str(t)
+
+
+WELCOME_CATEGORY_LABELS = {
+    'feeding': 'Pig feeding',
+    'chicken_feeding': 'Chicken feeding',
+    'cow_feeding': 'Cow feeding',
+    'farrowing': 'Farrowing',
+    'cow_calving': 'Cow calving',
+    'weaning': 'Weaning',
+    'vaccination': 'Pig vaccination',
+    'cow_vaccination': 'Cow vaccination',
+    'weight': 'Pig weight checks',
+    'cow_weight': 'Cow weight checks',
+    'chicken_flock': 'Chicken flocks',
+}
+
+
+def _welcome_enrich_groups(grouped):
+    """Add human-readable category_label, urgency_breakdown, and short previews per group."""
+    out = []
+    for g in grouped:
+        ge = {**g}
+        uc = {'overdue': 0, 'due_today': 0, 'due_soon': 0, 'upcoming': 0, 'now': 0}
+        for item in g.get('notifications', []):
+            u = item.get('urgency', 'upcoming')
+            if u in uc:
+                uc[u] = uc.get(u, 0) + 1
+        previews = []
+        for item in g.get('notifications', [])[:6]:
+            previews.append({
+                'summary': _welcome_preview_line(item),
+                'urgency': item.get('urgency'),
+                'urgency_label': item.get('urgency_label'),
+            })
+        ge['urgency_breakdown'] = uc
+        ge['previews'] = previews
+        ge['category_label'] = WELCOME_CATEGORY_LABELS.get(g.get('type'), g.get('type', 'Activity'))
+        out.append(ge)
+    return out
+
+
 @app.route('/api/feed/notifications', methods=['GET'])
 def get_feeding_notifications():
     """Get all notifications: feeding, farrowing, weaning, vaccination, weight insert"""
     if 'employee_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
-    
+
     try:
-        from datetime import datetime, timedelta
-        import json
-        
-        # Get current time
+        from datetime import datetime
+
         now = datetime.now()
-        current_time = now.strftime('%H:%M')
         current_hour = now.hour
         current_minute = now.minute
         today = now.date()
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        all_notifications = []
-        
-        # ========== 1. FEEDING NOTIFICATIONS ==========
-        # Get all active feed settings with feeding times
-        cursor.execute("""
-            SELECT id, age_group_name, start_age_days, end_age_days, feed_amount_grams, 
-                   feeding_times_per_day, feeding_times, feed_type, animal_type
-            FROM feed_settings
-            WHERE status = 'active' AND animal_type = 'pig'
-        """)
-        feed_settings = cursor.fetchall()
-        
-        # Get all feeds for name mapping
-        cursor.execute("""
-            SELECT id, feed_name, feed_type, unit_of_measure
-            FROM feeds
-            WHERE status = 'active'
-        """)
-        feeds = {row['id']: row for row in cursor.fetchall()}
-        
-        # Get all active pigs with their age and farm
-        cursor.execute("""
-            SELECT 
-                p.id,
-                p.tag_id,
-                p.farm_id,
-                f.farm_name,
-                CASE 
-                    WHEN p.birth_date IS NOT NULL THEN DATEDIFF(CURDATE(), p.birth_date)
-                    ELSE NULL 
-                END as age_days
-            FROM pigs p
-            LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE p.status = 'active' AND p.birth_date IS NOT NULL
-        """)
-        pigs = cursor.fetchall()
-        
-        # Check each feed setting for matching feeding time
-        for setting in feed_settings:
-            feed_id = None
-            if setting['feed_type']:
-                try:
-                    feed_id = int(setting['feed_type'])
-                except:
-                    continue
-            
-            if not feed_id or feed_id not in feeds:
-                continue
-            
-            # Parse feeding times
-            feeding_times = []
-            if setting['feeding_times']:
-                try:
-                    feeding_times = json.loads(setting['feeding_times']) if isinstance(setting['feeding_times'], str) else setting['feeding_times']
-                except:
-                    feeding_times = []
-            
-            # Check if current time matches any feeding time (within 5 minutes tolerance)
-            time_matched = False
-            matched_time = None
-            for feed_time in feeding_times:
-                if feed_time:
-                    try:
-                        time_parts = feed_time.split(':')
-                        if len(time_parts) == 2:
-                            feed_hour = int(time_parts[0])
-                            feed_minute = int(time_parts[1])
-                            time_diff = abs((current_hour * 60 + current_minute) - (feed_hour * 60 + feed_minute))
-                            if time_diff <= 5:
-                                time_matched = True
-                                matched_time = feed_time
-                                break
-                    except:
-                        continue
-            
-            if not time_matched:
-                continue
-            
-            # Find animals matching this age range
-            matching_animals = []
-            for pig in pigs:
-                if pig['age_days'] is not None:
-                    if setting['start_age_days'] <= pig['age_days'] <= setting['end_age_days']:
-                        matching_animals.append(pig)
-            
-            if not matching_animals:
-                continue
-            
-            # Group by farm
-            farm_groups = {}
-            for animal in matching_animals:
-                farm_id = animal['farm_id']
-                if farm_id not in farm_groups:
-                    farm_groups[farm_id] = {
-                        'farm_id': farm_id,
-                        'farm_name': animal['farm_name'],
-                        'animal_count': 0,
-                        'total_kg': 0
-                    }
-                farm_groups[farm_id]['animal_count'] += 1
-                farm_groups[farm_id]['total_kg'] += setting['feed_amount_grams'] / 1000
-            
-            # Create notification for each farm
-            for farm_id, farm_data in farm_groups.items():
-                all_notifications.append({
-                    'type': 'feeding',
-                    'feed_id': feed_id,
-                    'feed_name': feeds[feed_id]['feed_name'],
-                    'feed_type': feeds[feed_id]['feed_type'],
-                    'farm_id': farm_data['farm_id'],
-                    'farm_name': farm_data['farm_name'],
-                    'animal_count': farm_data['animal_count'],
-                    'total_kg': farm_data['total_kg'],
-                    'time': matched_time,
-                    'age_group': setting['age_group_name'],
-                    'priority': 'high'
-                })
-        
-        # ========== 1b. COW FEEDING NOTIFICATIONS (upcoming feeding time) ==========
-        cursor.execute("""
-            SELECT id, age_group_name, start_age_days, end_age_days, feed_amount_grams,
-                   feeding_times_per_day, feeding_times, feed_type, animal_type
-            FROM feed_settings
-            WHERE status = 'active' AND animal_type = 'cow'
-        """)
-        cow_feed_settings = cursor.fetchall()
-        cursor.execute("SELECT COUNT(*) as total FROM cows WHERE status = 'active'")
-        total_cows = (cursor.fetchone() or {}).get('total') or 0
-        for setting in cow_feed_settings:
-            feed_id = None
-            if setting.get('feed_type'):
-                try:
-                    feed_id = int(setting['feed_type'])
-                except (ValueError, TypeError):
-                    pass
-            if feed_id and feed_id not in feeds:
-                continue
-            feeding_times = []
-            if setting.get('feeding_times'):
-                try:
-                    feeding_times = json.loads(setting['feeding_times']) if isinstance(setting['feeding_times'], str) else (setting['feeding_times'] or [])
-                except Exception:
-                    pass
-            for feed_time in feeding_times:
-                if not feed_time:
-                    continue
-                try:
-                    time_parts = str(feed_time).split(':')
-                    if len(time_parts) >= 2:
-                        feed_hour = int(time_parts[0])
-                        feed_minute = int(time_parts[1])
-                        time_diff = abs((current_hour * 60 + current_minute) - (feed_hour * 60 + feed_minute))
-                        if time_diff <= 30:  # within 30 min for upcoming
-                            all_notifications.append({
-                                'type': 'cow_feeding',
-                                'feed_id': feed_id,
-                                'feed_name': feeds.get(feed_id, {}).get('feed_name', 'Feed') if feed_id else 'Feed',
-                                'farm_id': None,
-                                'farm_name': 'Cows',
-                                'animal_count': total_cows,
-                                'total_kg': (total_cows * (setting['feed_amount_grams'] or 0) / 1000) if total_cows else 0,
-                                'time': f"{feed_hour:02d}:{feed_minute:02d}",
-                                'age_group': setting['age_group_name'],
-                                'priority': 'high' if time_diff <= 5 else 'medium'
-                            })
-                            break
-                except Exception:
-                    continue
-        
-        # ========== 2. FARROWING NOTIFICATIONS ==========
-        # Get sows due to farrow within 7 days
-        cursor.execute("""
-            SELECT 
-                br.id as breeding_id,
-                br.sow_id,
-                br.boar_id,
-                br.mating_date,
-                br.expected_due_date,
-                p.tag_id as sow_tag_id,
-                p.breed as sow_breed,
-                f.farm_name,
-                p.farm_id,
-                DATEDIFF(br.expected_due_date, CURDATE()) as days_until_farrowing
-            FROM breeding_records br
-            JOIN pigs p ON br.sow_id = p.id
-            LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE p.breeding_status = 'pregnant'
-            AND br.expected_due_date IS NOT NULL
-            AND br.expected_due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-            AND p.status = 'active'
-            ORDER BY br.expected_due_date ASC
-        """)
-        farrowing_due = cursor.fetchall()
-        
-        for record in farrowing_due:
-            days_left = record['days_until_farrowing']
-            all_notifications.append({
-                'type': 'farrowing',
-                'breeding_id': record['breeding_id'],
-                'sow_id': record['sow_id'],
-                'sow_tag_id': record['sow_tag_id'],
-                'sow_breed': record['sow_breed'],
-                'farm_id': record['farm_id'],
-                'farm_name': record['farm_name'],
-                'expected_due_date': record['expected_due_date'].strftime('%Y-%m-%d') if record['expected_due_date'] else None,
-                'days_until_farrowing': days_left,
-                'mating_date': record['mating_date'].strftime('%Y-%m-%d') if record['mating_date'] else None,
-                'priority': 'critical' if days_left <= 3 else 'high'
-            })
-        
-        # ========== 3. WEANING NOTIFICATIONS ==========
-        # Get litters ready for weaning (21 days old, not yet weaned)
-        cursor.execute("""
-            SELECT 
-                l.litter_id,
-                l.farrowing_date,
-                l.alive_piglets,
-                l.sow_id,
-                p.tag_id as sow_tag_id,
-                p.farm_id,
-                f.farm_name,
-                DATEDIFF(CURDATE(), l.farrowing_date) as age_days
-            FROM litters l
-            LEFT JOIN pigs p ON l.sow_id = p.id
-            LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE l.status = 'unweaned'
-            AND l.farrowing_date IS NOT NULL
-            AND DATEDIFF(CURDATE(), l.farrowing_date) >= 21
-            ORDER BY l.farrowing_date ASC
-        """)
-        weaning_due = cursor.fetchall()
-        
-        for litter in weaning_due:
-            age_days = litter['age_days']
-            all_notifications.append({
-                'type': 'weaning',
-                'litter_id': litter['litter_id'],
-                'farrowing_date': litter['farrowing_date'].strftime('%Y-%m-%d') if litter['farrowing_date'] else None,
-                'alive_piglets': litter['alive_piglets'],
-                'sow_tag_id': litter['sow_tag_id'],
-                'farm_id': litter['farm_id'],
-                'farm_name': litter['farm_name'],
-                'age_days': age_days,
-                'priority': 'high' if age_days <= 25 else 'medium'
-            })
-        
-        # ========== 4. VACCINATION NOTIFICATIONS ==========
-        # Get animals due for vaccination (based on birth date and vaccination schedule)
-        cursor.execute("""
-            SELECT 
-                p.id as pig_id,
-                p.tag_id,
-                p.birth_date,
-                p.farm_id,
-                f.farm_name,
-                DATEDIFF(CURDATE(), p.birth_date) as age_days
-            FROM pigs p
-            LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE p.status = 'active'
-            AND p.birth_date IS NOT NULL
-        """)
-        all_pigs = cursor.fetchall()
-        
-        # Get vaccination schedule
-        cursor.execute("""
-            SELECT id, day_number, medicine_activity, reason
-            FROM vaccination_schedule
-            ORDER BY day_number ASC
-        """)
-        vaccination_schedule = cursor.fetchall()
-        
-        # Check each pig for due vaccinations
-        for pig in all_pigs:
-            if pig['age_days'] is None:
-                continue
-            
-            age_days = pig['age_days']
-            
-            # Check if pig is due for any vaccination (within 2 days tolerance)
-            for schedule in vaccination_schedule:
-                due_day = schedule['day_number']
-                schedule_id = schedule['id']
-                if abs(age_days - due_day) <= 2:  # 2 day tolerance
-                    # Check if already vaccinated for this schedule
-                    cursor.execute("""
-                        SELECT id FROM vaccination_records
-                        WHERE animal_id = %s AND animal_type = 'pig' AND schedule_id = %s
-                    """, (pig['pig_id'], schedule_id))
-                    
-                    if not cursor.fetchone():
-                        all_notifications.append({
-                            'type': 'vaccination',
-                            'pig_id': pig['pig_id'],
-                            'tag_id': pig['tag_id'],
-                            'farm_id': pig['farm_id'],
-                            'farm_name': pig['farm_name'],
-                            'age_days': age_days,
-                            'schedule_id': schedule_id,
-                            'schedule_day': due_day,
-                            'medicine_activity': schedule['medicine_activity'],
-                            'reason': schedule['reason'],
-                            'priority': 'high' if abs(age_days - due_day) <= 1 else 'medium'
-                        })
-                        break  # Only one notification per pig
-        
-        # ========== 5. WEIGHT INSERT NOTIFICATIONS ==========
-        # Get animals that need weight tracking (based on weight categories)
-        # For weight notifications, we'll check if animals haven't been weighed in the last 7 days
-        # or if they're in a critical age range (0-30 days, 31-60 days, etc.)
-        cursor.execute("""
-            SELECT 
-                id, start_age, end_age, category_name
-            FROM weight_categories
-            ORDER BY start_age ASC
-        """)
-        weight_categories = cursor.fetchall()
-        
-        # Get animals with their last weight record
-        cursor.execute("""
-            SELECT 
-                p.id as pig_id,
-                p.tag_id,
-                p.birth_date,
-                p.farm_id,
-                f.farm_name,
-                DATEDIFF(CURDATE(), p.birth_date) as age_days,
-                (SELECT MAX(weighing_date) FROM weight_records WHERE pig_id = p.id) as last_weight_date
-            FROM pigs p
-            LEFT JOIN farms f ON p.farm_id = f.id
-            WHERE p.status = 'active'
-            AND p.birth_date IS NOT NULL
-        """)
-        pigs_for_weight = cursor.fetchall()
-        
-        for pig in pigs_for_weight:
-            if pig['age_days'] is None:
-                continue
-            
-            age_days = pig['age_days']
-            
-            # Find matching weight category
-            matching_category = None
-            for category in weight_categories:
-                if category['start_age'] <= age_days <= category['end_age']:
-                    matching_category = category
-                    break
-            
-            if not matching_category:
-                continue
-            
-            # Check if weight is due (7 days for piglets, 14 days for older pigs)
-            last_weight_date = pig['last_weight_date']
-            frequency_days = 7 if age_days <= 60 else 14  # More frequent for younger pigs
-            
-            if last_weight_date:
-                days_since_weight = (today - last_weight_date).days
-                if days_since_weight < frequency_days:
-                    continue
-            else:
-                # Never weighed, should be weighed (especially for young pigs)
-                if age_days > 7:  # Give 7 days grace period for newborns
-                    days_since_weight = age_days
-                else:
-                    continue
-            
-            if days_since_weight >= frequency_days:
-                all_notifications.append({
-                    'type': 'weight',
-                    'pig_id': pig['pig_id'],
-                    'tag_id': pig['tag_id'],
-                    'farm_id': pig['farm_id'],
-                    'farm_name': pig['farm_name'],
-                    'age_days': age_days,
-                    'category_name': matching_category['category_name'],
-                    'days_since_weight': days_since_weight,
-                    'frequency_days': frequency_days,
-                    'priority': 'high' if age_days <= 60 else 'medium'
-                })
-        
+        all_notifications = collect_all_feed_notifications(
+            cursor, now, today, current_hour, current_minute
+        )
         cursor.close()
         conn.close()
-        
-        # Group notifications by type and count them
-        notification_groups = {}
-        for notif in all_notifications:
-            notif_type = notif['type']
-            if notif_type not in notification_groups:
-                notification_groups[notif_type] = {
-                    'type': notif_type,
-                    'count': 0,
-                    'notifications': [],
-                    'highest_priority': 'low',
-                    'priority_order': 3
-                }
-            
-            notification_groups[notif_type]['count'] += 1
-            notification_groups[notif_type]['notifications'].append(notif)
-            
-            # Track highest priority
-            priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
-            notif_priority_order = priority_order.get(notif.get('priority', 'low'), 3)
-            if notif_priority_order < notification_groups[notif_type]['priority_order']:
-                notification_groups[notif_type]['priority_order'] = notif_priority_order
-                notification_groups[notif_type]['highest_priority'] = notif.get('priority', 'low')
-        
-        # Convert to list and sort by priority
-        grouped_notifications = list(notification_groups.values())
-        grouped_notifications.sort(key=lambda x: (x['priority_order'], -x['count']))
-        
+
+        grouped_notifications = _group_feed_notifications(all_notifications)
+
         return jsonify({
             'success': True,
             'notifications': grouped_notifications,
             'total_count': len(all_notifications)
         })
-        
+
     except Exception as e:
         print(f"Error fetching notifications: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Failed to fetch notifications: {str(e)}'}), 500
+
+
+@app.route('/api/session/welcome', methods=['GET'])
+def api_session_welcome():
+    """
+    One-time post-login payload: time-based greeting, name, and today's activity notifications
+    (grouped with urgency). Clears show_login_welcome after a successful read.
+    """
+    if 'employee_id' not in session:
+        return jsonify({'show': False, 'message': 'Unauthorized'}), 401
+    if not session.get('show_login_welcome'):
+        return jsonify({'show': False})
+
+    from datetime import datetime
+
+    now = datetime.now()
+    name = session.get('employee_name') or 'there'
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        all_notifications = collect_all_feed_notifications(
+            cursor, now, now.date(), now.hour, now.minute
+        )
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"api_session_welcome: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'show': True,
+            'greeting': _time_greeting(now.hour),
+            'name': name,
+            'clock': now.strftime('%I:%M %p'),
+            'error': 'Could not load activities',
+            'total_count': 0,
+            'categories': [],
+        })
+
+    for n in all_notifications:
+        _apply_welcome_urgency(n)
+    grouped = _group_feed_notifications(all_notifications)
+    categories = _welcome_enrich_groups(grouped)
+    session.pop('show_login_welcome', None)
+
+    return jsonify({
+        'show': True,
+        'greeting': _time_greeting(now.hour),
+        'name': name,
+        'clock': now.strftime('%I:%M %p'),
+        'total_count': len(all_notifications),
+        'categories': categories,
+    })
 
 @app.route('/api/feed/process-feeding', methods=['POST'])
 def process_feeding():
@@ -12744,56 +13230,42 @@ def admin_access_manager():
                 'Medical notifications for chickens (Coming Soon)' as description
             ORDER BY department, animal_type
         """)
-        upcoming_activities = cursor.fetchall()
+        upcoming_activities = _enrich_dashboard_notifications(
+            cursor.fetchall(), user_data['role']
+        )
         
-        # Chickens count (if table exists)
-        chickens_total = 0
+        # Chickens: prefer total birds (sum quantity) when column exists, else count rows
+        chickens_flock_rows = 0
+        chickens_headcount = 0
         chickens_batches = 0
+        try:
+            cursor.execute(
+                "SELECT COALESCE(SUM(quantity), 0) AS s FROM chickens WHERE current_status = 'active'"
+            )
+            r = cursor.fetchone()
+            chickens_headcount = int((r or {}).get('s') or 0)
+        except Exception:
+            pass
         try:
             cursor.execute("SELECT COUNT(*) as cnt FROM chickens WHERE current_status = 'active'")
             row = cursor.fetchone()
-            chickens_total = int(row['cnt']) if row and row.get('cnt') is not None else 0
-            cursor.execute("SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens WHERE current_status = 'active' AND batch_id IS NOT NULL")
+            chickens_flock_rows = int(row['cnt']) if row and row.get('cnt') is not None else 0
+            cursor.execute(
+                "SELECT COUNT(DISTINCT batch_id) as cnt FROM chickens "
+                "WHERE current_status = 'active' AND batch_id IS NOT NULL"
+            )
             row = cursor.fetchone()
             chickens_batches = int(row['cnt']) if row and row.get('cnt') is not None else 0
         except Exception:
             pass
+        chickens_for_card = chickens_headcount if chickens_headcount else chickens_flock_rows
         
         # Farms count
         cursor.execute("SELECT COUNT(*) as cnt FROM farms WHERE status = 'active'")
         row = cursor.fetchone()
         farms_count = int(row['cnt']) if row and row.get('cnt') is not None else 0
         
-        # Today's milk production
-        cursor.execute("""
-            SELECT COALESCE(SUM(milk_quantity), 0) as today_milk
-            FROM milk_production
-            WHERE production_date = CURDATE()
-        """)
-        row = cursor.fetchone()
-        today_milk = float(row['today_milk']) if row and row.get('today_milk') is not None else 0
-        
-        # Today's feed stock transactions (if feed_stock exists)
-        today_stock_in = 0
-        today_stock_out = 0
-        try:
-            cursor.execute("""
-                SELECT 
-                    SUM(CASE WHEN transaction_type = 'stock_in' THEN 1 ELSE 0 END) as cnt_in,
-                    SUM(CASE WHEN transaction_type = 'stock_out' THEN 1 ELSE 0 END) as cnt_out
-                FROM feed_stock
-                WHERE DATE(transaction_date) = CURDATE()
-            """)
-            row = cursor.fetchone()
-            if row:
-                today_stock_in = int(row.get('cnt_in') or 0)
-                today_stock_out = int(row.get('cnt_out') or 0)
-        except Exception:
-            pass
-        
-        # Calculate totals (include chickens)
-        total_animals = (pigs_data['total_pigs'] or 0) + (cows_data['total_cows'] or 0) + chickens_total
-        total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)  # piglets + alive piglets from litters
+        total_piglets = (pigs_data['piglets'] or 0) + (litter_data['alive_piglets_from_litters'] or 0)
         
         from datetime import datetime
         today_str = datetime.now().strftime('%A, %B %d, %Y')
@@ -12816,20 +13288,10 @@ def admin_access_manager():
                 'avg_milk_per_cow': milk_data['avg_milk_per_cow'] or 0
             },
             'chickens': {
-                'total_chickens': chickens_total,
+                'total_chickens': chickens_for_card,
                 'batches': chickens_batches
             },
             'farms_count': farms_count,
-            'today': {
-                'milk_liters': round(today_milk, 1),
-                'stock_in_count': today_stock_in,
-                'stock_out_count': today_stock_out
-            },
-            'totals': {
-                'total_animals': total_animals,
-                'daily_production': milk_data['avg_daily_milk_production'] or 0,  # average daily milk production
-                'system_health': 95  # This could be calculated based on various factors
-            },
             'upcoming_activities': upcoming_activities
         }
         
@@ -12846,8 +13308,6 @@ def admin_access_manager():
             'cows': {'total_cows': 0, 'female_cows': 0, 'male_cows': 0, 'avg_daily_milk_production': 0, 'cows_milked': 0, 'avg_milk_per_cow': 0},
             'chickens': {'total_chickens': 0, 'batches': 0},
             'farms_count': 0,
-            'today': {'milk_liters': 0, 'stock_in_count': 0, 'stock_out_count': 0},
-            'totals': {'total_animals': 0, 'daily_production': 0, 'system_health': 0},
             'upcoming_activities': []
         }
     
@@ -16922,9 +17382,16 @@ def check_sow_recovery_status(farrowing_id):
         activities_result = cursor.fetchone()
         all_activities_completed = activities_result['total_activities'] == activities_result['completed_activities']
         
+        cursor.execute("""
+            SELECT start_age, end_age, category_name, min_weight, max_weight, daily_gain
+            FROM weight_categories
+            ORDER BY start_age
+        """)
+        weight_cat_rows = cursor.fetchall() or []
+
         # Weight trend for related litter
         cursor.execute("""
-            SELECT id, litter_id, avg_weight, weaning_weight
+            SELECT id, litter_id, avg_weight, weaning_weight, weaning_date, farrowing_date
             FROM litters
             WHERE farrowing_record_id = %s
             ORDER BY id DESC
@@ -16937,6 +17404,8 @@ def check_sow_recovery_status(farrowing_id):
         latest_source = None
         litter_id = None
         litter_tag = None
+        weight_reference_date = None
+        age_days_at_latest = None
 
         if litter_row:
             litter_id = litter_row.get('id')
@@ -16944,7 +17413,7 @@ def check_sow_recovery_status(farrowing_id):
 
             # Prefer latest explicitly recorded litter weight
             cursor.execute("""
-                SELECT weight
+                SELECT weight, weighing_date
                 FROM weight_records
                 WHERE litter_id = %s
                 ORDER BY weighing_date DESC, created_at DESC
@@ -16954,12 +17423,62 @@ def check_sow_recovery_status(farrowing_id):
             if wr and wr.get('weight') is not None:
                 latest_weight = float(wr['weight'])
                 latest_source = 'weight_record'
+                if wr.get('weighing_date'):
+                    weight_reference_date = _as_date(wr['weighing_date'])
             elif litter_row.get('weaning_weight') is not None:
                 latest_weight = float(litter_row['weaning_weight'])
                 latest_source = 'weaning_weight'
+                if litter_row.get('weaning_date'):
+                    weight_reference_date = _as_date(litter_row['weaning_date'])
             elif litter_row.get('avg_weight') is not None:
                 latest_weight = float(litter_row['avg_weight'])
                 latest_source = 'litter_avg_weight'
+
+        litter_farrowing = None
+        if litter_row and litter_row.get('farrowing_date'):
+            litter_farrowing = _as_date(litter_row['farrowing_date'])
+        if litter_farrowing is None:
+            litter_farrowing = _as_date(farrowing_date)
+
+        if weight_reference_date is None and litter_farrowing is not None:
+            weight_reference_date = date.today()
+
+        if litter_farrowing is not None and weight_reference_date is not None:
+            age_days_at_latest = max(0, (weight_reference_date - litter_farrowing).days)
+
+        expected_start_weight = _litter_expected_kg_for_age(0, weight_cat_rows)
+        expected_latest_weight = (
+            _litter_expected_kg_for_age(age_days_at_latest, weight_cat_rows)
+            if age_days_at_latest is not None
+            else None
+        )
+
+        weight_vs_expected = 'unknown'
+        actual_vs_expected_kg = None
+        actual_vs_expected_pct = None
+        if (
+            expected_latest_weight is not None
+            and latest_weight is not None
+            and expected_latest_weight > 0
+        ):
+            actual_vs_expected_kg = round(latest_weight - expected_latest_weight, 2)
+            actual_vs_expected_pct = round((actual_vs_expected_kg / expected_latest_weight) * 100, 1)
+            rel = (latest_weight - expected_latest_weight) / expected_latest_weight
+            if abs(rel) <= 0.05:
+                weight_vs_expected = 'on_target'
+            elif rel > 0.05:
+                weight_vs_expected = 'above'
+            else:
+                weight_vs_expected = 'below'
+
+        if not litter_row:
+            expected_start_weight = None
+            expected_latest_weight = None
+            age_days_at_latest = None
+            weight_reference_date = None
+            weight_vs_expected = 'unknown'
+            actual_vs_expected_kg = None
+            actual_vs_expected_pct = None
 
         trend_direction = 'unknown'
         weight_change = None
@@ -17002,7 +17521,14 @@ def check_sow_recovery_status(farrowing_id):
                 'latest_weight_source': latest_source,
                 'weight_change': weight_change,
                 'weight_change_pct': weight_change_pct,
-                'weight_trend_direction': trend_direction
+                'weight_trend_direction': trend_direction,
+                'expected_start_weight': expected_start_weight,
+                'expected_latest_weight': expected_latest_weight,
+                'weight_reference_date': weight_reference_date.isoformat() if weight_reference_date else None,
+                'age_days_at_latest': age_days_at_latest,
+                'weight_vs_expected': weight_vs_expected,
+                'actual_vs_expected_kg': actual_vs_expected_kg,
+                'actual_vs_expected_pct': actual_vs_expected_pct,
             }
         })
         
@@ -25582,7 +26108,7 @@ if __name__ == '__main__':
     # DB already ensured on module load; run again so __main__ sees success/failure
     if create_database_and_tables():
         print("Database setup completed. Starting Flask application...")
-        app.run(debug=True)
+        app.run(debug=True, host='0.0.0.0', port=5000)
     else:
         print("Failed to setup database. Please check your MySQL connection.")
         print("Make sure MySQL is running and the credentials are correct.")
