@@ -352,6 +352,37 @@ def combine_same_day_farrowing_templates(cursor):
         for g in group[1:]:
             cursor.execute("DELETE FROM farrowing_activity_templates WHERE id = %s", (g['id'],))
 
+def _farrowing_date_to_sql(farrowing_date):
+    if farrowing_date is None:
+        return None
+    if hasattr(farrowing_date, 'strftime'):
+        return farrowing_date.strftime('%Y-%m-%d')
+    s = str(farrowing_date).strip()
+    return s[:10] if s else None
+
+def resync_farrowing_activity_due_dates_for_record(cursor, farrowing_record_id, farrowing_date):
+    """Recompute each activity's due_date from the canonical farrowing date + due_day."""
+    fd = _farrowing_date_to_sql(farrowing_date)
+    if not fd or not farrowing_record_id:
+        return
+    cursor.execute("""
+        UPDATE farrowing_activities
+        SET due_date = DATE_ADD(%s, INTERVAL due_day DAY)
+        WHERE farrowing_record_id = %s
+    """, (fd, farrowing_record_id))
+
+def resync_farrowing_activity_due_dates_for_breeding(cursor, breeding_id, farrowing_date):
+    """Recompute due dates for all activities tied to this breeding's farrowing record(s)."""
+    fd = _farrowing_date_to_sql(farrowing_date)
+    if not fd or not breeding_id:
+        return
+    cursor.execute("""
+        UPDATE farrowing_activities fa
+        JOIN farrowing_records fr ON fr.id = fa.farrowing_record_id
+        SET fa.due_date = DATE_ADD(%s, INTERVAL fa.due_day DAY)
+        WHERE fr.breeding_id = %s
+    """, (fd, breeding_id))
+
 def calculate_expected_weight(animal_id=None, litter_id=None, weighing_date=None):
     """Calculate expected weight based on age and weight categories"""
     try:
@@ -15329,18 +15360,51 @@ def edit_breeding_record(breeding_id):
         mating_date = data.get('mating_date')
         expected_due_date = data.get('expected_due_date')
         breeding_status = (data.get('breeding_status') or '').lower() or None
-        
+        actual_farrowing_date = data.get('actual_farrowing_date') or None
+
         if not mating_date:
             return jsonify({'success': False, 'message': 'Mating date is required'})
-        
+
+        # Validate actual farrowing date if provided
+        if actual_farrowing_date:
+            try:
+                af_dt = datetime.strptime(actual_farrowing_date, '%Y-%m-%d').date()
+                m_dt = datetime.strptime(mating_date, '%Y-%m-%d').date() if isinstance(mating_date, str) else mating_date
+                if af_dt < m_dt:
+                    return jsonify({'success': False, 'message': 'Actual farrowing date cannot be earlier than the mating date'})
+                if af_dt > datetime.now().date():
+                    return jsonify({'success': False, 'message': 'Actual farrowing date cannot be in the future'})
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Invalid actual farrowing date format'})
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             UPDATE breeding_records
             SET mating_date = %s, expected_due_date = %s, updated_at = NOW()
             WHERE id = %s
         """, (mating_date, expected_due_date, breeding_id))
+
+        # If user updated the actual farrowing date, sync the related
+        # farrowing_records and litters rows so all UIs stay consistent.
+        if actual_farrowing_date:
+            cursor.execute("""
+                UPDATE farrowing_records
+                SET farrowing_date = %s
+                WHERE breeding_id = %s
+            """, (actual_farrowing_date, breeding_id))
+
+            cursor.execute("""
+                UPDATE litters l
+                JOIN farrowing_records fr ON fr.id = l.farrowing_record_id
+                SET l.farrowing_date = %s
+                WHERE fr.breeding_id = %s
+            """, (actual_farrowing_date, breeding_id))
+
+            # Farrowing Activities UI uses farrowing_activities.due_date; keep it
+            # aligned with actual farrowing date + due_day (same as at registration).
+            resync_farrowing_activity_due_dates_for_breeding(cursor, breeding_id, actual_farrowing_date)
         
         # Optional: update sow (pigs.breeding_status). UI may pass legacy values
         # like "completed" from older clients. We intentionally do NOT flip the
@@ -16016,10 +16080,30 @@ def register_farrowing(breeding_id):
         alive_piglets = data.get('alive_piglets')
         still_births = data.get('still_births')
         avg_weight = data.get('avg_weight')
-        health_notes = data.get('health_notes', '')
-        
+        health_notes = (data.get('health_notes') or '').strip()
+        # New: weigh-in / health-comparison fields parity with completed-farrowings flow.
+        expected_weight = data.get('expected_weight')
+        health_status   = (data.get('health_status') or 'healthy').strip().lower()
+
         if not all([farrowing_date, alive_piglets is not None, still_births is not None, avg_weight is not None]):
             return jsonify({'success': False, 'message': 'Missing required fields'})
+
+        allowed_statuses = {'healthy', 'sick', 'recovering', 'quarantine', 'critical', 'injured'}
+        if health_status not in allowed_statuses:
+            return jsonify({'success': False, 'message': f'Invalid health status. Allowed: {", ".join(sorted(allowed_statuses))}'})
+        if health_status != 'healthy' and not health_notes:
+            return jsonify({'success': False, 'message': 'Health notes are required when the litter is not healthy'})
+
+        try:
+            avg_weight_value = float(avg_weight) if avg_weight not in (None, '') else None
+        except (TypeError, ValueError):
+            avg_weight_value = None
+        try:
+            expected_weight_value = float(expected_weight) if expected_weight not in (None, '') else None
+            if expected_weight_value is not None and expected_weight_value <= 0:
+                expected_weight_value = None
+        except (TypeError, ValueError):
+            expected_weight_value = None
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -16071,6 +16155,8 @@ def register_farrowing(breeding_id):
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """, (farrowing_date, alive_piglets, still_births, avg_weight, health_notes, farrowing_id))
+            # Activities may already exist from a prior draft; resync due dates to the new farrowing date.
+            resync_farrowing_activity_due_dates_for_record(cursor, farrowing_id, farrowing_date)
         else:
             # Insert farrowing record
             cursor.execute("""
@@ -16125,11 +16211,72 @@ def register_farrowing(breeding_id):
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             litter_id, farrowing_id, breeding_record['sow_id'], breeding_record['boar_id'],
-            farrowing_date, total_piglets, alive_piglets, still_births, avg_weight, session['employee_id']
+            farrowing_date, total_piglets, alive_piglets, still_births, avg_weight_value, session['employee_id']
         ))
-        
-        print(f"Created litter record: {litter_id}")
-        
+        new_litter_db_id = cursor.lastrowid
+        print(f"Created litter record: {litter_id} (id={new_litter_db_id})")
+
+        # ---- Persist initial weigh-in + health snapshot for the new litter so it
+        # shows up in Weight Assessment / Health Analytics immediately. Mirrors
+        # the schema written by /api/litter/record-weigh-in and the farrowing
+        # activity completion flow. ----
+        weight_record_id = None
+        if avg_weight_value is not None and avg_weight_value > 0:
+            try:
+                farrowing_date_obj = datetime.strptime(farrowing_date, '%Y-%m-%d').date()
+            except Exception:
+                farrowing_date_obj = None
+
+            # If the client didn't supply expected_weight, ask the helper to
+            # compute one for the litter on the farrowing date.
+            computed_expected = expected_weight_value
+            if computed_expected is None:
+                try:
+                    computed_expected = calculate_expected_weight(
+                        litter_id=new_litter_db_id,
+                        weighing_date=farrowing_date_obj
+                    )
+                except Exception as exp_e:
+                    print(f"Note: could not compute expected weight for new litter {new_litter_db_id}: {exp_e}")
+                    computed_expected = None
+
+            try:
+                cursor.execute("""
+                    INSERT INTO weight_records
+                        (litter_id, weight, expected_weight, weight_type, weighing_date, notes, created_at, updated_at)
+                    VALUES (%s, %s, %s, 'actual', %s, %s, NOW(), NOW())
+                """, (
+                    new_litter_db_id, avg_weight_value, computed_expected,
+                    farrowing_date_obj or farrowing_date,
+                    health_notes or 'Initial weigh-in at farrowing registration'
+                ))
+                weight_record_id = cursor.lastrowid
+            except Exception as wr_e:
+                print(f"Note: could not insert initial weight_records row: {wr_e}")
+
+        # Insert litter_health_records snapshot tied to the weight record (if any).
+        try:
+            cursor.execute("""
+                INSERT INTO litter_health_records
+                    (litter_id, check_date, health_status, notes, weight_record_id, recorded_by, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+            """, (
+                new_litter_db_id, farrowing_date, health_status,
+                health_notes or None, weight_record_id, session['employee_id']
+            ))
+        except Exception as hr_e:
+            print(f"Note: could not insert initial litter_health_records row: {hr_e}")
+
+        # Sync litters.health_status so the Litters tab and Health Analytics badges match.
+        try:
+            cursor.execute("""
+                UPDATE litters
+                SET health_status = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (health_status, new_litter_db_id))
+        except Exception as upd_e:
+            print(f"Note: could not sync litters.health_status on registration: {upd_e}")
+
         # Update sow's breeding status to farrowed
         print(f"Updating sow {breeding_record['sow_id']} breeding status to 'farrowed'")
         # Note: Sows with 'farrowed' status need recovery time before being bred again
@@ -16205,6 +16352,22 @@ def get_farrowing_activities(farrowing_id):
         """, (farrowing_id,))
 
         activities = cursor.fetchall()
+
+        def apply_canonical_farrowing_activity_due_dates(rows):
+            """Use farrowing_date + due_day (actual farrowing), not a stale farrowing_activities.due_date."""
+            base = ctx_row.get('farrowing_date') if ctx_row else None
+            if not base:
+                return
+            if isinstance(base, datetime):
+                base = base.date()
+            for a in rows:
+                try:
+                    day = int(a['due_day'])
+                except (TypeError, ValueError):
+                    continue
+                a['due_date'] = base + timedelta(days=day)
+
+        apply_canonical_farrowing_activity_due_dates(activities)
         
         # Auto-complete activities that have reached their exact due day
         today = datetime.now().date()
@@ -16230,6 +16393,7 @@ def get_farrowing_activities(farrowing_id):
                 ORDER BY fa.due_day ASC
             """, (farrowing_id,))
             activities = cursor.fetchall()
+            apply_canonical_farrowing_activity_due_dates(activities)
         
         # Combine same-day activities into a single row for popup display
         grouped = {}
