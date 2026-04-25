@@ -871,12 +871,69 @@
             }
         }
 
+        // ==============================================
+        // Activity weigh-in / health-status integration
+        // ==============================================
+        // Mirrors the Record Weigh-In popup on the Weight Assessment page so
+        // that completing a farrowing activity also (a) records a weight_records
+        // row tied to the litter and (b) sets the litter's health_status based
+        // on actual-vs-expected weight (auto-suggested, user can override).
+        const activityWeighInState = {
+            categories: [],
+            categoriesLoaded: false,
+            context: null,                  // { farrowing_date, litter_id, litter_tag, ... }
+            modalKind: null,                // 'regular' | 'weaning'
+            manualHealthOverride: false
+        };
+
+        async function loadWeightCategoriesOnce() {
+            if (activityWeighInState.categoriesLoaded) return activityWeighInState.categories;
+            try {
+                const res = await fetch(apiUrl('/api/weight/categories'));
+                const data = await res.json();
+                activityWeighInState.categories = (data && data.success) ? (data.categories || []) : [];
+            } catch (e) {
+                activityWeighInState.categories = [];
+            }
+            activityWeighInState.categoriesLoaded = true;
+            return activityWeighInState.categories;
+        }
+
+        function suggestHealthStatusFromPct(pct) {
+            if (pct == null || Number.isNaN(pct)) return null;
+            if (pct >= -5)  return 'healthy';
+            if (pct >= -10) return 'recovering';
+            if (pct >= -20) return 'sick';
+            return 'critical';
+        }
+
+        function computeExpectedWeightFromAge(ageDays) {
+            const cats = activityWeighInState.categories || [];
+            if (!cats.length || ageDays == null || Number.isNaN(ageDays) || ageDays < 0) return null;
+            const cat = cats.find(c => c.start_age != null && c.end_age != null
+                && ageDays >= Number(c.start_age) && ageDays <= Number(c.end_age));
+            if (!cat) return null;
+            const daysIn = ageDays - Number(cat.start_age);
+            const expected = Number(cat.min_weight) + (daysIn * Number(cat.daily_gain || 0));
+            return { expected, category: cat, ageDays };
+        }
+
+        function ageDaysBetween(startIso, endIso) {
+            if (!startIso || !endIso) return null;
+            const a = new Date(startIso + 'T00:00:00Z');
+            const b = new Date(endIso + 'T00:00:00Z');
+            if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+            return Math.floor((b - a) / (1000 * 60 * 60 * 24));
+        }
+
         // View farrowing activities
         async function viewFarrowingActivities(farrowingId) {
             try {
                 const response = await fetch(apiUrl(`/api/farrowing/activities/${farrowingId}`));
                 const data = await response.json();
                 if (data.success) {
+                    activityWeighInState.context = data.context || null;
+                    loadWeightCategoriesOnce();
                     showActivitiesModal(data.activities, farrowingId);
                 } else {
                     alert('Error: ' + data.message);
@@ -988,35 +1045,84 @@
         }
 
         function showActivityNotesModal(activityIds) {
+            const todayIso = new Date().toISOString().slice(0,10);
+            const ctx = activityWeighInState.context || {};
+            const litterTag = ctx.litter_tag ? `Litter ${ctx.litter_tag}` : 'Litter';
+            const sowTag = ctx.sow_tag_id ? ` · Sow ${ctx.sow_tag_id}` : '';
+
             const modalHTML = `
                 <div id="activity-notes-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 max-h-[95vh] overflow-y-auto">
                         <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div>
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Complete Activity</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Add notes for this completion (optional)</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">${litterTag}${sowTag}</p>
                             </div>
                             <button onclick="closeActivityNotesModal()" class="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        <div class="px-6 py-5">
+                        <div class="px-6 py-5 space-y-4">
                             <input type="hidden" id="activityNotesIds" value="${activityIds.join(',')}">
-                            <div class="mb-4">
+
+                            <div>
                                 <label for="activityCompletedDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Completion Date <span class="text-red-500">*</span>
+                                    <i class="fas fa-calendar-day mr-2 text-blue-500"></i>Completion Date <span class="text-red-500">*</span>
                                 </label>
-                                <input type="date" id="activityCompletedDate" max="${new Date().toISOString().slice(0,10)}" value="${new Date().toISOString().slice(0,10)}"
+                                <input type="date" id="activityCompletedDate" max="${todayIso}" value="${todayIso}"
                                        class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Pick the actual date the activity was carried out. Must be on or after the activity's due date and not in the future.</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Must be on or after the activity's due date and not in the future.</p>
                             </div>
-                            <div class="mb-4">
-                                <label for="activityLitterAvgWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Litter Average Weight (kg)</label>
-                                <input type="number" id="activityLitterAvgWeight" min="0.1" step="0.1" placeholder="e.g. 6.5" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+
+                            <!-- Age + Expected weight tiles (auto) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                    <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Litter Age At Date</p>
+                                    <p id="activityAgeAtDate" class="text-lg font-bold text-gray-900 dark:text-white">—</p>
+                                </div>
+                                <div class="p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
+                                    <p class="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-300">Expected Weight (kg)</p>
+                                    <p id="activityExpectedWeight" class="text-lg font-bold text-indigo-700 dark:text-indigo-200">—</p>
+                                    <p id="activityCategoryName" class="text-xs text-indigo-600/80 dark:text-indigo-300/70"></p>
+                                </div>
                             </div>
-                            <label for="activityCompletionNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes</label>
-                            <textarea id="activityCompletionNotes" rows="4" placeholder="e.g. Piglets are healthy and active. Temp stable." class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">These notes will be applied to all same-day combined activities.</p>
+
+                            <!-- Actual weight (litter average) -->
+                            <div>
+                                <label for="activityLitterAvgWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-weight mr-2 text-emerald-500"></i>Actual Litter Avg Weight (kg) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" id="activityLitterAvgWeight" min="0.1" step="0.1" placeholder="e.g. 6.5"
+                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white" required>
+                                <p id="activityWeightComparison" class="mt-1 text-xs"></p>
+                            </div>
+
+                            <!-- Health status (auto-suggested) -->
+                            <div>
+                                <label for="activityHealthStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-heart-pulse mr-2 text-pink-500"></i>Litter Health Status <span class="text-red-500">*</span>
+                                </label>
+                                <select id="activityHealthStatus" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white">
+                                    <option value="healthy">Healthy</option>
+                                    <option value="recovering">Recovering</option>
+                                    <option value="sick">Sick</option>
+                                    <option value="critical">Critical</option>
+                                    <option value="quarantine">Quarantine</option>
+                                    <option value="injured">Injured</option>
+                                </select>
+                                <p id="activityHealthHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+                            </div>
+
+                            <!-- Notes -->
+                            <div>
+                                <label for="activityCompletionNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-notes-medical mr-2 text-amber-500"></i>Notes
+                                    <span id="activityNotesRequired" class="hidden text-red-500">*</span>
+                                </label>
+                                <textarea id="activityCompletionNotes" rows="3" placeholder="e.g. Piglets are healthy and active. Temp stable."
+                                          class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Required whenever the health status is not <em>Healthy</em>. Applied to all same-day combined activities.</p>
+                            </div>
                         </div>
                         <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
                             <button type="button" onclick="closeActivityNotesModal()" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium">
@@ -1031,8 +1137,149 @@
             `;
 
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-            const textarea = document.getElementById('activityCompletionNotes');
-            if (textarea) textarea.focus();
+
+            activityWeighInState.modalKind = 'regular';
+            activityWeighInState.manualHealthOverride = false;
+
+            // Wire listeners
+            document.getElementById('activityCompletedDate').oninput = recalcActivityExpectedWeight;
+            document.getElementById('activityLitterAvgWeight').oninput = recalcActivityWeightComparison;
+            document.getElementById('activityHealthStatus').onchange = onActivityHealthStatusChange;
+
+            // Initial calc
+            recalcActivityExpectedWeight();
+
+            const focusEl = document.getElementById('activityLitterAvgWeight');
+            if (focusEl) focusEl.focus();
+        }
+
+        // ----- Calc helpers shared by both modals -----
+        async function recalcActivityExpectedWeight() {
+            await loadWeightCategoriesOnce();
+            const ctx = activityWeighInState.context || {};
+            const farrowingDate = ctx.farrowing_date;
+            const dateInputId = activityWeighInState.modalKind === 'weaning' ? 'weaningCompletedDate' : 'activityCompletedDate';
+            const ageElId     = activityWeighInState.modalKind === 'weaning' ? 'weaningAgeAtDate' : 'activityAgeAtDate';
+            const expElId     = activityWeighInState.modalKind === 'weaning' ? 'weaningExpectedWeight' : 'activityExpectedWeight';
+            const catElId     = activityWeighInState.modalKind === 'weaning' ? 'weaningCategoryName' : 'activityCategoryName';
+
+            const dateInput = document.getElementById(dateInputId);
+            const ageEl = document.getElementById(ageElId);
+            const expEl = document.getElementById(expElId);
+            const catEl = document.getElementById(catElId);
+            if (!dateInput || !ageEl || !expEl || !catEl) return;
+
+            const completedDate = dateInput.value;
+            const ageDays = ageDaysBetween(farrowingDate, completedDate);
+            ageEl.textContent = (ageDays != null && ageDays >= 0) ? `${ageDays} days` : '—';
+
+            const result = computeExpectedWeightFromAge(ageDays);
+            if (!result) {
+                expEl.textContent = (ageDays != null && ageDays >= 0) ? 'Out of range' : '—';
+                catEl.textContent = (ageDays != null && ageDays >= 0) ? 'No matching weight category' : '';
+            } else {
+                expEl.textContent = result.expected.toFixed(2) + ' kg';
+                catEl.textContent = `${result.category.category_name} (${result.category.start_age}–${result.category.end_age} days)`;
+            }
+            recalcActivityWeightComparison();
+        }
+
+        function recalcActivityWeightComparison() {
+            const weightInputId = activityWeighInState.modalKind === 'weaning' ? 'weaningWeight' : 'activityLitterAvgWeight';
+            const expElId       = activityWeighInState.modalKind === 'weaning' ? 'weaningExpectedWeight' : 'activityExpectedWeight';
+            const outElId       = activityWeighInState.modalKind === 'weaning' ? 'weaningWeightComparison' : 'activityWeightComparison';
+
+            const expEl = document.getElementById(expElId);
+            const outEl = document.getElementById(outElId);
+            const wInput = document.getElementById(weightInputId);
+            if (!expEl || !outEl || !wInput) return;
+
+            const expected = parseFloat(expEl.textContent);
+            const actual   = parseFloat(wInput.value);
+            if (Number.isNaN(expected) || Number.isNaN(actual) || expected <= 0) {
+                outEl.innerHTML = '';
+                activityWeighInState.manualHealthOverride = false;
+                applyActivityAutoHealthStatus(null);
+                return;
+            }
+            const diff = actual - expected;
+            const pct  = (diff / expected) * 100;
+            let cls = 'text-gray-600 dark:text-gray-300';
+            if (Math.abs(pct) <= 5)      cls = 'text-emerald-600 dark:text-emerald-400';
+            else if (pct > 5)            cls = 'text-blue-600 dark:text-blue-400';
+            else                         cls = 'text-amber-600 dark:text-amber-400';
+            const sign = diff >= 0 ? '+' : '';
+            outEl.className = 'mt-1 text-xs font-semibold ' + cls;
+            outEl.textContent = `${sign}${diff.toFixed(2)} kg vs expected (${sign}${pct.toFixed(1)}%)`;
+            applyActivityAutoHealthStatus(pct);
+        }
+
+        function applyActivityAutoHealthStatus(pct) {
+            const selectId = activityWeighInState.modalKind === 'weaning' ? 'weaningHealthStatus' : 'activityHealthStatus';
+            const hintId   = activityWeighInState.modalKind === 'weaning' ? 'weaningHealthHint' : 'activityHealthHint';
+            const select = document.getElementById(selectId);
+            const hint   = document.getElementById(hintId);
+            if (!select) return;
+
+            if (activityWeighInState.manualHealthOverride) {
+                if (hint) {
+                    hint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+                    hint.textContent = 'Manually selected — clear the weight or change the status to re-enable auto-detection.';
+                }
+                return;
+            }
+            const suggested = suggestHealthStatusFromPct(pct);
+            if (!suggested) {
+                if (hint) hint.textContent = '';
+                return;
+            }
+            if (select.value !== suggested) {
+                select.value = suggested;
+                toggleActivityNotesRequired();
+            }
+            if (hint) {
+                const labelMap = {
+                    healthy:    'Healthy',
+                    recovering: 'Recovering (slightly below expected)',
+                    sick:       'Sick (significantly below expected)',
+                    critical:   'Critical (severely below expected)'
+                };
+                const toneMap  = {
+                    healthy:    'text-emerald-600 dark:text-emerald-400',
+                    recovering: 'text-blue-600 dark:text-blue-400',
+                    sick:       'text-amber-600 dark:text-amber-400',
+                    critical:   'text-red-600 dark:text-red-400'
+                };
+                hint.className = 'mt-1 text-xs font-semibold ' + (toneMap[suggested] || 'text-gray-500 dark:text-gray-400');
+                hint.innerHTML = `<i class="fas fa-wand-magic-sparkles mr-1"></i>Auto-detected: ${labelMap[suggested] || suggested} — you can override.`;
+            }
+        }
+
+        function onActivityHealthStatusChange() {
+            activityWeighInState.manualHealthOverride = true;
+            const hintId = activityWeighInState.modalKind === 'weaning' ? 'weaningHealthHint' : 'activityHealthHint';
+            const hint = document.getElementById(hintId);
+            if (hint) {
+                hint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+                hint.textContent = 'Manually selected — clear the weight or change the status to re-enable auto-detection.';
+            }
+            toggleActivityNotesRequired();
+        }
+
+        function toggleActivityNotesRequired() {
+            const selectId      = activityWeighInState.modalKind === 'weaning' ? 'weaningHealthStatus' : 'activityHealthStatus';
+            const requiredMarkId = activityWeighInState.modalKind === 'weaning' ? 'weaningNotesRequired' : 'activityNotesRequired';
+            const notesId       = activityWeighInState.modalKind === 'weaning' ? 'weaningNotes' : 'activityCompletionNotes';
+
+            const status = document.getElementById(selectId)?.value;
+            const required = status && status !== 'healthy';
+            const mark = document.getElementById(requiredMarkId);
+            if (mark) mark.classList.toggle('hidden', !required);
+            const notes = document.getElementById(notesId);
+            if (notes) {
+                if (required) notes.setAttribute('required', 'required');
+                else notes.removeAttribute('required');
+            }
         }
 
         function closeActivityNotesModal() {
@@ -1045,9 +1292,12 @@
                 .split(',')
                 .map(v => parseInt(v, 10))
                 .filter(v => !Number.isNaN(v));
-            const notes = document.getElementById('activityCompletionNotes')?.value || '';
-            const litterAvgWeight = document.getElementById('activityLitterAvgWeight')?.value || '';
+            const notes = (document.getElementById('activityCompletionNotes')?.value || '').trim();
+            const actualWeightStr = document.getElementById('activityLitterAvgWeight')?.value || '';
             const completedDate = document.getElementById('activityCompletedDate')?.value || '';
+            const healthStatus = document.getElementById('activityHealthStatus')?.value || 'healthy';
+            const expectedText = document.getElementById('activityExpectedWeight')?.textContent || '';
+            const expectedWeight = parseFloat(expectedText);
 
             if (!completedDate) {
                 alert('Please select the date the activity was completed.');
@@ -1058,11 +1308,24 @@
                 alert('Completion date cannot be in the future.');
                 return;
             }
+            const actualWeight = actualWeightStr ? parseFloat(actualWeightStr) : NaN;
+            if (Number.isNaN(actualWeight) || actualWeight <= 0) {
+                alert('Please enter a valid actual litter average weight (kg).');
+                return;
+            }
+            if (healthStatus !== 'healthy' && !notes) {
+                alert('Please add a note when the litter is not healthy.');
+                return;
+            }
 
             closeActivityNotesModal();
             completeActivitiesWithData(ids, {
-                notes: notes.trim(),
-                litter_avg_weight: litterAvgWeight ? parseFloat(litterAvgWeight) : null,
+                notes: notes,
+                litter_avg_weight: actualWeight,
+                actual_weight: actualWeight,
+                expected_weight: Number.isNaN(expectedWeight) ? null : expectedWeight,
+                health_status: healthStatus,
+                health_notes: notes,
                 completed_date: completedDate
             });
         }
@@ -1096,61 +1359,98 @@
 
         // Show weaning completion modal
         function showWeaningCompletionModal(activityIds) {
+            const todayIso = new Date().toISOString().slice(0,10);
+            const ctx = activityWeighInState.context || {};
+            const litterTag = ctx.litter_tag ? `Litter ${ctx.litter_tag}` : 'Litter';
+            const sowTag = ctx.sow_tag_id ? ` · Sow ${ctx.sow_tag_id}` : '';
+
             const modalHTML = `
-                <div id="weaning-completion-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Complete Weaning Activity</h3>
-                            <button onclick="closeWeaningCompletionModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
+                <div id="weaning-completion-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 max-h-[95vh] overflow-y-auto">
+                        <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Complete Weaning Activity</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">${litterTag}${sowTag}</p>
+                            </div>
+                            <button onclick="closeWeaningCompletionModal()" class="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        
-                        <form id="weaningCompletionForm" class="space-y-4">
+
+                        <form id="weaningCompletionForm" class="px-6 py-5 space-y-4">
                             <input type="hidden" id="weaningActivityIds" value="${activityIds.join(',')}">
-                            
-                            <!-- Weaning Weight -->
-                            <div>
-                                <label for="weaningWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Weaning Weight (kg) <span class="text-red-500">*</span>
-                                </label>
-                                <input type="number" id="weaningWeight" name="weaning_weight" min="0.1" max="50.0" step="0.1" 
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
-                            </div>
-                            
-                            <!-- Weaning Date and Time -->
-                            <div>
-                                <label for="weaningDateTime" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Weaning Date & Time <span class="text-red-500">*</span>
-                                </label>
-                                <input type="datetime-local" id="weaningDateTime" name="weaning_date" 
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
-                            </div>
 
                             <!-- Activity Completion Date -->
                             <div>
                                 <label for="weaningCompletedDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Completion Date <span class="text-red-500">*</span>
+                                    <i class="fas fa-calendar-day mr-2 text-blue-500"></i>Completion Date <span class="text-red-500">*</span>
                                 </label>
-                                <input type="date" id="weaningCompletedDate" name="completed_date"
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                                <input type="date" id="weaningCompletedDate" name="completed_date" max="${todayIso}" value="${todayIso}"
+                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Date the weaning activity was actually carried out.</p>
                             </div>
-                            
+
+                            <!-- Age + Expected weight tiles (auto) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                    <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Litter Age At Date</p>
+                                    <p id="weaningAgeAtDate" class="text-lg font-bold text-gray-900 dark:text-white">—</p>
+                                </div>
+                                <div class="p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
+                                    <p class="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-300">Expected Weight (kg)</p>
+                                    <p id="weaningExpectedWeight" class="text-lg font-bold text-indigo-700 dark:text-indigo-200">—</p>
+                                    <p id="weaningCategoryName" class="text-xs text-indigo-600/80 dark:text-indigo-300/70"></p>
+                                </div>
+                            </div>
+
+                            <!-- Weaning Weight (= actual weigh-in) -->
+                            <div>
+                                <label for="weaningWeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-weight mr-2 text-emerald-500"></i>Weaning Weight (kg) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" id="weaningWeight" name="weaning_weight" min="0.1" max="100.0" step="0.1"
+                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white" required>
+                                <p id="weaningWeightComparison" class="mt-1 text-xs"></p>
+                            </div>
+
+                            <!-- Weaning Date and Time (biological event) -->
+                            <div>
+                                <label for="weaningDateTime" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Weaning Date & Time <span class="text-red-500">*</span>
+                                </label>
+                                <input type="datetime-local" id="weaningDateTime" name="weaning_date"
+                                       class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                            </div>
+
+                            <!-- Health status (auto-suggested) -->
+                            <div>
+                                <label for="weaningHealthStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-heart-pulse mr-2 text-pink-500"></i>Litter Health Status <span class="text-red-500">*</span>
+                                </label>
+                                <select id="weaningHealthStatus" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white">
+                                    <option value="healthy">Healthy</option>
+                                    <option value="recovering">Recovering</option>
+                                    <option value="sick">Sick</option>
+                                    <option value="critical">Critical</option>
+                                    <option value="quarantine">Quarantine</option>
+                                    <option value="injured">Injured</option>
+                                </select>
+                                <p id="weaningHealthHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+                            </div>
+
                             <!-- Notes -->
                             <div>
                                 <label for="weaningNotes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Notes
+                                    <i class="fas fa-notes-medical mr-2 text-amber-500"></i>Notes
+                                    <span id="weaningNotesRequired" class="hidden text-red-500">*</span>
                                 </label>
-                                <textarea id="weaningNotes" name="notes" rows="3" placeholder="Additional notes about the weaning..." 
-                                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
+                                <textarea id="weaningNotes" name="notes" rows="3" placeholder="Additional notes about the weaning..."
+                                          class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"></textarea>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Required whenever the health status is not <em>Healthy</em>.</p>
                             </div>
-                            
-                            <!-- Action Buttons -->
-                            <div class="flex justify-end space-x-3 pt-4">
-                                <button type="button" onclick="closeWeaningCompletionModal()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+
+                            <div class="flex justify-end space-x-3 pt-2">
+                                <button type="button" onclick="closeWeaningCompletionModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors">
                                     Cancel
                                 </button>
                                 <button type="button" onclick="submitWeaningCompletion()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
@@ -1163,17 +1463,21 @@
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-            
-            // Set default datetime to current time
+
+            activityWeighInState.modalKind = 'weaning';
+            activityWeighInState.manualHealthOverride = false;
+
+            // Default biological weaning date/time to now.
             const now = new Date();
             const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
             document.getElementById('weaningDateTime').value = localDateTime;
-            const todayStr = now.toISOString().slice(0, 10);
-            const completedDateInput = document.getElementById('weaningCompletedDate');
-            if (completedDateInput) {
-                completedDateInput.value = todayStr;
-                completedDateInput.max = todayStr;
-            }
+
+            // Wire listeners
+            document.getElementById('weaningCompletedDate').oninput = recalcActivityExpectedWeight;
+            document.getElementById('weaningWeight').oninput = recalcActivityWeightComparison;
+            document.getElementById('weaningHealthStatus').onchange = onActivityHealthStatusChange;
+
+            recalcActivityExpectedWeight();
         }
 
         // Submit weaning completion
@@ -1192,13 +1496,33 @@
                 return;
             }
 
+            const weaningWeight = parseFloat(formData.get('weaning_weight'));
+            if (Number.isNaN(weaningWeight) || weaningWeight <= 0) {
+                alert('Please enter a valid weaning weight (kg).');
+                return;
+            }
+
+            const notes = (formData.get('notes') || '').trim();
+            const healthStatus = document.getElementById('weaningHealthStatus')?.value || 'healthy';
+            const expectedText = document.getElementById('weaningExpectedWeight')?.textContent || '';
+            const expectedWeight = parseFloat(expectedText);
+
+            if (healthStatus !== 'healthy' && !notes) {
+                alert('Please add a note when the litter is not healthy.');
+                return;
+            }
+
             const weaningData = {
-                weaning_weight: parseFloat(formData.get('weaning_weight')),
+                weaning_weight: weaningWeight,
                 weaning_date: formData.get('weaning_date'),
-                notes: formData.get('notes') || '',
-                completed_date: completedDate
+                notes: notes,
+                completed_date: completedDate,
+                actual_weight: weaningWeight,
+                expected_weight: Number.isNaN(expectedWeight) ? null : expectedWeight,
+                health_status: healthStatus,
+                health_notes: notes
             };
-            
+
             const activityIds = String(document.getElementById('weaningActivityIds').value || '')
                 .split(',')
                 .map(v => parseInt(v, 10))

@@ -1136,6 +1136,50 @@ def create_database_and_tables():
             print("Litters table status ENUM updated successfully")
         except Exception as e:
             print(f"Note: Litters table status ENUM may already be updated: {e}")
+
+        # Add a current health_status column to litters so the latest health
+        # signal recorded during farrowing-activity weigh-ins is queryable
+        # without joining litter_health_records.
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'health_status'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN health_status
+                        ENUM('healthy','sick','recovering','quarantine','critical','injured')
+                        NOT NULL DEFAULT 'healthy'
+                """)
+                print("Added health_status column to litters table")
+        except Exception as e:
+            print(f"Note: could not add health_status column to litters: {e}")
+
+        # Create litter_health_records table — same shape as pig_health_records
+        # but keyed on litter_id. Used by the farrowing-activity completion flow
+        # to record the litter's health alongside its weight at each activity.
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS litter_health_records (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    litter_id INT NOT NULL,
+                    check_date DATE NOT NULL,
+                    health_status ENUM('healthy','sick','recovering','quarantine','critical','injured')
+                        NOT NULL DEFAULT 'healthy',
+                    notes TEXT,
+                    weight_record_id INT NULL,
+                    farrowing_activity_id INT NULL,
+                    recorded_by INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (litter_id) REFERENCES litters(id) ON DELETE CASCADE,
+                    FOREIGN KEY (weight_record_id) REFERENCES weight_records(id) ON DELETE SET NULL,
+                    FOREIGN KEY (farrowing_activity_id) REFERENCES farrowing_activities(id) ON DELETE SET NULL,
+                    INDEX idx_litter_health_litter (litter_id),
+                    INDEX idx_litter_health_date (check_date)
+                )
+            """)
+            print("Litter health records table checked/created successfully")
+        except Exception as e:
+            print(f"Note: could not create litter_health_records table: {e}")
         
         # Create cows table
         cursor.execute("""
@@ -16127,7 +16171,30 @@ def get_farrowing_activities(farrowing_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
+        # Pull farrowing + sow + litter context so the front-end can compute
+        # the litter's age at the chosen completion date, look up an expected
+        # weight from weight_categories and auto-suggest a health status.
+        cursor.execute("""
+            SELECT fr.id              AS farrowing_id,
+                   fr.farrowing_date  AS farrowing_date,
+                   br.sow_id          AS sow_id,
+                   sow.tag_id         AS sow_tag_id,
+                   l.id               AS litter_id,
+                   l.litter_id        AS litter_tag,
+                   l.avg_weight       AS litter_avg_weight,
+                   l.weaning_weight   AS litter_weaning_weight,
+                   l.alive_piglets    AS alive_piglets
+            FROM farrowing_records fr
+            JOIN breeding_records  br  ON fr.breeding_id = br.id
+            LEFT JOIN pigs         sow ON br.sow_id     = sow.id
+            LEFT JOIN litters      l   ON l.farrowing_record_id = fr.id
+            WHERE fr.id = %s
+            ORDER BY l.id DESC
+            LIMIT 1
+        """, (farrowing_id,))
+        ctx_row = cursor.fetchone()
+
         # Get farrowing activities with completion status
         cursor.execute("""
             SELECT fa.*, e.full_name as completed_by_name
@@ -16136,7 +16203,7 @@ def get_farrowing_activities(farrowing_id):
             WHERE fa.farrowing_record_id = %s
             ORDER BY fa.due_day ASC
         """, (farrowing_id,))
-        
+
         activities = cursor.fetchall()
         
         # Auto-complete activities that have reached their exact due day
@@ -16230,10 +16297,26 @@ def get_farrowing_activities(farrowing_id):
         
         cursor.close()
         conn.close()
-        
+
+        context = None
+        if ctx_row:
+            farrowing_date_val = ctx_row.get('farrowing_date')
+            context = {
+                'farrowing_id': ctx_row.get('farrowing_id'),
+                'farrowing_date': farrowing_date_val.isoformat() if farrowing_date_val else None,
+                'sow_id': ctx_row.get('sow_id'),
+                'sow_tag_id': ctx_row.get('sow_tag_id'),
+                'litter_id': ctx_row.get('litter_id'),
+                'litter_tag': ctx_row.get('litter_tag'),
+                'litter_avg_weight': float(ctx_row['litter_avg_weight']) if ctx_row.get('litter_avg_weight') is not None else None,
+                'litter_weaning_weight': float(ctx_row['litter_weaning_weight']) if ctx_row.get('litter_weaning_weight') is not None else None,
+                'alive_piglets': ctx_row.get('alive_piglets')
+            }
+
         return jsonify({
             'success': True,
-            'activities': activities_list
+            'activities': activities_list,
+            'context': context
         })
         
     except Exception as e:
@@ -16357,6 +16440,21 @@ def complete_farrowing_activity(activity_id):
         notes = data.get('notes', '')
         litter_avg_weight = data.get('litter_avg_weight')
         completed_date_raw = (data.get('completed_date') or '').strip()
+
+        # New: weigh-in / health-status fields, mirroring the Record Weigh-In
+        # popup on the Weight Assessment page.
+        actual_weight_in   = data.get('actual_weight')
+        expected_weight_in = data.get('expected_weight')
+        health_status_in   = (data.get('health_status') or '').strip().lower() or None
+        health_notes_in    = (data.get('health_notes') or '').strip()
+        allowed_health_statuses = {'healthy', 'sick', 'recovering', 'quarantine', 'critical', 'injured'}
+        if health_status_in and health_status_in not in allowed_health_statuses:
+            return jsonify({
+                'success': False,
+                'message': f'Invalid health status. Allowed: {", ".join(sorted(allowed_health_statuses))}'
+            })
+        if health_status_in and health_status_in != 'healthy' and not health_notes_in:
+            return jsonify({'success': False, 'message': 'Notes are required when the litter is not healthy'})
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -16422,16 +16520,26 @@ def complete_farrowing_activity(activity_id):
             if not weaning_date:
                 return jsonify({'success': False, 'message': 'Weaning date and time is required for weaning activity'})
 
-        # Optional litter average weight update from completion modal
+        # Optional litter average weight update from completion modal.
+        # Prefer the explicit "actual_weight" weigh-in field; fall back to the
+        # legacy "litter_avg_weight" payload for backward compatibility.
+        weight_source = actual_weight_in if actual_weight_in not in [None, ''] else litter_avg_weight
         parsed_litter_avg_weight = None
-        if litter_avg_weight not in [None, '']:
+        if weight_source not in [None, '']:
             try:
-                parsed_litter_avg_weight = float(litter_avg_weight)
+                parsed_litter_avg_weight = float(weight_source)
                 if parsed_litter_avg_weight <= 0:
-                    return jsonify({'success': False, 'message': 'Litter average weight must be greater than 0'})
+                    return jsonify({'success': False, 'message': 'Actual weight must be greater than 0'})
             except (TypeError, ValueError):
-                return jsonify({'success': False, 'message': 'Invalid litter average weight value'})
-        
+                return jsonify({'success': False, 'message': 'Invalid actual weight value'})
+
+        # For weaning activities, the weaning weight IS the litter weigh-in.
+        if activity['activity_name'] == 'Weaning' and parsed_litter_avg_weight is None:
+            try:
+                parsed_litter_avg_weight = float(weaning_weight)
+            except (TypeError, ValueError):
+                parsed_litter_avg_weight = None
+
         # Mark activity as completed (using the user-selected completion date).
         cursor.execute("""
             UPDATE farrowing_activities 
@@ -16446,6 +16554,99 @@ def complete_farrowing_activity(activity_id):
                 SET avg_weight = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """, (parsed_litter_avg_weight, activity['farrowing_record_id']))
+
+        # ------------------------------------------------------------------
+        # Link the activity to a litter weight_records row + litter health row
+        # using the same logic as the Record Weigh-In popup on the Weight
+        # Assessment page (auto-derived expected weight, persisted health).
+        # ------------------------------------------------------------------
+        weight_record_id = None
+        litter_health_record_id = None
+        try:
+            cursor.execute("""
+                SELECT id, farrowing_date
+                FROM litters
+                WHERE farrowing_record_id = %s
+                ORDER BY id DESC
+                LIMIT 1
+            """, (activity['farrowing_record_id'],))
+            litter_row = cursor.fetchone()
+        except Exception:
+            litter_row = None
+
+        if litter_row and parsed_litter_avg_weight is not None:
+            # Resolve expected weight: trust the client value if numeric,
+            # otherwise compute it from the litter's age at completion date.
+            expected_weight_value = None
+            try:
+                if expected_weight_in not in [None, '']:
+                    expected_weight_value = float(expected_weight_in)
+                    if expected_weight_value <= 0:
+                        expected_weight_value = None
+            except (TypeError, ValueError):
+                expected_weight_value = None
+            if expected_weight_value is None:
+                try:
+                    expected_weight_value = calculate_expected_weight(
+                        litter_id=litter_row['id'],
+                        weighing_date=completed_date
+                    )
+                except Exception as exp_e:
+                    print(f"Note: could not compute expected weight for litter {litter_row['id']}: {exp_e}")
+                    expected_weight_value = None
+
+            try:
+                cursor.execute("""
+                    INSERT INTO weight_records
+                        (litter_id, weight, expected_weight, weight_type, weighing_date, notes, created_at, updated_at)
+                    VALUES (%s, %s, %s, 'actual', %s, %s, NOW(), NOW())
+                """, (
+                    litter_row['id'],
+                    parsed_litter_avg_weight,
+                    expected_weight_value,
+                    completed_date,
+                    (notes or None)
+                ))
+                weight_record_id = cursor.lastrowid
+            except Exception as wr_e:
+                print(f"Note: could not insert weight_records row for litter {litter_row['id']}: {wr_e}")
+
+            cursor.execute("""
+                UPDATE litters
+                SET avg_weight = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (parsed_litter_avg_weight, litter_row['id']))
+
+        # Persist health status against the litter (if the user provided one).
+        if litter_row and health_status_in:
+            try:
+                cursor.execute("""
+                    INSERT INTO litter_health_records
+                        (litter_id, check_date, health_status, notes, weight_record_id,
+                         farrowing_activity_id, recorded_by, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                """, (
+                    litter_row['id'],
+                    completed_date,
+                    health_status_in,
+                    (health_notes_in or notes or None),
+                    weight_record_id,
+                    activity_id,
+                    session.get('employee_id')
+                ))
+                litter_health_record_id = cursor.lastrowid
+            except Exception as hr_e:
+                print(f"Note: could not insert litter_health_records row for litter {litter_row['id']}: {hr_e}")
+
+            # Mirror the latest health status onto the litter row for quick lookups.
+            try:
+                cursor.execute("""
+                    UPDATE litters
+                    SET health_status = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (health_status_in, litter_row['id']))
+            except Exception as upd_e:
+                print(f"Note: could not sync litters.health_status: {upd_e}")
         
         conn.commit()
         cursor.close()
@@ -16465,7 +16666,9 @@ def complete_farrowing_activity(activity_id):
         
         return jsonify({
             'success': True,
-            'message': f'Activity "Day {activity_day}: {activity["activity_name"]}" marked as completed{overdue_warning}'
+            'message': f'Activity "Day {activity_day}: {activity["activity_name"]}" marked as completed{overdue_warning}',
+            'weight_record_id': weight_record_id,
+            'litter_health_record_id': litter_health_record_id
         })
         
     except Exception as e:
@@ -20535,6 +20738,160 @@ def record_animal_weigh_in():
         return jsonify({'success': False, 'message': f'Failed to record weigh-in: {str(e)}'})
 
 
+@app.route('/api/litter/record-weigh-in', methods=['POST'])
+def record_litter_weigh_in():
+    """Record a litter's weight AND health status at the same time.
+
+    Mirrors /api/animal/record-weigh-in but writes against `litters` instead of
+    `pigs`. Inserts a row into `weight_records` (keyed on litter_id), inserts a
+    row into `litter_health_records`, and updates `litters.avg_weight` and
+    `litters.health_status` so the Weight Assessment page reflects the new
+    weigh-in immediately.
+    """
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        litter_id      = data.get('litter_id')
+        actual_weight  = data.get('actual_weight') or data.get('weight')
+        expected_weight = data.get('expected_weight')
+        weighing_date  = data.get('weighing_date')
+        weighing_time  = data.get('weighing_time')
+        weight_notes   = (data.get('weight_notes') or '').strip()
+        health_status  = (data.get('health_status') or 'healthy').strip().lower()
+        health_notes   = (data.get('health_notes') or '').strip()
+
+        if not litter_id or actual_weight is None or not weighing_date:
+            return jsonify({'success': False, 'message': 'litter_id, actual_weight and weighing_date are required'})
+
+        try:
+            actual_weight = float(actual_weight)
+            if actual_weight <= 0:
+                return jsonify({'success': False, 'message': 'Actual weight must be greater than 0'})
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid actual weight value'})
+
+        allowed_statuses = {'healthy', 'sick', 'recovering', 'quarantine', 'critical', 'injured'}
+        if health_status not in allowed_statuses:
+            return jsonify({'success': False, 'message': f'Invalid health status. Allowed: {", ".join(sorted(allowed_statuses))}'})
+
+        if health_status != 'healthy' and not health_notes:
+            return jsonify({'success': False, 'message': 'A note is required when the litter is not healthy'})
+
+        from datetime import datetime
+        try:
+            weighing_date_obj = datetime.strptime(weighing_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid weighing_date format (expected YYYY-MM-DD)'})
+
+        if weighing_date_obj > datetime.now().date():
+            return jsonify({'success': False, 'message': 'Weighing date cannot be in the future'})
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, litter_id AS litter_tag, farrowing_date
+            FROM litters WHERE id = %s
+        """, (litter_id,))
+        litter = cursor.fetchone()
+        if not litter:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Litter not found'})
+
+        farrowing_date = litter.get('farrowing_date')
+        if farrowing_date and weighing_date_obj < farrowing_date:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': f"Weighing date cannot be before the litter's farrowing date ({farrowing_date.isoformat()})"
+            })
+
+        # Compute expected weight if the client didn't supply one.
+        expected_weight_value = None
+        try:
+            if expected_weight not in [None, '']:
+                expected_weight_value = float(expected_weight)
+                if expected_weight_value <= 0:
+                    expected_weight_value = None
+        except (TypeError, ValueError):
+            expected_weight_value = None
+        if expected_weight_value is None:
+            try:
+                expected_weight_value = calculate_expected_weight(
+                    litter_id=litter['id'],
+                    weighing_date=weighing_date_obj
+                )
+            except Exception as exp_e:
+                print(f"Note: could not compute expected weight for litter {litter['id']}: {exp_e}")
+                expected_weight_value = None
+
+        # Insert into the SAME weight_records table that powers Weight Assessment.
+        cursor.execute("""
+            INSERT INTO weight_records
+                (litter_id, weight, expected_weight, weight_type, weighing_date, weighing_time, notes, created_at, updated_at)
+            VALUES (%s, %s, %s, 'actual', %s, %s, %s, NOW(), NOW())
+        """, (
+            litter['id'], actual_weight, expected_weight_value,
+            weighing_date_obj, weighing_time, weight_notes or None
+        ))
+        weight_record_id = cursor.lastrowid
+
+        # Insert litter health record tied to the new weight_record.
+        combined_notes = health_notes
+        if not combined_notes and health_status == 'healthy' and weight_notes:
+            combined_notes = weight_notes
+        litter_health_record_id = None
+        try:
+            cursor.execute("""
+                INSERT INTO litter_health_records
+                    (litter_id, check_date, health_status, notes, weight_record_id, recorded_by, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+            """, (litter['id'], weighing_date_obj, health_status, combined_notes or None,
+                  weight_record_id, session.get('employee_id')))
+            litter_health_record_id = cursor.lastrowid
+        except Exception as hr_e:
+            print(f"Note: could not insert litter_health_records row: {hr_e}")
+
+        # Mirror current weight + health onto the litter row for quick reads.
+        cursor.execute("""
+            UPDATE litters
+            SET avg_weight = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (actual_weight, litter['id']))
+        try:
+            cursor.execute("""
+                UPDATE litters
+                SET health_status = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (health_status, litter['id']))
+        except Exception as upd_e:
+            print(f"Note: could not sync litters.health_status: {upd_e}")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        log_activity(session['employee_id'], 'LITTER_WEIGH_IN',
+                     f"Recorded weigh-in for litter {litter.get('litter_tag') or litter['id']}: "
+                     f"{actual_weight} kg on {weighing_date_obj} (health: {health_status})")
+
+        return jsonify({
+            'success': True,
+            'message': 'Litter weigh-in recorded successfully',
+            'weight_record_id': weight_record_id,
+            'litter_health_record_id': litter_health_record_id,
+            'expected_weight': expected_weight_value
+        })
+
+    except Exception as e:
+        print(f"Error recording litter weigh-in: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to record litter weigh-in: {str(e)}'})
+
+
 @app.route('/api/animal/<int:animal_id>/health', methods=['GET'])
 def get_animal_health_records(animal_id):
     """Return per-animal health records (most recent first)."""
@@ -20571,6 +20928,321 @@ def get_animal_health_records(animal_id):
     except Exception as e:
         print(f"Error getting animal health records: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to load health records: {str(e)}'})
+
+
+@app.route('/admin/farm/health-analytics')
+def admin_farm_health_analytics():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_health_analytics.html', user=user_data)
+
+
+@app.route('/manager/farm/health-analytics')
+def manager_farm_health_analytics():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_health_analytics.html', user=user_data)
+
+
+@app.route('/api/health-analytics/animals', methods=['GET'])
+def health_analytics_animals():
+    """Return a unified list of pigs, batches, and litters that can be analyzed.
+
+    Each row carries: subject_type ('pig'|'batch'|'litter'), id, tag, label,
+    breed, current_health, current_weight, age_days, origin_date,
+    record counts (health/weight/medication) for quick badges in the UI.
+    """
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Pigs (individual + batch). The pigs table has no `health_status` or
+        # `current_weight` columns, so we derive both from the most-recent
+        # pig_health_records / weight_records rows.
+        cursor.execute("""
+            SELECT p.id, p.tag_id, p.pig_type, p.breed, p.gender,
+                   p.age_days, p.birth_date, p.purchase_date, p.pig_source,
+                   (SELECT hr.health_status FROM pig_health_records hr
+                      WHERE hr.animal_id = p.id
+                      ORDER BY hr.check_date DESC, hr.id DESC LIMIT 1) AS current_health,
+                   (SELECT w.weight FROM weight_records w
+                      WHERE w.animal_id = p.id
+                      ORDER BY w.weighing_date DESC, w.id DESC LIMIT 1) AS current_weight,
+                   (SELECT COUNT(*) FROM pig_health_records hr WHERE hr.animal_id = p.id) AS health_records,
+                   (SELECT COUNT(*) FROM weight_records w WHERE w.animal_id = p.id) AS weight_records,
+                   (SELECT COUNT(*) FROM vaccination_records v
+                       WHERE v.animal_id = p.id AND v.animal_type = 'pig') AS medication_records
+            FROM pigs p
+            ORDER BY p.tag_id ASC
+        """)
+        pig_rows = cursor.fetchall() or []
+
+        cursor.execute("""
+            SELECT l.id, l.litter_id AS tag_id, l.farrowing_date, l.avg_weight,
+                   l.health_status AS current_health,
+                   p.tag_id AS sow_tag_id, p.breed AS sow_breed,
+                   (SELECT COUNT(*) FROM litter_health_records hr WHERE hr.litter_id = l.id) AS health_records,
+                   (SELECT COUNT(*) FROM weight_records w WHERE w.litter_id = l.id) AS weight_records,
+                   (SELECT COUNT(*) FROM vaccination_records v
+                       WHERE v.animal_id = l.id AND v.animal_type = 'litter') AS medication_records
+            FROM litters l
+            LEFT JOIN pigs p ON l.sow_id = p.id
+            ORDER BY l.farrowing_date DESC
+        """)
+        litter_rows = cursor.fetchall() or []
+
+        cursor.close()
+        conn.close()
+
+        from datetime import date as _date
+        today = _date.today()
+
+        animals = []
+        for r in pig_rows:
+            pig_type = (r.get('pig_type') or '').lower()
+            subject_type = 'batch' if pig_type == 'batch' else 'pig'
+            origin = r.get('birth_date') or r.get('purchase_date')
+            age_days = None
+            if origin:
+                try:
+                    age_days = (today - origin).days
+                except Exception:
+                    age_days = r.get('age_days')
+            else:
+                age_days = r.get('age_days')
+            animals.append({
+                'subject_type': subject_type,
+                'id': r['id'],
+                'tag': r.get('tag_id') or f"#{r['id']}",
+                'label': r.get('tag_id') or f"#{r['id']}",
+                'breed': r.get('breed') or 'Unknown',
+                'gender': r.get('gender') or '',
+                'current_health': r.get('current_health') or 'healthy',
+                'current_weight': float(r['current_weight']) if r.get('current_weight') is not None else None,
+                'age_days': age_days,
+                'origin_date': str(origin) if origin else None,
+                'origin_label': 'Purchased' if (r.get('pig_source') or '').lower() == 'purchased' else 'Born',
+                'health_records': int(r.get('health_records') or 0),
+                'weight_records': int(r.get('weight_records') or 0),
+                'medication_records': int(r.get('medication_records') or 0),
+            })
+
+        for r in litter_rows:
+            origin = r.get('farrowing_date')
+            age_days = None
+            if origin:
+                try:
+                    age_days = (today - origin).days
+                except Exception:
+                    age_days = None
+            animals.append({
+                'subject_type': 'litter',
+                'id': r['id'],
+                'tag': r.get('tag_id') or f"L#{r['id']}",
+                'label': r.get('tag_id') or f"L#{r['id']}",
+                'breed': r.get('sow_breed') or 'Unknown',
+                'gender': '',
+                'current_health': r.get('current_health') or 'healthy',
+                'current_weight': float(r['avg_weight']) if r.get('avg_weight') is not None else None,
+                'age_days': age_days,
+                'origin_date': str(origin) if origin else None,
+                'origin_label': 'Farrowed',
+                'sow_tag': r.get('sow_tag_id') or '',
+                'health_records': int(r.get('health_records') or 0),
+                'weight_records': int(r.get('weight_records') or 0),
+                'medication_records': int(r.get('medication_records') or 0),
+            })
+
+        return jsonify({'success': True, 'animals': animals})
+
+    except Exception as e:
+        print(f"Error loading health analytics animals: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route('/api/health-analytics/<subject_type>/<int:subject_id>/trends', methods=['GET'])
+def health_analytics_trends(subject_type, subject_id):
+    """Return health, weight and medication trend data for a single subject.
+
+    `subject_type` is one of: 'pig', 'batch', 'litter'.
+    Pigs and batches both live in the `pigs` table; litters live in `litters`.
+    """
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    subject_type = (subject_type or '').lower()
+    if subject_type not in ('pig', 'batch', 'litter'):
+        return jsonify({'success': False, 'message': 'Invalid subject_type'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        subject = {}
+        if subject_type in ('pig', 'batch'):
+            cursor.execute("""
+                SELECT p.id, p.tag_id, p.pig_type, p.breed, p.gender,
+                       p.birth_date, p.purchase_date, p.pig_source, p.age_days,
+                       (SELECT hr.health_status FROM pig_health_records hr
+                          WHERE hr.animal_id = p.id
+                          ORDER BY hr.check_date DESC, hr.id DESC LIMIT 1) AS health_status,
+                       (SELECT w.weight FROM weight_records w
+                          WHERE w.animal_id = p.id
+                          ORDER BY w.weighing_date DESC, w.id DESC LIMIT 1) AS current_weight
+                FROM pigs p WHERE p.id = %s
+            """, (subject_id,))
+            row = cursor.fetchone()
+            if not row:
+                cursor.close(); conn.close()
+                return jsonify({'success': False, 'message': 'Pig/batch not found'}), 404
+            subject = {
+                'id': row['id'],
+                'tag': row.get('tag_id') or f"#{row['id']}",
+                'subject_type': 'batch' if (row.get('pig_type') or '').lower() == 'batch' else 'pig',
+                'breed': row.get('breed') or 'Unknown',
+                'gender': row.get('gender') or '',
+                'current_health': row.get('health_status') or 'healthy',
+                'current_weight': float(row['current_weight']) if row.get('current_weight') is not None else None,
+                'origin_date': str(row.get('birth_date') or row.get('purchase_date')) if (row.get('birth_date') or row.get('purchase_date')) else None,
+                'origin_label': 'Purchased' if (row.get('pig_source') or '').lower() == 'purchased' else 'Born',
+            }
+
+            cursor.execute("""
+                SELECT hr.id, hr.check_date, hr.health_status, hr.notes,
+                       hr.weight_record_id, e.full_name AS recorded_by_name
+                FROM pig_health_records hr
+                LEFT JOIN employees e ON hr.recorded_by = e.id
+                WHERE hr.animal_id = %s
+                ORDER BY hr.check_date ASC, hr.id ASC
+            """, (subject_id,))
+            health_rows = cursor.fetchall() or []
+
+            cursor.execute("""
+                SELECT id, weight, expected_weight, weighing_date, weighing_time, notes
+                FROM weight_records
+                WHERE animal_id = %s
+                ORDER BY weighing_date ASC, id ASC
+            """, (subject_id,))
+            weight_rows = cursor.fetchall() or []
+
+            cursor.execute("""
+                SELECT vr.id, vr.completed_date, vr.completion_notes,
+                       vs.day_number, vs.day_description, vs.medicine_activity,
+                       vs.dosage_amount, vs.reason,
+                       e.full_name AS completed_by_name
+                FROM vaccination_records vr
+                LEFT JOIN vaccination_schedule vs ON vr.schedule_id = vs.id
+                LEFT JOIN employees e ON vr.completed_by = e.id
+                WHERE vr.animal_id = %s AND vr.animal_type = 'pig'
+                ORDER BY vr.completed_date ASC, vr.id ASC
+            """, (subject_id,))
+            med_rows = cursor.fetchall() or []
+
+        else:  # litter
+            cursor.execute("""
+                SELECT l.id, l.litter_id AS tag_id, l.farrowing_date, l.avg_weight,
+                       l.health_status, p.tag_id AS sow_tag_id, p.breed AS sow_breed
+                FROM litters l
+                LEFT JOIN pigs p ON l.sow_id = p.id
+                WHERE l.id = %s
+            """, (subject_id,))
+            row = cursor.fetchone()
+            if not row:
+                cursor.close(); conn.close()
+                return jsonify({'success': False, 'message': 'Litter not found'}), 404
+            subject = {
+                'id': row['id'],
+                'tag': row.get('tag_id') or f"L#{row['id']}",
+                'subject_type': 'litter',
+                'breed': row.get('sow_breed') or 'Unknown',
+                'gender': '',
+                'current_health': row.get('health_status') or 'healthy',
+                'current_weight': float(row['avg_weight']) if row.get('avg_weight') is not None else None,
+                'origin_date': str(row['farrowing_date']) if row.get('farrowing_date') else None,
+                'origin_label': 'Farrowed',
+                'sow_tag': row.get('sow_tag_id') or '',
+            }
+
+            cursor.execute("""
+                SELECT hr.id, hr.check_date, hr.health_status, hr.notes,
+                       hr.weight_record_id, hr.farrowing_activity_id,
+                       e.full_name AS recorded_by_name
+                FROM litter_health_records hr
+                LEFT JOIN employees e ON hr.recorded_by = e.id
+                WHERE hr.litter_id = %s
+                ORDER BY hr.check_date ASC, hr.id ASC
+            """, (subject_id,))
+            health_rows = cursor.fetchall() or []
+
+            cursor.execute("""
+                SELECT id, weight, expected_weight, weighing_date, weighing_time, notes
+                FROM weight_records
+                WHERE litter_id = %s
+                ORDER BY weighing_date ASC, id ASC
+            """, (subject_id,))
+            weight_rows = cursor.fetchall() or []
+
+            cursor.execute("""
+                SELECT vr.id, vr.completed_date, vr.completion_notes,
+                       vs.day_number, vs.day_description, vs.medicine_activity,
+                       vs.dosage_amount, vs.reason,
+                       e.full_name AS completed_by_name
+                FROM vaccination_records vr
+                LEFT JOIN vaccination_schedule vs ON vr.schedule_id = vs.id
+                LEFT JOIN employees e ON vr.completed_by = e.id
+                WHERE vr.animal_id = %s AND vr.animal_type = 'litter'
+                ORDER BY vr.completed_date ASC, vr.id ASC
+            """, (subject_id,))
+            med_rows = cursor.fetchall() or []
+
+        cursor.close()
+        conn.close()
+
+        def _stringify(rows, date_keys):
+            out = []
+            for r in rows:
+                d = dict(r)
+                for k in date_keys:
+                    if d.get(k) is not None:
+                        d[k] = str(d[k])
+                # Coerce decimal weights into floats so JSON consumers don't choke
+                for nk in ('weight', 'expected_weight'):
+                    if nk in d and d[nk] is not None:
+                        try:
+                            d[nk] = float(d[nk])
+                        except Exception:
+                            pass
+                out.append(d)
+            return out
+
+        return jsonify({
+            'success': True,
+            'subject': subject,
+            'health_history': _stringify(health_rows, ['check_date']),
+            'weight_history': _stringify(weight_rows, ['weighing_date']),
+            'medication_history': _stringify(med_rows, ['completed_date']),
+        })
+
+    except Exception as e:
+        print(f"Error loading trends for {subject_type} {subject_id}: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
 
 
 @app.route('/api/animal/<int:animal_id>/breeding', methods=['GET'])

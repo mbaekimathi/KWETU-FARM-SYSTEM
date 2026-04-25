@@ -633,6 +633,128 @@
         </div>
     </div>
 
+    <!-- Litter Weigh-In Modal (mirrors the individual-pig modal above) -->
+    <div id="litter-weigh-in-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-all duration-300">
+        <div class="flex items-start sm:items-center justify-center min-h-screen p-2 sm:p-4 overflow-y-auto">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl mx-1 sm:mx-4 my-2 sm:my-4 max-h-[98vh] sm:max-h-[92vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300">
+                <!-- Header -->
+                <div class="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-t-2xl sm:rounded-t-3xl">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-weight-scale text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Record Litter Weigh-In</h3>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400" id="litterWeighInLabel">—</p>
+                            </div>
+                        </div>
+                        <button onclick="closeLitterWeighInModal()" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+                    <form id="litter-weigh-in-form" class="space-y-4 sm:space-y-5">
+                        <input type="hidden" id="litterWeighInId">
+                        <input type="hidden" id="litterWeighInFarrowingDate">
+
+                        <!-- Litter summary -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-700">
+                            <div>
+                                <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Litter</p>
+                                <p class="text-sm font-bold text-gray-900 dark:text-white" id="litterWeighInTag">—</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Sow</p>
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300" id="litterWeighInSow">—</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Farrowed On</p>
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300" id="litterWeighInFarrowedOn">—</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Age Now</p>
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300" id="litterWeighInCurrentAge">—</p>
+                            </div>
+                        </div>
+
+                        <!-- Weighing date -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i class="fas fa-calendar-day mr-2 text-blue-500"></i>Weighing Date <span class="text-red-500">*</span>
+                            </label>
+                            <input type="date" id="litterWeighInDate" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white">
+                            <p id="litterWeighInDateHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+                        </div>
+
+                        <!-- Age + expected weight tiles (auto) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                <p class="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">Age At Date</p>
+                                <p id="litterWeighInAgeAtDate" class="text-lg font-bold text-gray-900 dark:text-white">—</p>
+                            </div>
+                            <div class="p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
+                                <p class="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-300">Expected Weight (kg)</p>
+                                <p id="litterWeighInExpectedWeight" class="text-lg font-bold text-indigo-700 dark:text-indigo-200">—</p>
+                                <p id="litterWeighInCategoryName" class="text-xs text-indigo-600/80 dark:text-indigo-300/70"></p>
+                            </div>
+                        </div>
+
+                        <!-- Actual weight (litter average) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i class="fas fa-weight mr-2 text-emerald-500"></i>Actual Litter Avg Weight (kg) <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" step="0.01" min="0" id="litterWeighInActualWeight" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white" placeholder="e.g., 6.5">
+                            <p id="litterWeighInComparison" class="mt-1 text-xs"></p>
+                        </div>
+
+                        <!-- Health status -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i class="fas fa-heart-pulse mr-2 text-pink-500"></i>Litter Health Status <span class="text-red-500">*</span>
+                            </label>
+                            <select id="litterWeighInHealthStatus" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white">
+                                <option value="healthy">Healthy</option>
+                                <option value="recovering">Recovering</option>
+                                <option value="sick">Sick</option>
+                                <option value="critical">Critical</option>
+                                <option value="quarantine">Quarantine</option>
+                                <option value="injured">Injured</option>
+                            </select>
+                            <p id="litterWeighInHealthHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+                        </div>
+
+                        <!-- Notes (required if not healthy) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i class="fas fa-notes-medical mr-2 text-amber-500"></i>Notes
+                                <span id="litterWeighInNotesRequired" class="hidden text-red-500">*</span>
+                            </label>
+                            <textarea id="litterWeighInNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white resize-none" placeholder="Describe symptoms or observations (required when not healthy)"></textarea>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Notes are mandatory whenever the health status is not <em>Healthy</em>.</p>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/40 rounded-b-2xl sm:rounded-b-3xl">
+                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                        <button onclick="closeLitterWeighInModal()" type="button" class="flex-1 sm:flex-none px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-all font-semibold">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button onclick="submitLitterWeighIn()" type="button" id="litterWeighInSubmitBtn" class="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all font-semibold shadow-lg">
+                            <i class="fas fa-save mr-2"></i>Save Weigh-In
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Theme Toggle
         const themeToggle = document.getElementById('theme-toggle');
@@ -1331,9 +1453,14 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="event.stopPropagation(); viewLitterDetails(${litter.id})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors">
-                                <i class="fas fa-eye"></i>
-                            </button>
+                            <div class="flex items-center space-x-3">
+                                <button onclick="event.stopPropagation(); openLitterWeighInModalById(${litter.id})" class="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors" title="Record new weigh-in">
+                                    <i class="fas fa-weight-scale"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); viewLitterDetails(${litter.id})" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="View details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -1644,6 +1771,264 @@
             } catch (err) {
                 console.error(err);
                 alert('Network error while saving weigh-in.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        // ===========================
+        // Litter Weigh-In Modal Logic
+        // (mirrors the individual-pig weigh-in flow above)
+        // ===========================
+        const litterWeighInContext = {
+            farrowingDate: null,
+            litter: null,
+            manualHealthOverride: false,
+        };
+
+        function openLitterWeighInModalById(litterId) {
+            const litter = (currentAnimals || []).find(l => l && l.id === litterId);
+            if (!litter) {
+                alert('Litter not found in the current view. Please refresh and try again.');
+                return;
+            }
+            openLitterWeighInModal(litter);
+        }
+
+        function openLitterWeighInModal(litter) {
+            litterWeighInContext.litter = litter;
+            litterWeighInContext.manualHealthOverride = false;
+
+            const farrowIso = toIsoDate(litter.farrowing_date);
+            litterWeighInContext.farrowingDate = farrowIso;
+
+            const tag = litter.litter_id || litter.tag || `Litter #${litter.id}`;
+            const sowLbl = litter.sow_tag_id || litter.sow_tag || (litter.sow_id ? `Sow #${litter.sow_id}` : '—');
+            const farrowedOn = farrowIso ? new Date(farrowIso + 'T00:00:00Z').toLocaleDateString() : '—';
+            const ageNow = farrowIso ? Math.floor((new Date() - new Date(farrowIso + 'T00:00:00Z')) / (1000*60*60*24)) : null;
+
+            document.getElementById('litterWeighInId').value = litter.id;
+            document.getElementById('litterWeighInFarrowingDate').value = farrowIso || '';
+            document.getElementById('litterWeighInLabel').textContent = `Capture today's litter average weight & health for ${tag}`;
+            document.getElementById('litterWeighInTag').textContent = tag;
+            document.getElementById('litterWeighInSow').textContent = sowLbl;
+            document.getElementById('litterWeighInFarrowedOn').textContent = farrowedOn;
+            document.getElementById('litterWeighInCurrentAge').textContent = ageNow != null ? `${ageNow} days` : '—';
+
+            // Default the date to today, clamp min to farrowing date.
+            const dateInput = document.getElementById('litterWeighInDate');
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+            dateInput.max = today;
+            if (farrowIso) {
+                dateInput.min = farrowIso;
+                document.getElementById('litterWeighInDateHint').textContent =
+                    `Choose between farrowing date (${farrowedOn}) and today.`;
+            } else {
+                dateInput.removeAttribute('min');
+                document.getElementById('litterWeighInDateHint').textContent =
+                    'Choose any date up to today.';
+            }
+            dateInput.oninput = recalcLitterWeighInExpected;
+
+            const actualInput = document.getElementById('litterWeighInActualWeight');
+            actualInput.value = '';
+            actualInput.oninput = recalcLitterWeighInComparison;
+
+            const healthSelect = document.getElementById('litterWeighInHealthStatus');
+            healthSelect.value = 'healthy';
+            healthSelect.onchange = onLitterWeighInHealthStatusChange;
+
+            document.getElementById('litterWeighInNotes').value = '';
+            document.getElementById('litterWeighInComparison').textContent = '';
+            document.getElementById('litterWeighInHealthHint').textContent = '';
+            toggleLitterWeighInNotesRequired();
+
+            // Open modal with same animation as the pig modal.
+            const modal = document.getElementById('litter-weigh-in-modal');
+            modal.classList.remove('hidden');
+            const card = modal.querySelector('.bg-white');
+            requestAnimationFrame(() => {
+                if (card) {
+                    card.classList.remove('scale-95', 'opacity-0');
+                    card.classList.add('scale-100', 'opacity-100');
+                }
+            });
+
+            recalcLitterWeighInExpected();
+        }
+
+        function closeLitterWeighInModal() {
+            const modal = document.getElementById('litter-weigh-in-modal');
+            const card = modal.querySelector('.bg-white');
+            if (card) {
+                card.classList.add('scale-95', 'opacity-0');
+                card.classList.remove('scale-100', 'opacity-100');
+            }
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        async function recalcLitterWeighInExpected() {
+            const origin = litterWeighInContext.farrowingDate;
+            const dateStr = document.getElementById('litterWeighInDate').value;
+            const ageEl = document.getElementById('litterWeighInAgeAtDate');
+            const expEl = document.getElementById('litterWeighInExpectedWeight');
+            const catEl = document.getElementById('litterWeighInCategoryName');
+
+            if (!origin || !dateStr) {
+                ageEl.textContent = '—'; expEl.textContent = '—'; catEl.textContent = '';
+                return;
+            }
+            const originDate = new Date(origin);
+            const selected   = new Date(dateStr);
+            if (isNaN(originDate.getTime()) || isNaN(selected.getTime())) {
+                ageEl.textContent = '—'; expEl.textContent = '—'; catEl.textContent = ''; return;
+            }
+            const ageDays = Math.floor((selected - originDate) / (1000 * 60 * 60 * 24));
+            ageEl.textContent = ageDays >= 0 ? `${ageDays} days` : 'Invalid';
+
+            // Reuse the existing weight-categories cache loaded by the pig flow.
+            const categories = await getWeighInCategories();
+            if (!categories.length || ageDays < 0) {
+                expEl.textContent = '—'; catEl.textContent = ''; return;
+            }
+            const category = categories.find(c => c.start_age != null && c.end_age != null
+                && ageDays >= Number(c.start_age) && ageDays <= Number(c.end_age));
+            if (!category) {
+                expEl.textContent = 'Out of range';
+                catEl.textContent = 'No matching weight category';
+                return;
+            }
+            const daysInCategory = ageDays - Number(category.start_age);
+            const expected = Number(category.min_weight) + (daysInCategory * Number(category.daily_gain || 0));
+            expEl.textContent = expected.toFixed(2) + ' kg';
+            catEl.textContent = `${category.category_name} (${category.start_age}–${category.end_age} days)`;
+            recalcLitterWeighInComparison();
+        }
+
+        function recalcLitterWeighInComparison() {
+            const expText = document.getElementById('litterWeighInExpectedWeight').textContent;
+            const expected = parseFloat(expText);
+            const actual   = parseFloat(document.getElementById('litterWeighInActualWeight').value);
+            const out = document.getElementById('litterWeighInComparison');
+            if (Number.isNaN(expected) || Number.isNaN(actual) || expected <= 0) {
+                out.innerHTML = '';
+                litterWeighInContext.manualHealthOverride = false;
+                applyLitterAutoHealthStatus(null);
+                return;
+            }
+            const diff = actual - expected;
+            const pct  = (diff / expected) * 100;
+            let cls = 'text-gray-600 dark:text-gray-300';
+            if (Math.abs(pct) <= 5)      cls = 'text-emerald-600 dark:text-emerald-400';
+            else if (pct > 5)            cls = 'text-blue-600 dark:text-blue-400';
+            else                         cls = 'text-amber-600 dark:text-amber-400';
+            const sign = diff >= 0 ? '+' : '';
+            out.className = 'mt-1 text-xs font-semibold ' + cls;
+            out.textContent = `${sign}${diff.toFixed(2)} kg vs expected (${sign}${pct.toFixed(1)}%)`;
+            applyLitterAutoHealthStatus(pct);
+        }
+
+        function applyLitterAutoHealthStatus(pct) {
+            const suggested = suggestHealthStatusFromPct(pct);
+            const select = document.getElementById('litterWeighInHealthStatus');
+            const hint   = document.getElementById('litterWeighInHealthHint');
+            if (!select) return;
+            if (litterWeighInContext.manualHealthOverride) {
+                if (hint) {
+                    hint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+                    hint.textContent = 'Manually selected — clear the weight or change the status to re-enable auto-detection.';
+                }
+                return;
+            }
+            if (!suggested) {
+                if (hint) hint.textContent = '';
+                return;
+            }
+            if (select.value !== suggested) {
+                select.value = suggested;
+                toggleLitterWeighInNotesRequired();
+            }
+            if (hint) {
+                const labelMap = { healthy:'Healthy', recovering:'Recovering (slightly below expected)', sick:'Sick (significantly below expected)', critical:'Critical (severely below expected)' };
+                const toneMap  = { healthy:'text-emerald-600 dark:text-emerald-400', recovering:'text-blue-600 dark:text-blue-400', sick:'text-amber-600 dark:text-amber-400', critical:'text-red-600 dark:text-red-400' };
+                hint.className = 'mt-1 text-xs font-semibold ' + (toneMap[suggested] || 'text-gray-500 dark:text-gray-400');
+                hint.innerHTML = `<i class="fas fa-wand-magic-sparkles mr-1"></i>Auto-detected: ${labelMap[suggested] || suggested} — you can override.`;
+            }
+        }
+
+        function onLitterWeighInHealthStatusChange() {
+            litterWeighInContext.manualHealthOverride = true;
+            const hint = document.getElementById('litterWeighInHealthHint');
+            if (hint) {
+                hint.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+                hint.textContent = 'Manually selected — clear the weight or change the status to re-enable auto-detection.';
+            }
+            toggleLitterWeighInNotesRequired();
+        }
+
+        function toggleLitterWeighInNotesRequired() {
+            const status = document.getElementById('litterWeighInHealthStatus').value;
+            const required = status !== 'healthy';
+            document.getElementById('litterWeighInNotesRequired').classList.toggle('hidden', !required);
+            const notes = document.getElementById('litterWeighInNotes');
+            if (required) notes.setAttribute('required', 'required'); else notes.removeAttribute('required');
+        }
+
+        async function submitLitterWeighIn() {
+            const btn = document.getElementById('litterWeighInSubmitBtn');
+            const litterId = document.getElementById('litterWeighInId').value;
+            const weighing_date = document.getElementById('litterWeighInDate').value;
+            const actual_weight = parseFloat(document.getElementById('litterWeighInActualWeight').value);
+            const health_status = document.getElementById('litterWeighInHealthStatus').value;
+            const notes = document.getElementById('litterWeighInNotes').value.trim();
+            const expectedText = document.getElementById('litterWeighInExpectedWeight').textContent;
+            const expected_weight = parseFloat(expectedText);
+
+            if (!litterId || !weighing_date || Number.isNaN(actual_weight) || actual_weight <= 0) {
+                alert('Please fill in a valid weighing date and actual weight.');
+                return;
+            }
+            if (health_status !== 'healthy' && !notes) {
+                alert('A note is required when the litter is not healthy.');
+                return;
+            }
+            const farrow = litterWeighInContext.farrowingDate;
+            if (farrow && new Date(weighing_date) < new Date(farrow)) {
+                alert(`Weighing date cannot be before the farrowing date (${new Date(farrow).toLocaleDateString()}).`);
+                return;
+            }
+
+            btn.disabled = true;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+
+            try {
+                const response = await fetch('/api/litter/record-weigh-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        litter_id: Number(litterId),
+                        weighing_date: weighing_date,
+                        actual_weight: actual_weight,
+                        expected_weight: Number.isNaN(expected_weight) ? null : expected_weight,
+                        health_status: health_status,
+                        health_notes: notes,
+                        weight_notes: health_status === 'healthy' ? notes : ''
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    closeLitterWeighInModal();
+                    alert('Litter weigh-in recorded successfully.');
+                    if (typeof refreshAnimals === 'function') refreshAnimals();
+                } else {
+                    alert(data.message || 'Failed to record litter weigh-in.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error while saving litter weigh-in.');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;

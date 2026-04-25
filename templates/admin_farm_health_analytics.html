@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Analytics - Pig Farm Management System</title>
+{% include 'includes/farm_hub_shell_head_fragment.html' %}
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Health Analytics' %}
+{% set farm_shell_icon_class = 'fas fa-chart-line' %}
+{% set farm_sidebar_banner_title = 'Pig hub' %}
+{% set farm_sidebar_banner_sub = 'Health' %}
+{% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_health_hub.html' %}
+{% set pig_nav_active = 'health' %}
+
+{% include 'includes/farm_shell_header.html' %}
+{% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+
+<main class="pt-16 md:pl-64 min-h-screen transition-[padding] duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <!-- Page Header -->
+        <div class="mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+                        <i class="fas fa-chart-line text-emerald-500 mr-3"></i>Health Analytics
+                    </h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Pick any animal — pig, batch, or litter — to see its health, weight, and medication trends side by side.
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="loadAnalyticsAnimals()" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter chips + search -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-4 mb-6">
+            <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input id="animal-search" type="text" placeholder="Search by tag, breed, or sow…"
+                               class="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white text-sm">
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2" id="type-filter-chips">
+                    <button data-type="all" class="filter-chip is-active px-3 py-1.5 rounded-full text-xs font-semibold border bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800">All</button>
+                    <button data-type="pig" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold border bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600">Individual Pigs</button>
+                    <button data-type="batch" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold border bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600">Batches</button>
+                    <button data-type="litter" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold border bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600">Litters</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Animal selector list -->
+            <div class="lg:col-span-4">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">
+                            <i class="fas fa-list mr-2 text-emerald-500"></i>Animals
+                        </h3>
+                        <span id="animals-count" class="text-xs text-gray-500 dark:text-gray-400">—</span>
+                    </div>
+                    <div id="animal-list" class="divide-y divide-gray-100 dark:divide-gray-700 max-h-[640px] overflow-y-auto">
+                        <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-spinner fa-spin text-emerald-500 text-xl block mb-2"></i>Loading animals…
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail / Tabs panel -->
+            <div class="lg:col-span-8">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <!-- Subject header -->
+                    <div id="subject-header" class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md">
+                                    <i id="subject-icon" class="fas fa-piggy-bank text-lg"></i>
+                                </div>
+                                <div>
+                                    <h2 id="subject-title" class="text-lg font-bold text-gray-900 dark:text-white">Pick an animal</h2>
+                                    <p id="subject-subtitle" class="text-xs text-gray-600 dark:text-gray-400">
+                                        Their health, weight, and medication trends will appear here.
+                                    </p>
+                                </div>
+                            </div>
+                            <span id="subject-current-health" class="hidden px-2.5 py-1 rounded-full text-xs font-bold"></span>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="px-5 pt-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                        <nav class="flex space-x-2">
+                            <button id="tab-visual" data-tab="visual" class="analytics-tab px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-gray-800">
+                                <i class="fas fa-chart-area mr-2"></i>Visual Analytics
+                            </button>
+                            <button id="tab-raw" data-tab="raw" class="analytics-tab px-4 py-2 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                                <i class="fas fa-table mr-2"></i>Raw Data
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div id="empty-state" class="p-10 text-center">
+                        <div class="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                            <i class="fas fa-chart-pie text-3xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-1">No animal selected</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Choose an animal from the list to load its trends.</p>
+                    </div>
+
+                    <!-- Visual tab -->
+                    <div id="panel-visual" class="hidden p-5 space-y-5">
+                        <!-- KPI tiles -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                                <p class="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-300">Latest Weight</p>
+                                <p id="kpi-latest-weight" class="text-lg font-bold text-emerald-700 dark:text-emerald-200">—</p>
+                            </div>
+                            <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+                                <p class="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-300">Δ vs Expected</p>
+                                <p id="kpi-weight-delta" class="text-lg font-bold text-indigo-700 dark:text-indigo-200">—</p>
+                            </div>
+                            <div class="p-3 rounded-xl bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800">
+                                <p class="text-[10px] uppercase font-semibold text-pink-600 dark:text-pink-300">Health Records</p>
+                                <p id="kpi-health-count" class="text-lg font-bold text-pink-700 dark:text-pink-200">—</p>
+                            </div>
+                            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                <p class="text-[10px] uppercase font-semibold text-amber-600 dark:text-amber-300">Medications</p>
+                                <p id="kpi-med-count" class="text-lg font-bold text-amber-700 dark:text-amber-200">—</p>
+                            </div>
+                        </div>
+
+                        <!-- Weight Trend -->
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">
+                                    <i class="fas fa-weight-scale mr-2 text-emerald-500"></i>Weight Trend
+                                </h4>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Actual vs Expected (kg)</span>
+                            </div>
+                            <div class="relative h-64">
+                                <canvas id="weightChart"></canvas>
+                            </div>
+                            <p id="weight-empty" class="hidden text-center text-xs text-gray-500 dark:text-gray-400 py-6">No weight records yet.</p>
+                        </div>
+
+                        <!-- Health Trend -->
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">
+                                    <i class="fas fa-heart-pulse mr-2 text-pink-500"></i>Health Trend
+                                </h4>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Status over time</span>
+                            </div>
+                            <div class="relative h-56">
+                                <canvas id="healthChart"></canvas>
+                            </div>
+                            <p id="health-empty" class="hidden text-center text-xs text-gray-500 dark:text-gray-400 py-6">No health records yet.</p>
+                        </div>
+
+                        <!-- Medication Trend -->
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">
+                                    <i class="fas fa-syringe mr-2 text-amber-500"></i>Medication Trend
+                                </h4>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Doses completed by month</span>
+                            </div>
+                            <div class="relative h-56">
+                                <canvas id="medChart"></canvas>
+                            </div>
+                            <p id="med-empty" class="hidden text-center text-xs text-gray-500 dark:text-gray-400 py-6">No medications recorded yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- Raw tab -->
+                    <div id="panel-raw" class="hidden p-5 space-y-6">
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-2">
+                                <i class="fas fa-heart-pulse mr-2 text-pink-500"></i>Health Records
+                            </h4>
+                            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 dark:bg-gray-700/40">
+                                        <tr class="text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                            <th class="px-3 py-2">Date</th>
+                                            <th class="px-3 py-2">Status</th>
+                                            <th class="px-3 py-2">Notes</th>
+                                            <th class="px-3 py-2">Recorded By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="raw-health-body" class="divide-y divide-gray-100 dark:divide-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-2">
+                                <i class="fas fa-weight-scale mr-2 text-emerald-500"></i>Weight Records
+                            </h4>
+                            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 dark:bg-gray-700/40">
+                                        <tr class="text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                            <th class="px-3 py-2">Date</th>
+                                            <th class="px-3 py-2">Actual (kg)</th>
+                                            <th class="px-3 py-2">Expected (kg)</th>
+                                            <th class="px-3 py-2">Δ</th>
+                                            <th class="px-3 py-2">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="raw-weight-body" class="divide-y divide-gray-100 dark:divide-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-900 dark:text-white mb-2">
+                                <i class="fas fa-syringe mr-2 text-amber-500"></i>Medication Records
+                            </h4>
+                            <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 dark:bg-gray-700/40">
+                                        <tr class="text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                            <th class="px-3 py-2">Completed</th>
+                                            <th class="px-3 py-2">Day</th>
+                                            <th class="px-3 py-2">Medicine / Activity</th>
+                                            <th class="px-3 py-2">Dosage</th>
+                                            <th class="px-3 py-2">Notes</th>
+                                            <th class="px-3 py-2">By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="raw-med-body" class="divide-y divide-gray-100 dark:divide-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Mobile sidebar / theme — keep parity with sibling pages.
+    const themeToggle = document.getElementById('theme-toggle');
+    const sunIcon = document.getElementById('sun-icon');
+    const moonIcon = document.getElementById('moon-icon');
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+    function updateThemeIcon() {
+        const isDark = document.documentElement.classList.contains('dark');
+        if (sunIcon) sunIcon.classList.toggle('hidden', isDark);
+        if (moonIcon) moonIcon.classList.toggle('hidden', !isDark);
+    }
+    updateThemeIcon();
+    if (themeToggle) themeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        updateThemeIcon();
+    });
+
+    // ---------- State ----------
+    let allAnimals = [];
+    let filteredAnimals = [];
+    let activeTypeFilter = 'all';
+    let activeSearch = '';
+    let selectedKey = null;          // `${subject_type}:${id}`
+    let charts = { weight: null, health: null, med: null };
+
+    const HEALTH_LABELS = ['critical', 'sick', 'injured', 'quarantine', 'recovering', 'healthy'];
+    const HEALTH_COLOR = {
+        healthy:   { bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', solid: '#10b981' },
+        recovering:{ bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',             solid: '#3b82f6' },
+        sick:      { bg: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',          solid: '#f59e0b' },
+        critical:  { bg: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',                  solid: '#ef4444' },
+        quarantine:{ bg: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',      solid: '#8b5cf6' },
+        injured:   { bg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',      solid: '#f97316' },
+    };
+    const TYPE_META = {
+        pig:    { icon: 'fa-piggy-bank',  noun: 'Pig',    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+        batch:  { icon: 'fa-layer-group', noun: 'Batch',  badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+        litter: { icon: 'fa-baby',        noun: 'Litter', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+    };
+
+    // ---------- Bootstrap ----------
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAnalyticsAnimals();
+        document.getElementById('animal-search').addEventListener('input', (e) => {
+            activeSearch = (e.target.value || '').trim().toLowerCase();
+            renderAnimalList();
+        });
+        document.querySelectorAll('#type-filter-chips .filter-chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeTypeFilter = btn.dataset.type;
+                document.querySelectorAll('#type-filter-chips .filter-chip').forEach(b => {
+                    const on = b === btn;
+                    b.classList.toggle('is-active', on);
+                    b.classList.toggle('bg-emerald-100', on);
+                    b.classList.toggle('text-emerald-700', on);
+                    b.classList.toggle('border-emerald-200', on);
+                    b.classList.toggle('dark:bg-emerald-900/30', on);
+                    b.classList.toggle('dark:text-emerald-300', on);
+                    b.classList.toggle('dark:border-emerald-800', on);
+                    b.classList.toggle('bg-white', !on);
+                    b.classList.toggle('dark:bg-gray-700', !on);
+                    b.classList.toggle('text-gray-700', !on);
+                    b.classList.toggle('dark:text-gray-300', !on);
+                    b.classList.toggle('border-gray-200', !on);
+                    b.classList.toggle('dark:border-gray-600', !on);
+                });
+                renderAnimalList();
+            });
+        });
+        document.querySelectorAll('.analytics-tab').forEach(t => {
+            t.addEventListener('click', () => switchTab(t.dataset.tab));
+        });
+    });
+
+    // ---------- Data loading ----------
+    async function loadAnalyticsAnimals() {
+        const list = document.getElementById('animal-list');
+        list.innerHTML = `
+            <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                <i class="fas fa-spinner fa-spin text-emerald-500 text-xl block mb-2"></i>Loading animals…
+            </div>`;
+        try {
+            const res = await fetch('/api/health-analytics/animals');
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'Failed to load animals');
+            allAnimals = data.animals || [];
+            renderAnimalList();
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = `
+                <div class="px-4 py-8 text-center text-sm text-red-600">
+                    <i class="fas fa-triangle-exclamation text-xl block mb-2"></i>Failed to load animals.
+                </div>`;
+        }
+    }
+
+    function renderAnimalList() {
+        filteredAnimals = allAnimals.filter(a => {
+            if (activeTypeFilter !== 'all' && a.subject_type !== activeTypeFilter) return false;
+            if (activeSearch) {
+                const hay = `${a.tag} ${a.breed} ${a.sow_tag || ''}`.toLowerCase();
+                if (!hay.includes(activeSearch)) return false;
+            }
+            return true;
+        });
+
+        const list = document.getElementById('animal-list');
+        document.getElementById('animals-count').textContent = `${filteredAnimals.length} of ${allAnimals.length}`;
+
+        if (!filteredAnimals.length) {
+            list.innerHTML = `
+                <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-inbox text-2xl block mb-2"></i>No matching animals.
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = filteredAnimals.map(a => {
+            const meta = TYPE_META[a.subject_type] || TYPE_META.pig;
+            const healthCol = HEALTH_COLOR[(a.current_health || 'healthy').toLowerCase()] || HEALTH_COLOR.healthy;
+            const key = `${a.subject_type}:${a.id}`;
+            const isActive = selectedKey === key;
+            const subline = a.subject_type === 'litter'
+                ? `Sow ${a.sow_tag || '—'} · ${a.age_days != null ? a.age_days + ' days' : 'Age unknown'}`
+                : `${a.breed} · ${a.gender || '—'} · ${a.age_days != null ? a.age_days + ' days' : 'Age unknown'}`;
+            return `
+                <button onclick="selectAnimal('${a.subject_type}', ${a.id})"
+                        class="w-full text-left px-4 py-3 transition flex items-center space-x-3
+                               ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/20 border-l-4 border-emerald-500' : 'hover:bg-gray-50 dark:hover:bg-gray-700/40 border-l-4 border-transparent'}">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center ${meta.badge}">
+                        <i class="fas ${meta.icon}"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">${a.tag}</span>
+                            <span class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${meta.badge}">${meta.noun}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">${subline}</p>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${healthCol.bg}">${a.current_health}</span>
+                            <span class="text-[10px] text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-weight text-emerald-500 mr-0.5"></i>${a.weight_records}
+                                · <i class="fas fa-heart-pulse text-pink-500 mx-0.5"></i>${a.health_records}
+                                · <i class="fas fa-syringe text-amber-500 mx-0.5"></i>${a.medication_records}
+                            </span>
+                        </div>
+                    </div>
+                </button>`;
+        }).join('');
+    }
+
+    // ---------- Selection / detail load ----------
+    async function selectAnimal(subjectType, id) {
+        selectedKey = `${subjectType}:${id}`;
+        renderAnimalList();
+        document.getElementById('empty-state').classList.add('hidden');
+        document.getElementById('panel-visual').classList.remove('hidden');
+        document.getElementById('panel-raw').classList.add('hidden');
+        switchTab('visual');
+
+        const subjectTitle = document.getElementById('subject-title');
+        subjectTitle.textContent = 'Loading…';
+        document.getElementById('subject-subtitle').textContent = '';
+        try {
+            const res = await fetch(`/api/health-analytics/${subjectType}/${id}/trends`);
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'Failed to load trends');
+            renderSubject(data);
+        } catch (e) {
+            console.error(e);
+            subjectTitle.textContent = 'Failed to load';
+            document.getElementById('subject-subtitle').textContent = e.message || 'Please try again.';
+        }
+    }
+
+    function switchTab(tab) {
+        const visual = tab === 'visual';
+        document.getElementById('panel-visual').classList.toggle('hidden', !visual);
+        document.getElementById('panel-raw').classList.toggle('hidden', visual);
+        document.querySelectorAll('.analytics-tab').forEach(b => {
+            const on = b.dataset.tab === tab;
+            b.classList.toggle('border-emerald-500', on);
+            b.classList.toggle('text-emerald-600', on);
+            b.classList.toggle('dark:text-emerald-400', on);
+            b.classList.toggle('bg-white', on);
+            b.classList.toggle('dark:bg-gray-800', on);
+            b.classList.toggle('border-transparent', !on);
+            b.classList.toggle('text-gray-500', !on);
+            b.classList.toggle('dark:text-gray-400', !on);
+        });
+    }
+
+    // ---------- Render ----------
+    function renderSubject(data) {
+        const s = data.subject;
+        const meta = TYPE_META[s.subject_type] || TYPE_META.pig;
+        document.getElementById('subject-icon').className = `fas ${meta.icon} text-lg`;
+        document.getElementById('subject-title').textContent = `${meta.noun} ${s.tag}`;
+        const subParts = [];
+        if (s.breed) subParts.push(s.breed);
+        if (s.gender) subParts.push(s.gender);
+        if (s.origin_date) subParts.push(`${s.origin_label} ${new Date(s.origin_date).toLocaleDateString()}`);
+        if (s.sow_tag) subParts.push(`Sow ${s.sow_tag}`);
+        document.getElementById('subject-subtitle').textContent = subParts.join(' · ') || '—';
+
+        const badge = document.getElementById('subject-current-health');
+        const healthCol = HEALTH_COLOR[(s.current_health || 'healthy').toLowerCase()] || HEALTH_COLOR.healthy;
+        badge.className = `px-2.5 py-1 rounded-full text-xs font-bold ${healthCol.bg}`;
+        badge.textContent = s.current_health || 'healthy';
+        badge.classList.remove('hidden');
+
+        renderKPIs(data);
+        renderWeightChart(data.weight_history);
+        renderHealthChart(data.health_history);
+        renderMedChart(data.medication_history);
+
+        renderRawHealth(data.health_history);
+        renderRawWeight(data.weight_history);
+        renderRawMed(data.medication_history);
+    }
+
+    function renderKPIs(data) {
+        const w = data.weight_history;
+        const lastW = w.length ? w[w.length - 1] : null;
+        document.getElementById('kpi-latest-weight').textContent = lastW ? `${Number(lastW.weight).toFixed(2)} kg` : '—';
+        if (lastW && lastW.expected_weight) {
+            const diff = Number(lastW.weight) - Number(lastW.expected_weight);
+            const sign = diff >= 0 ? '+' : '';
+            document.getElementById('kpi-weight-delta').textContent = `${sign}${diff.toFixed(2)} kg`;
+        } else {
+            document.getElementById('kpi-weight-delta').textContent = '—';
+        }
+        document.getElementById('kpi-health-count').textContent = data.health_history.length || 0;
+        document.getElementById('kpi-med-count').textContent = data.medication_history.length || 0;
+    }
+
+    function destroyChart(name) {
+        if (charts[name]) { charts[name].destroy(); charts[name] = null; }
+    }
+
+    function renderWeightChart(history) {
+        destroyChart('weight');
+        const empty = document.getElementById('weight-empty');
+        const canvas = document.getElementById('weightChart');
+        if (!history || !history.length) { empty.classList.remove('hidden'); canvas.style.display = 'none'; return; }
+        empty.classList.add('hidden'); canvas.style.display = '';
+
+        const labels = history.map(r => r.weighing_date);
+        const actual = history.map(r => r.weight != null ? Number(r.weight) : null);
+        const expected = history.map(r => r.expected_weight != null ? Number(r.expected_weight) : null);
+
+        charts.weight = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Actual (kg)',   data: actual,   borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true,  pointRadius: 4 },
+                    { label: 'Expected (kg)', data: expected, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.05)', borderDash: [6, 4], tension: 0.3, fill: false, pointRadius: 3 },
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: false, title: { display: true, text: 'Weight (kg)' } } }
+            }
+        });
+    }
+
+    function renderHealthChart(history) {
+        destroyChart('health');
+        const empty = document.getElementById('health-empty');
+        const canvas = document.getElementById('healthChart');
+        if (!history || !history.length) { empty.classList.remove('hidden'); canvas.style.display = 'none'; return; }
+        empty.classList.add('hidden'); canvas.style.display = '';
+
+        const labels = history.map(r => r.check_date);
+        const points = history.map(r => HEALTH_LABELS.indexOf((r.health_status || 'healthy').toLowerCase()));
+        const colors = history.map(r => (HEALTH_COLOR[(r.health_status || 'healthy').toLowerCase()] || HEALTH_COLOR.healthy).solid);
+
+        charts.health = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Health Status',
+                    data: points,
+                    borderColor: '#ec4899',
+                    backgroundColor: 'rgba(236,72,153,0.08)',
+                    pointBackgroundColor: colors,
+                    pointBorderColor: colors,
+                    pointRadius: 6,
+                    stepped: true, fill: true, tension: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => `Status: ${HEALTH_LABELS[ctx.parsed.y] || 'unknown'}` } }
+                },
+                scales: {
+                    y: {
+                        ticks: { stepSize: 1, callback: (v) => HEALTH_LABELS[v] || '' },
+                        min: 0, max: HEALTH_LABELS.length - 1,
+                        title: { display: true, text: 'Status' }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderMedChart(history) {
+        destroyChart('med');
+        const empty = document.getElementById('med-empty');
+        const canvas = document.getElementById('medChart');
+        if (!history || !history.length) { empty.classList.remove('hidden'); canvas.style.display = 'none'; return; }
+        empty.classList.add('hidden'); canvas.style.display = '';
+
+        // Aggregate by YYYY-MM
+        const buckets = {};
+        history.forEach(r => {
+            if (!r.completed_date) return;
+            const key = r.completed_date.slice(0, 7);
+            buckets[key] = (buckets[key] || 0) + 1;
+        });
+        const labels = Object.keys(buckets).sort();
+        const counts = labels.map(k => buckets[k]);
+
+        charts.med = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{ label: 'Doses Completed', data: counts, backgroundColor: '#f59e0b', borderRadius: 6 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Doses' } },
+                    x: { title: { display: true, text: 'Month' } }
+                }
+            }
+        });
+    }
+
+    function renderRawHealth(rows) {
+        const body = document.getElementById('raw-health-body');
+        if (!rows || !rows.length) {
+            body.innerHTML = `<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">No health records.</td></tr>`;
+            return;
+        }
+        body.innerHTML = rows.slice().reverse().map(r => {
+            const col = HEALTH_COLOR[(r.health_status || 'healthy').toLowerCase()] || HEALTH_COLOR.healthy;
+            return `
+                <tr class="text-gray-700 dark:text-gray-300">
+                    <td class="px-3 py-2 whitespace-nowrap">${r.check_date || '—'}</td>
+                    <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${col.bg}">${r.health_status || '—'}</span></td>
+                    <td class="px-3 py-2">${escapeHtml(r.notes || '—')}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(r.recorded_by_name || '—')}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    function renderRawWeight(rows) {
+        const body = document.getElementById('raw-weight-body');
+        if (!rows || !rows.length) {
+            body.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">No weight records.</td></tr>`;
+            return;
+        }
+        body.innerHTML = rows.slice().reverse().map(r => {
+            const actual = r.weight != null ? Number(r.weight) : null;
+            const expected = r.expected_weight != null ? Number(r.expected_weight) : null;
+            let diffCell = '—';
+            if (actual != null && expected) {
+                const d = actual - expected;
+                const sign = d >= 0 ? '+' : '';
+                const cls = Math.abs((d / expected) * 100) <= 5
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : (d > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400');
+                diffCell = `<span class="${cls} font-semibold">${sign}${d.toFixed(2)}</span>`;
+            }
+            return `
+                <tr class="text-gray-700 dark:text-gray-300">
+                    <td class="px-3 py-2 whitespace-nowrap">${r.weighing_date || '—'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap font-semibold">${actual != null ? actual.toFixed(2) : '—'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${expected != null ? expected.toFixed(2) : '—'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${diffCell}</td>
+                    <td class="px-3 py-2">${escapeHtml(r.notes || '—')}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    function renderRawMed(rows) {
+        const body = document.getElementById('raw-med-body');
+        if (!rows || !rows.length) {
+            body.innerHTML = `<tr><td colspan="6" class="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">No medications recorded.</td></tr>`;
+            return;
+        }
+        body.innerHTML = rows.slice().reverse().map(r => `
+            <tr class="text-gray-700 dark:text-gray-300">
+                <td class="px-3 py-2 whitespace-nowrap">${r.completed_date || '—'}</td>
+                <td class="px-3 py-2 whitespace-nowrap">${r.day_description || ('Day ' + (r.day_number ?? '—'))}</td>
+                <td class="px-3 py-2">${escapeHtml(r.medicine_activity || '—')}</td>
+                <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(r.dosage_amount || '—')}</td>
+                <td class="px-3 py-2">${escapeHtml(r.completion_notes || '—')}</td>
+                <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(r.completed_by_name || '—')}</td>
+            </tr>`).join('');
+    }
+
+    function escapeHtml(value) {
+        if (value == null) return '';
+        return String(value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+</script>
+</body>
+</html>
