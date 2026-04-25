@@ -16356,6 +16356,7 @@ def complete_farrowing_activity(activity_id):
         data = request.get_json()
         notes = data.get('notes', '')
         litter_avg_weight = data.get('litter_avg_weight')
+        completed_date_raw = (data.get('completed_date') or '').strip()
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -16376,25 +16377,36 @@ def complete_farrowing_activity(activity_id):
         if activity['completed']:
             return jsonify({'success': False, 'message': 'Activity is already completed'})
         
-        # Check if the current date has reached the activity day
         from datetime import datetime, timedelta
         today = datetime.now().date()
         farrowing_date = activity['farrowing_date']
         activity_day = activity['due_day']
         due_date = farrowing_date + timedelta(days=activity_day)
-        
-        if today < due_date:
+
+        # Resolve the user-supplied completion date (defaults to today).
+        if completed_date_raw:
+            try:
+                completed_date = datetime.strptime(completed_date_raw, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Invalid completion date format. Expected YYYY-MM-DD.'})
+            if completed_date > today:
+                return jsonify({'success': False, 'message': 'Completion date cannot be in the future.'})
+        else:
+            completed_date = today
+
+        # Cannot complete an activity before its due date (whichever date the user picks).
+        if completed_date < due_date:
             return jsonify({
-                'success': False, 
+                'success': False,
                 'message': f'Cannot complete activity before Day {activity_day}. This activity is due on {due_date.strftime("%Y-%m-%d")}'
             })
         
-        # Check if activity is overdue and add warning
-        is_overdue = today > due_date
+        # Check if activity is overdue and add warning (relative to chosen completion date).
+        is_overdue = completed_date > due_date
         overdue_warning = ""
         if is_overdue:
-            days_overdue = (today - due_date).days
-            overdue_warning = f" (Note: This activity is {days_overdue} day(s) overdue)"
+            days_overdue = (completed_date - due_date).days
+            overdue_warning = f" (Note: This activity was {days_overdue} day(s) overdue)"
         
         # Check if this is a weaning activity and requires additional data
         weaning_weight = None
@@ -16420,13 +16432,13 @@ def complete_farrowing_activity(activity_id):
             except (TypeError, ValueError):
                 return jsonify({'success': False, 'message': 'Invalid litter average weight value'})
         
-        # Mark activity as completed
+        # Mark activity as completed (using the user-selected completion date).
         cursor.execute("""
             UPDATE farrowing_activities 
-            SET completed = TRUE, completed_date = CURRENT_DATE, 
+            SET completed = TRUE, completed_date = %s, 
                 completed_by = %s, notes = %s, weaning_weight = %s, weaning_date = %s, updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
-        """, (session['employee_id'], notes, weaning_weight, weaning_date, activity_id))
+        """, (completed_date, session['employee_id'], notes, weaning_weight, weaning_date, activity_id))
 
         if parsed_litter_avg_weight is not None:
             cursor.execute("""
@@ -16441,7 +16453,7 @@ def complete_farrowing_activity(activity_id):
         
         # Log activity
         log_activity(session['employee_id'], 'FARROWING_ACTIVITY_COMPLETED', 
-                    f'Completed farrowing activity ID {activity_id} on {today}')
+                    f'Completed farrowing activity ID {activity_id} on {completed_date}')
         
         # Check if all activities are completed and trigger recovery period
         if is_overdue:
