@@ -775,44 +775,46 @@
     </div>
 
     <!-- Edit Litter Modal -->
-    <div id="editLitterModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 transition-all duration-300">
-        <div class="flex items-start sm:items-center justify-center min-h-screen p-1 sm:p-4 overflow-y-auto">
-            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-3xl shadow-2xl w-full max-w-4xl mx-1 sm:mx-4 my-2 sm:my-4 max-h-[98vh] sm:max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300">
+    <div id="editLitterModal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-labelledby="editLitterModalTitle">
+        <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/55 backdrop-blur-[2px] border-0 p-0 cursor-default" aria-label="Close" onclick="closeEditLitterModal()"></button>
+        <div class="relative flex min-h-full items-end justify-center sm:items-center p-0 sm:p-4 pointer-events-none">
+            <div id="editLitterDialogPanel" class="pointer-events-auto flex w-full sm:max-w-2xl lg:max-w-3xl flex-col max-h-[100dvh] sm:max-h-[min(92vh,900px)] rounded-t-[1.25rem] sm:rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transform scale-[0.97] opacity-0 transition-all duration-300 ease-out">
                 <!-- Modal Header -->
-                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-baby text-white text-sm sm:text-lg"></i>
-                    </div>
-                            <div>
-                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Edit Litter Details</h3>
-                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Update litter information</p>
+                <div class="shrink-0 rounded-t-[1.25rem] sm:rounded-t-2xl border-b border-gray-200/90 dark:border-gray-700 bg-gradient-to-br from-amber-500/12 via-orange-500/8 to-transparent dark:from-amber-900/35 dark:via-orange-900/15 dark:to-transparent px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="shrink-0 w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md">
+                                <i class="fas fa-baby text-white text-base sm:text-lg"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 id="editLitterModalTitle" class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">Edit Litter Details</h3>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">Update litter tag, parents, and piglet counts</p>
                             </div>
                         </div>
-                        <button onclick="closeEditLitterModal()" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200">
-                            <i class="fas fa-times text-lg"></i>
-                    </button>
+                        <button type="button" onclick="closeEditLitterModal()" class="shrink-0 p-2.5 rounded-xl text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors">
+                            <i class="fas fa-times text-lg" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Modal Body -->
-                <div class="p-4 sm:p-6">
-                    <form id="editLitterForm" class="space-y-4 sm:space-y-6">
-                        <input type="hidden" id="editLitterId" name="litter_id">
+                <!-- Modal Body (scrollable) -->
+                <div class="flex-1 overflow-y-auto overscroll-y-contain min-h-0">
+                    <form id="editLitterForm" class="space-y-4 sm:space-y-5 px-4 py-4 sm:px-6 sm:py-5" onsubmit="event.preventDefault(); submitLitterEdit();">
+                        <!-- No name on PK: avoids clobbering visible litter tag in FormData -->
+                        <input type="hidden" id="editLitterId">
                         <input type="hidden" id="editLitterSource" name="litter_source" value="born">
                         
                         <!-- Litter ID (Editable) -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Litter ID <span class="text-red-500">*</span>
+                        <div class="rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-slate-800/30 p-3 sm:p-4">
+                            <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                                Litter tag (ID) <span class="text-red-500">*</span>
                             </label>
-                            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                                <input type="text" id="editLitterIdInput" name="litter_id" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" placeholder="e.g., L001" maxlength="10" oninput="onLitterIdInput()">
-                                <button type="button" id="validateLitterIdBtn" onclick="validateLitterId()" class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base">
-                                    <span id="validateLitterBtnText">Validate</span>
-                                    <span id="validateLitterBtnSpinner" class="hidden">
-                                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                                <input type="text" id="editLitterIdInput" name="litter_id" required autocomplete="off" class="flex-1 min-w-0 px-3 py-2.5 text-base sm:text-sm border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500/80 focus:border-orange-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. L001, EL042" maxlength="20" oninput="onLitterIdInput()">
+                                <button type="button" id="validateLitterIdBtn" onclick="validateLitterId()" class="shrink-0 inline-flex items-center justify-center px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-colors text-sm font-medium shadow-sm">
+                                    <span id="validateLitterBtnText">Check availability</span>
+                                    <span id="validateLitterBtnSpinner" class="hidden inline-flex items-center">
+                                        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
@@ -820,14 +822,13 @@
                                 </button>
                             </div>
                             <div id="litterIdValidationMessage" class="mt-2 text-sm hidden"></div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                <strong>Note:</strong> Format: Start with letter, then letters/numbers (e.g., L001, EL001). 
-                                <br class="hidden sm:block">After editing, the litter ID will automatically get an "E" prefix (e.g., EL001) to show it has been modified.
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                                Use letters, numbers, underscores, or hyphens (max 20 characters). If you change the tag, the system may add an &quot;E&quot; prefix to mark an edit (e.g. L001 → EL001).
                             </p>
                         </div>
 
-                        <div class="rounded-lg border border-gray-200 dark:border-gray-600 p-3 bg-gray-50/80 dark:bg-slate-800/50">
-                            <p class="text-sm font-medium text-gray-800 dark:text-gray-200" id="editLitterOriginText">Litter origin</p>
+                        <div class="rounded-xl border border-gray-200 dark:border-gray-600 p-3 sm:p-4 bg-gray-50/80 dark:bg-slate-800/50">
+                            <p class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug" id="editLitterOriginText">Litter origin</p>
                         </div>
 
                         <div id="editLitterBornBlock" class="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-slate-800/40">
@@ -938,12 +939,12 @@
                 </div>
 
                 <!-- Modal Footer -->
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
-                    <button onclick="closeEditLitterModal()" class="w-full sm:w-auto px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm sm:text-base">
+                <div class="shrink-0 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50/95 dark:bg-gray-900/50 rounded-b-[1.25rem] sm:rounded-b-2xl pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                    <button type="button" onclick="closeEditLitterModal()" class="w-full sm:w-auto px-4 py-2.5 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-sm font-medium">
                         Cancel
                     </button>
-                    <button onclick="submitLitterEdit()" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base">
-                        Update Litter
+                    <button type="button" onclick="submitLitterEdit()" class="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl shadow-md transition-all text-sm font-semibold">
+                        Save changes
                     </button>
                 </div>
             </div>
@@ -2953,6 +2954,14 @@
             return `${y}-${m}-${day}`;
         }
 
+        const EDIT_LITTER_TAG_MAX_LEN = 20;
+        const EDIT_LITTER_TAG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,19}$/;
+        function isEditLitterTagFormatOk(s) {
+            const t = (s || '').trim();
+            if (!t || t.length > EDIT_LITTER_TAG_MAX_LEN) return false;
+            return EDIT_LITTER_TAG_PATTERN.test(t);
+        }
+
         function populateEditLitterForm(litter) {
             if (!litter) return;
             const msg = document.getElementById('litterIdValidationMessage');
@@ -3014,6 +3023,7 @@
                 if (bsr) bsr.value = '';
             }
             applyEditLitterSourceUI();
+            onLitterIdInput();
         }
 
         // Edit litter: load authoritative row from API so source, sex split, and breeds match the database
@@ -3021,11 +3031,12 @@
             const lid = parseInt(String(litterId), 10);
             const openModal = () => {
                 const modal = document.getElementById('editLitterModal');
-                const modalContent = modal.querySelector('.bg-white, .dark\\:bg-gray-800');
+                const panel = document.getElementById('editLitterDialogPanel');
+                if (!modal || !panel) return;
                 modal.classList.remove('hidden');
                 setTimeout(() => {
-                    modalContent.style.transform = 'scale(1)';
-                    modalContent.style.opacity = '1';
+                    panel.style.transform = 'scale(1)';
+                    panel.style.opacity = '1';
                 }, 10);
             };
 
@@ -3069,18 +3080,17 @@
         }
 
 
-        // Litter ID input handler
+        // Litter ID input handler (live format hint; matches DB VARCHAR(20))
         function onLitterIdInput() {
             const input = document.getElementById('editLitterIdInput');
+            if (!input) return;
             const value = input.value;
-            
-            // More flexible format validation - allows E prefix and letters followed by numbers
-            if (value && !value.match(/^[A-Za-z][A-Za-z0-9]*$/)) {
-                input.classList.add('border-red-500');
-                input.classList.remove('border-gray-300');
+            if (value && !isEditLitterTagFormatOk(value)) {
+                input.classList.add('border-red-500', 'focus:border-red-500');
+                input.classList.remove('border-gray-300', 'dark:border-gray-600');
             } else {
-                input.classList.remove('border-red-500');
-                input.classList.add('border-gray-300');
+                input.classList.remove('border-red-500', 'focus:border-red-500');
+                input.classList.add('border-gray-300', 'dark:border-gray-600');
             }
         }
 
@@ -3091,14 +3101,15 @@
             const messageDiv = document.getElementById('litterIdValidationMessage');
             const spinner = document.getElementById('validateLitterBtnSpinner');
             const text = document.getElementById('validateLitterBtnText');
+            const tagFormatHint = 'Use 1–20 characters: letters, numbers, underscores, or hyphens (no spaces).';
 
             if (!value) {
-                showValidationMessage('Please enter a litter ID', 'error');
+                showValidationMessage('Please enter a litter tag', 'error');
                 return;
             }
 
-            if (!value.match(/^[A-Za-z][A-Za-z0-9]*$/)) {
-                showValidationMessage('Litter ID must start with a letter and contain only letters and numbers', 'error');
+            if (!isEditLitterTagFormatOk(value)) {
+                showValidationMessage(tagFormatHint, 'error');
                 return;
             }
 
@@ -3108,7 +3119,7 @@
 
             // Check if litter ID already exists (excluding current litter)
             const currentLitterId = document.getElementById('editLitterId').value;
-            fetch(`/api/litter/check-id/${value}?exclude=${currentLitterId}`)
+            fetch(`/api/litter/check-id/${encodeURIComponent(value)}?exclude=${encodeURIComponent(currentLitterId)}`)
             .then(response => response.json())
             .then(data => {
                 spinner.classList.add('hidden');
@@ -3129,7 +3140,7 @@
 
             function showValidationMessage(message, type) {
                 messageDiv.textContent = message;
-                messageDiv.className = `mt-2 text-sm ${type === 'error' ? 'text-red-600' : 'text-green-600'}`;
+                messageDiv.className = `mt-2 text-sm ${type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`;
                 messageDiv.classList.remove('hidden');
             }
         }
@@ -3140,8 +3151,9 @@
             const formData = new FormData(form);
             const source = (formData.get('litter_source') || 'born').toLowerCase() === 'purchased' ? 'purchased' : 'born';
             
-            // Validate required fields
-            const litterId = formData.get('litter_id');
+            // Validate required fields (litter tag from visible field only — never the numeric row id)
+            const litterId = (document.getElementById('editLitterIdInput') && document.getElementById('editLitterIdInput').value || '').trim();
+            const tagFormatHint = 'Litter tag: 1–20 characters, letters, numbers, underscores, or hyphens only.';
             const farrowingDate = formData.get('farrowing_date');
             const alivePiglets = formData.get('alive_piglets');
             const malePiglets = parseInt(formData.get('male_piglets'), 10);
@@ -3183,9 +3195,8 @@
                 return;
             }
 
-            // Validate litter ID format
-            if (!litterId.match(/^[A-Za-z][A-Za-z0-9]*$/)) {
-                showToast('Litter ID must start with a letter and contain only letters and numbers', 'error');
+            if (!isEditLitterTagFormatOk(litterId)) {
+                showToast(tagFormatHint, 'error');
                 return;
             }
 
@@ -3256,18 +3267,19 @@
         // Close edit litter modal
         function closeEditLitterModal() {
             const modal = document.getElementById('editLitterModal');
-            const modalContent = modal.querySelector('.bg-white, .dark\\:bg-gray-800');
+            const panel = document.getElementById('editLitterDialogPanel');
+            if (!modal || !panel) return;
             
             // Animate out
-            modalContent.style.transform = 'scale(0.95)';
-            modalContent.style.opacity = '0';
+            panel.style.transform = 'scale(0.97)';
+            panel.style.opacity = '0';
             
             // Hide modal after animation
             setTimeout(() => {
                 modal.classList.add('hidden');
                 // Reset styles for next time
-                modalContent.style.transform = 'scale(0.95)';
-                modalContent.style.opacity = '0';
+                panel.style.transform = 'scale(0.97)';
+                panel.style.opacity = '0';
                 ['editLitterSowId', 'editLitterBoarId'].forEach(function (id) {
                     var el = document.getElementById(id);
                     if (el) el.value = '';
@@ -3278,6 +3290,15 @@
                 });
                 var src = document.getElementById('editLitterSource');
                 if (src) src.value = 'born';
+                var lidMsg = document.getElementById('litterIdValidationMessage');
+                if (lidMsg) {
+                    lidMsg.textContent = '';
+                    lidMsg.classList.add('hidden');
+                }
+                var vtxt = document.getElementById('validateLitterBtnText');
+                var vspin = document.getElementById('validateLitterBtnSpinner');
+                if (vtxt) vtxt.classList.remove('hidden');
+                if (vspin) vspin.classList.add('hidden');
             }, 300);
         }
 
