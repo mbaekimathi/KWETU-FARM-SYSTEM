@@ -11,19 +11,18 @@
     <header class="farm-chrome-header fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl border-b border-slate-300/70 dark:border-slate-700/80 shadow-md">
         <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16 max-w-[100vw]">
             <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-                <button type="button" id="mobile-menu-btn" class="hidden" aria-label="Open menu">
-                    <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" viewBox="0 0 24 24">
-                        <path d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
+                <button type="button" class="farm-sidebar-back-btn farm-sidebar-back-btn--header-mobile shrink-0" data-farm-sidebar-back aria-label="Go back">
+                    <i class="fas fa-arrow-left farm-sidebar-back-btn__icon" aria-hidden="true"></i>
                 </button>
-
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="farm-chrome-logo-tile w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-600 via-teal-600 to-slate-700 rounded-2xl shadow-md" aria-hidden="true">
-                        <i class="{{ farm_shell_icon_class }} text-white text-sm sm:text-[15px] leading-none drop-shadow"></i>
+                    <div class="farm-chrome-logo-tile w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-600/30 via-teal-600/20 to-slate-700/30 rounded-2xl shadow-md overflow-hidden ring-1 ring-white/20 dark:ring-slate-600/50" aria-hidden="true">
+                        <img src="{{ company_branding.logo_url }}" alt="" class="w-full h-full object-cover" width="40" height="40" loading="eager" decoding="async">
                     </div>
                     <div class="hidden sm:block min-w-0">
-                        <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">Farm A</h1>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">Farm A Management</p>
+                        <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">{{ company_branding.company_name }}</h1>
+                        {% if company_branding.company_tagline %}
+                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ company_branding.company_tagline }}</p>
+                        {% endif %}
                     </div>
                 </div>
 

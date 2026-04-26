@@ -2,9 +2,10 @@
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Human Resource Management - Farm A Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         // Error handling for external script conflicts
         window.addEventListener('error', function(e) {
@@ -96,8 +97,9 @@
     <!-- Professional Sidebar -->
     <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-lg">
         <div class="flex flex-col h-full">
+            {% include 'includes/farm_sidebar_top_controls.html' %}
             <!-- Sidebar Header -->
-            <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center p-4 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,11 +111,6 @@
                         <p class="text-xs text-gray-600 dark:text-gray-400 font-medium">HR Control Center</p>
                     </div>
                 </div>
-                <button id="close-sidebar" class="group md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 hover:scale-110 flex-shrink-0">
-                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300 transition-transform group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
             </div>
             
             <!-- Navigation Menu -->
@@ -199,9 +196,7 @@
             </div>
         </div>
     </aside>
-
-    <!-- Mobile Overlay -->
-    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
+    {% include 'includes/farm_sidebar_floating_toggle.html' %}
 
     <!-- Main Content -->
     <div class="pt-16 md:pl-64 min-h-screen">
@@ -528,60 +523,6 @@
             if (!userDropdownBtn.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.classList.add('hidden');
             }
-        });
-
-        // Mobile Sidebar Functionality
-        function setupMobileMenu() {
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const sidebar = document.getElementById('sidebar');
-            const closeSidebarBtn = document.getElementById('close-sidebar');
-            const mobileOverlay = document.getElementById('mobile-overlay');
-
-            // Open sidebar
-            if (mobileMenuBtn) {
-                mobileMenuBtn.addEventListener('click', () => {
-                    sidebar.classList.remove('-translate-x-full');
-                    mobileOverlay.classList.remove('hidden');
-                    document.body.classList.add('overflow-hidden');
-                });
-            }
-
-            // Close sidebar
-            function closeSidebar() {
-                sidebar.classList.add('-translate-x-full');
-                mobileOverlay.classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
-            }
-
-            if (closeSidebarBtn) {
-                closeSidebarBtn.addEventListener('click', closeSidebar);
-            }
-
-            if (mobileOverlay) {
-                mobileOverlay.addEventListener('click', closeSidebar);
-            }
-
-            // Close sidebar on window resize if it's desktop
-            window.addEventListener('resize', () => {
-                if (window.innerWidth >= 768) {
-                    closeSidebar();
-                }
-            });
-
-            // Close sidebar when clicking on sidebar links
-            const sidebarLinks = sidebar.querySelectorAll('a, button');
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    if (window.innerWidth < 768) {
-                        closeSidebar();
-                    }
-                });
-            });
-        }
-
-        // Call setupMobileMenu on DOMContentLoaded
-        document.addEventListener('DOMContentLoaded', () => {
-            setupMobileMenu();
         });
 
         // Live Time and Date

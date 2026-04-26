@@ -1215,6 +1215,256 @@ html.farm-unified-shell.dark .farm-sidebar-toggle-btn {
   box-shadow: 0 10px 28px -14px rgb(0 0 0 / 0.65), 0 1px 0 rgb(148 163 184 / 0.08) inset;
 }
 
+/* Sidebar back control — high-visibility, subtle idle motion */
+@keyframes farm-sidebar-back-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.07),
+      0 0 0 0 rgb(16 185 129 / 0.4);
+  }
+  50% {
+    box-shadow:
+      0 3px 10px -4px rgb(16 185 129 / 0.35),
+      0 0 0 6px rgb(16 185 129 / 0);
+  }
+}
+
+@keyframes farm-sidebar-back-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(-4px);
+  }
+  65% {
+    transform: translateX(1px);
+  }
+}
+
+/* Header-only back (mobile): indigo accent — distinct from sidebar emerald */
+@keyframes farm-sidebar-back-glow-header {
+  0%,
+  100% {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.07),
+      0 0 0 0 rgb(99 102 241 / 0.42);
+  }
+  50% {
+    box-shadow:
+      0 3px 10px -4px rgb(99 102 241 / 0.32),
+      0 0 0 6px rgb(99 102 241 / 0);
+  }
+}
+
+button.farm-sidebar-back-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(167 243 208 / 0.95);
+  background: linear-gradient(160deg, rgb(236 253 245), rgb(255 255 255));
+  color: rgb(4 120 87);
+  cursor: pointer;
+  animation: farm-sidebar-back-glow 2.8s ease-in-out infinite;
+  transition:
+    border-color 0.2s ease,
+    background 0.22s ease,
+    color 0.2s ease,
+    transform 0.18s ease,
+    box-shadow 0.22s ease;
+}
+
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--in-banner,
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.65rem;
+}
+
+button.farm-sidebar-back-btn .farm-sidebar-back-btn__icon {
+  display: block;
+  font-size: 0.9375rem;
+  line-height: 1;
+  animation: farm-sidebar-back-nudge 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 1px 1px rgb(15 23 42 / 0.12));
+}
+
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--in-banner .farm-sidebar-back-btn__icon,
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile .farm-sidebar-back-btn__icon {
+  font-size: 0.8125rem;
+}
+
+button.farm-sidebar-back-btn:hover {
+  animation: none;
+  border-color: rgb(52 211 153);
+  background: linear-gradient(160deg, rgb(209 250 229), rgb(236 253 245));
+  color: rgb(6 78 59);
+  box-shadow: 0 6px 18px -6px rgb(16 185 129 / 0.5);
+  transform: scale(1.07);
+}
+
+button.farm-sidebar-back-btn:hover .farm-sidebar-back-btn__icon {
+  animation: farm-sidebar-back-nudge 0.55s ease-in-out infinite;
+  filter: drop-shadow(0 1px 2px rgb(16 185 129 / 0.35));
+}
+
+button.farm-sidebar-back-btn:focus {
+  outline: none;
+}
+
+button.farm-sidebar-back-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px rgb(255 255 255),
+    0 0 0 4px rgb(16 185 129);
+}
+
+button.farm-sidebar-back-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 8px -4px rgb(16 185 129 / 0.45);
+}
+
+button.farm-sidebar-back-btn:active .farm-sidebar-back-btn__icon {
+  animation: none;
+  transform: translateX(-5px);
+}
+
+html.farm-unified-shell.dark button.farm-sidebar-back-btn,
+html.dark button.farm-sidebar-back-btn {
+  border-color: rgb(52 211 153 / 0.4);
+  background: linear-gradient(160deg, rgb(6 78 59 / 0.45), rgb(15 23 42));
+  color: rgb(110 231 183);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+html.farm-unified-shell.dark button.farm-sidebar-back-btn:hover,
+html.dark button.farm-sidebar-back-btn:hover {
+  border-color: rgb(110 231 183 / 0.55);
+  background: linear-gradient(160deg, rgb(6 95 70 / 0.65), rgb(15 38 32 / 0.92));
+  color: rgb(167 243 208);
+  box-shadow: 0 6px 22px -8px rgb(16 185 129 / 0.4);
+}
+
+html.farm-unified-shell.dark button.farm-sidebar-back-btn:focus-visible,
+html.dark button.farm-sidebar-back-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px rgb(15 23 42),
+    0 0 0 4px rgb(52 211 153);
+}
+
+/* Header back: left bar; indigo/violet on all viewports when visible (overrides emerald) */
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile {
+  display: none;
+  animation: farm-sidebar-back-glow-header 2.75s ease-in-out infinite;
+  border-color: rgb(165 180 252 / 0.95);
+  background: linear-gradient(160deg, rgb(238 242 255), rgb(255 255 255));
+  color: rgb(79 70 229);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:hover {
+  animation: none;
+  border-color: rgb(129 140 248);
+  background: linear-gradient(160deg, rgb(224 231 255), rgb(238 242 255));
+  color: rgb(55 48 163);
+  box-shadow: 0 6px 18px -6px rgb(99 102 241 / 0.48);
+  transform: scale(1.07);
+}
+
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:hover .farm-sidebar-back-btn__icon {
+  filter: drop-shadow(0 1px 2px rgb(99 102 241 / 0.38));
+}
+
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:focus-visible {
+  box-shadow:
+    0 0 0 2px rgb(255 255 255),
+    0 0 0 4px rgb(99 102 241);
+}
+
+button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:active {
+  box-shadow: 0 2px 8px -4px rgb(99 102 241 / 0.45);
+}
+
+html.farm-unified-shell.dark button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile,
+html.dark button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile {
+  border-color: rgb(129 140 248 / 0.5);
+  background: linear-gradient(160deg, rgb(49 46 129 / 0.65), rgb(30 27 75 / 0.92));
+  color: rgb(199 210 254);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+html.farm-unified-shell.dark button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:hover,
+html.dark button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:hover {
+  border-color: rgb(165 180 252 / 0.65);
+  background: linear-gradient(160deg, rgb(67 56 202 / 0.75), rgb(49 46 129 / 0.95));
+  color: rgb(224 231 255);
+  box-shadow: 0 6px 22px -8px rgb(99 102 241 / 0.42);
+}
+
+html.farm-unified-shell.dark button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:focus-visible,
+html.dark button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile:focus-visible {
+  box-shadow:
+    0 0 0 2px rgb(15 23 42),
+    0 0 0 4px rgb(129 140 248);
+}
+
+@media (min-width: 768px) {
+  button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+  }
+
+  button.farm-sidebar-back-btn.farm-sidebar-back-btn--header-mobile .farm-sidebar-back-btn__icon {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Single back control: header (PC + mobile). Hide duplicates inside the drawer. */
+html.farm-unified-shell[data-farm-sidebar-bp="none"] button.farm-sidebar-back-btn--header-mobile {
+  display: none !important;
+}
+
+html.farm-unified-shell[data-farm-sidebar-bp="768"] button.farm-sidebar-back-btn--header-mobile,
+html.farm-unified-shell[data-farm-sidebar-bp="1024"] button.farm-sidebar-back-btn--header-mobile {
+  display: inline-flex !important;
+}
+
+html.farm-unified-shell[data-farm-sidebar-bp="768"] button.farm-sidebar-back-btn--in-banner,
+html.farm-unified-shell[data-farm-sidebar-bp="768"] button.farm-sidebar-back-btn--sidebar-top,
+html.farm-unified-shell[data-farm-sidebar-bp="1024"] button.farm-sidebar-back-btn--in-banner,
+html.farm-unified-shell[data-farm-sidebar-bp="1024"] button.farm-sidebar-back-btn--sidebar-top {
+  display: none !important;
+}
+
+html.farm-unified-shell[data-farm-sidebar-bp="768"] .farm-sidebar-top-controls,
+html.farm-unified-shell[data-farm-sidebar-bp="1024"] .farm-sidebar-top-controls {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.farm-sidebar-back-btn,
+  button.farm-sidebar-back-btn .farm-sidebar-back-btn__icon {
+    animation: none !important;
+  }
+
+  button.farm-sidebar-back-btn:hover,
+  button.farm-sidebar-back-btn:active {
+    transform: none;
+  }
+
+  button.farm-sidebar-back-btn:active .farm-sidebar-back-btn__icon {
+    transform: none;
+  }
+}
+
 /* Sidebar nav rhythm and hierarchy */
 html.farm-unified-shell #sidebar nav {
   gap: 0.375rem !important;
@@ -1311,4 +1561,90 @@ html.farm-unified-shell #sidebar nav button span.flex-1 {
     height: 1.85rem;
     min-width: 1.85rem;
   }
+}
+
+/* ========================================================================== */
+/* Global responsiveness — all pages using farm-unified-shell (no JS changes) */
+/* ========================================================================== */
+
+html.farm-unified-shell {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+html.farm-unified-shell body {
+  overflow-x: hidden;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html.farm-unified-shell img,
+html.farm-unified-shell video,
+html.farm-unified-shell canvas,
+html.farm-unified-shell picture > img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Sidebar drawer height follows mobile browser chrome (dynamic viewport) */
+html.farm-unified-shell #sidebar.fixed {
+  height: calc(100dvh - var(--farm-chrome-header-h)) !important;
+  max-height: calc(100dvh - var(--farm-chrome-header-h)) !important;
+}
+
+/* Primary content column: avoid horizontal spill from flex/grid (common Tailwind pitfall) */
+html.farm-unified-shell body > main,
+html.farm-unified-shell body > div.min-h-screen {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Hamburger: hidden by default; visibility follows sidebar breakpoint (set in farm_chrome_bundle) */
+html.farm-unified-shell #mobile-menu-btn {
+  display: none;
+}
+
+html.farm-unified-shell[data-farm-sidebar-bp="none"] #mobile-menu-btn {
+  display: none !important;
+}
+
+html.farm-unified-shell[data-farm-sidebar-bp="768"] #mobile-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  html.farm-unified-shell[data-farm-sidebar-bp="768"] #mobile-menu-btn {
+    display: none !important;
+  }
+}
+
+html.farm-unified-shell[data-farm-sidebar-bp="1024"] #mobile-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  html.farm-unified-shell[data-farm-sidebar-bp="1024"] #mobile-menu-btn {
+    display: none !important;
+  }
+}
+
+/* Tables without a wrapper still respect width; prefer overflow-x-auto on a parent for wide grids */
+html.farm-unified-shell table {
+  max-width: 100%;
+}
+
+/* Reduce accidental horizontal scroll inside common content shells */
+html.farm-unified-shell .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Pre / code blocks in admin content */
+html.farm-unified-shell pre {
+  max-width: 100%;
+  overflow-x: auto;
 }

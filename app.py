@@ -7,7 +7,6 @@ from flask import (
     flash,
     session,
     jsonify,
-    send_from_directory,
 )
 import pymysql
 import pymysql.err
@@ -22,6 +21,7 @@ import base64
 import re
 import db_migrations
 from feed_notifications_collector import collect_all_feed_notifications
+from werkzeug.utils import secure_filename
 
 from webauthn import (
     generate_authentication_options,
@@ -638,6 +638,30 @@ def _migration_003_employee_webauthn(cursor):
             UNIQUE KEY uq_webauthn_cred_id (credential_id(255)),
             CONSTRAINT fk_webauthn_emp FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+
+
+def _migration_004_company_settings(cursor):
+    """Singleton company branding (name, logo path, contact) for header/footer and settings UI."""
+    if not db_migrations.ensure_table_exists(cursor, "employees"):
+        return
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS company_settings (
+            id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+            company_name VARCHAR(200) NOT NULL DEFAULT 'Farm A',
+            company_tagline VARCHAR(255) NOT NULL DEFAULT 'Farm Management',
+            email VARCHAR(120) NOT NULL DEFAULT '',
+            phone VARCHAR(40) NOT NULL DEFAULT '',
+            location VARCHAR(500) NOT NULL DEFAULT '',
+            logo_path VARCHAR(500) NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            updated_by INT NULL,
+            CONSTRAINT fk_company_settings_updated_by FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    cursor.execute("""
+        INSERT IGNORE INTO company_settings (id, company_name, company_tagline)
+        VALUES (1, 'Farm A', 'Farm Management')
     """)
 
 
@@ -2169,6 +2193,7 @@ def create_database_and_tables():
             ('001_sync_columns', _migration_001_sync_columns),
             ('002_cow_breeding_ai', _migration_002_cow_breeding_ai),
             ('003_employee_webauthn', _migration_003_employee_webauthn),
+            ('004_company_settings', _migration_004_company_settings),
         ]
         db_migrations.run_migrations(conn, MIGRATIONS)
         
@@ -2303,6 +2328,56 @@ def _enrich_dashboard_notifications(rows, role):
         out.append(r)
     return out
 
+
+DEFAULT_COMPANY_LOGO_STATIC = 'images/default-company-logo.svg'
+ALLOWED_COMPANY_LOGO_EXTENSIONS = frozenset({'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'})
+
+
+def get_company_branding():
+    """Company name, contact, and logo URL for all templates (uses url_for; needs request context)."""
+    defaults_name = 'Farm A'
+    defaults_tag = 'Farm Management'
+    safe_logo = url_for('static', filename=DEFAULT_COMPANY_LOGO_STATIC)
+    fallback = {
+        'company_name': defaults_name,
+        'company_tagline': defaults_tag,
+        'email': '',
+        'phone': '',
+        'location': '',
+        'logo_path': None,
+        'logo_url': safe_logo,
+    }
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT company_name, company_tagline, email, phone, location, logo_path
+            FROM company_settings WHERE id = 1
+        """)
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not row:
+            return fallback
+        lp = row.get('logo_path')
+        if lp and isinstance(lp, str) and lp.strip() and '..' not in lp:
+            logo_url = url_for('static', filename=lp.strip())
+        else:
+            logo_url = safe_logo
+        return {
+            'company_name': (row.get('company_name') or '').strip() or defaults_name,
+            'company_tagline': (row.get('company_tagline') or '').strip() or defaults_tag,
+            'email': (row.get('email') or '').strip(),
+            'phone': (row.get('phone') or '').strip(),
+            'location': (row.get('location') or '').strip(),
+            'logo_path': lp.strip() if lp else None,
+            'logo_url': logo_url,
+        }
+    except Exception as ex:
+        print(f'get_company_branding: {ex}')
+        return fallback
+
+
 @app.context_processor
 def inject_role_url():
     """Inject a helper function to generate role-based URLs"""
@@ -2318,36 +2393,33 @@ def inject_role_url():
         app_version_label=get_git_version_label(),
         current_user_profile_image=get_current_employee_profile_image(),
         build_profile_image_url=build_profile_image_url,
+        company_branding=get_company_branding(),
     )
-
-def _farmtrack_dir():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "farmtrack")
-
 
 @app.route("/")
 def index():
-    """Public: FarmTrack marketing site. Signed-in users go to their role dashboard."""
+    """Entry point: employee login. Signed-in users go to their role dashboard."""
     if "employee_id" in session:
         return redirect(get_role_dashboard_url(session.get("employee_role", "employee")))
-    return send_from_directory(_farmtrack_dir(), "index.html")
+    return redirect(url_for("employee_login"))
 
 
 @app.route("/pigs")
 def farmtrack_pigs():
-    """FarmTrack pig management detail page (public)."""
-    return send_from_directory(_farmtrack_dir(), "pigs.html")
+    """Former public marketing page; removed — send users to login."""
+    return redirect(url_for("employee_login"))
 
 
 @app.route("/cows")
 def farmtrack_cows():
-    """FarmTrack cow & dairy detail page (public)."""
-    return send_from_directory(_farmtrack_dir(), "cows.html")
+    """Former public marketing page; removed — send users to login."""
+    return redirect(url_for("employee_login"))
 
 
 @app.route("/chickens")
 def farmtrack_chickens():
-    """FarmTrack flock & chicken detail page (public)."""
-    return send_from_directory(_farmtrack_dir(), "chickens.html")
+    """Former public marketing page; removed — send users to login."""
+    return redirect(url_for("employee_login"))
 
 @app.route('/fix-db-schema')
 def fix_database_schema():
@@ -3931,6 +4003,104 @@ def admin_settings():
     }
     
     return render_template('admin_settings.html', user=user_data)
+
+
+@app.route('/api/company-settings', methods=['GET', 'POST'])
+def api_company_settings():
+    """Read or update singleton company branding (admin/manager)."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    if session.get('employee_role') not in ('administrator', 'manager'):
+        return jsonify({'success': False, 'message': 'Forbidden'}), 403
+
+    if request.method == 'GET':
+        return jsonify({'success': True, 'settings': get_company_branding()})
+
+    company_name = (request.form.get('company_name') or '').strip()
+    company_tagline = (request.form.get('company_tagline') or '').strip()
+    email = (request.form.get('email') or '').strip()
+    phone = (request.form.get('phone') or '').strip()
+    location = (request.form.get('location') or '').strip()
+    if not company_name:
+        return jsonify({'success': False, 'message': 'Company name is required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT logo_path FROM company_settings WHERE id = 1')
+        row0 = cursor.fetchone()
+        final_logo = row0.get('logo_path') if row0 else None
+
+        upload = request.files.get('logo')
+        if upload and upload.filename:
+            ext = upload.filename.rsplit('.', 1)[-1].lower() if '.' in upload.filename else ''
+            if ext not in ALLOWED_COMPANY_LOGO_EXTENSIONS:
+                return jsonify({'success': False, 'message': 'Logo must be PNG, JPG, JPEG, WebP, GIF, or SVG'}), 400
+            dest_dir = os.path.join(app.root_path, 'static', 'uploads', 'company')
+            os.makedirs(dest_dir, exist_ok=True)
+            unique = f'company_logo_{secrets.token_hex(6)}.{ext}'
+            rel_path = f'uploads/company/{unique}'
+            abs_path = os.path.join(app.root_path, 'static', rel_path)
+            upload.save(abs_path)
+            old_rel = final_logo
+            if (
+                old_rel
+                and isinstance(old_rel, str)
+                and old_rel.startswith('uploads/company/')
+                and '..' not in old_rel
+            ):
+                try:
+                    os.remove(os.path.join(app.root_path, 'static', old_rel))
+                except OSError:
+                    pass
+            final_logo = rel_path
+
+        cursor.execute(
+            """
+            UPDATE company_settings SET
+                company_name = %s,
+                company_tagline = %s,
+                email = %s,
+                phone = %s,
+                location = %s,
+                logo_path = %s,
+                updated_by = %s
+            WHERE id = 1
+            """,
+            (
+                company_name,
+                company_tagline,
+                email,
+                phone,
+                location,
+                final_logo,
+                session['employee_id'],
+            ),
+        )
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Company details saved', 'settings': get_company_branding()})
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        print(f'api_company_settings: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 
 @app.route('/app-settings')
 def app_settings():

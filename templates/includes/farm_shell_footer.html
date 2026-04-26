@@ -4,13 +4,13 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div class="flex flex-col md:flex-row justify-between items-center gap-1.5">
                 <div class="flex items-center gap-3">
-                    <div class="farm-chrome-logo-tile farm-chrome-logo-tile--sm w-8 h-8 flex items-center justify-center bg-gradient-to-br from-emerald-600 via-teal-600 to-slate-700 rounded-lg shadow-sm shrink-0" aria-hidden="true">
-                        <i class="fas fa-leaf text-white text-xs leading-none drop-shadow"></i>
+                    <div class="farm-chrome-logo-tile farm-chrome-logo-tile--sm w-8 h-8 flex items-center justify-center bg-gradient-to-br from-emerald-600/30 via-teal-600/20 to-slate-700/30 rounded-lg shadow-sm shrink-0 overflow-hidden ring-1 ring-white/20 dark:ring-slate-600/50" aria-hidden="true">
+                        <img src="{{ company_branding.logo_url }}" alt="" class="w-full h-full object-cover" width="32" height="32" loading="lazy" decoding="async">
                     </div>
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
                         <span class="inline-flex items-center gap-1">
                             <i class="fas fa-building text-[10px] text-emerald-600 dark:text-emerald-400" aria-hidden="true"></i>
-                            <span class="font-semibold text-gray-900 dark:text-white">Farm A</span>
+                            <span class="font-semibold text-gray-900 dark:text-white">{{ company_branding.company_name }}</span>
                         </span>
                         <span class="inline-flex items-center gap-1">
                             <i class="fas fa-code-branch text-[10px] text-sky-600 dark:text-sky-400" aria-hidden="true"></i>
@@ -29,7 +29,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">© Farm A. All rights reserved.</p>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">© {{ company_branding.company_name }}. All rights reserved.</p>
                 </div>
             </div>
         </div>

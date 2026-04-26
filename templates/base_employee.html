@@ -2,8 +2,8 @@
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Farm A - Employee Dashboard{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}{{ company_branding.company_name }} — Employee{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -161,7 +161,7 @@
                 z-index: 45;
             }
             
-            #sidebar-overlay {
+            #mobile-overlay {
                 z-index: 40;
                 top: var(--header-height);
                 height: calc(100vh - var(--header-height));
@@ -237,22 +237,18 @@
     <!-- Modern Sidebar with Glass Effect (starts below header, responsive) -->
     <aside id="sidebar" class="fixed left-0 top-16 sm:top-20 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] w-72 bg-white dark:bg-gray-900 shadow-2xl z-40 transform -translate-x-full lg:translate-x-0 transition-all duration-300 ease-in-out border-r-2 border-gray-300 dark:border-gray-700 flex flex-col">
         <div class="flex flex-col h-full">
+            {% include 'includes/farm_sidebar_top_controls.html' %}
             <!-- Sidebar Header -->
-            <div class="flex items-center justify-between p-5 border-b-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-orange-50 dark:from-gray-800 dark:to-gray-800">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 via-green-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                        <i class="fas fa-seedling text-white text-lg"></i>
+            <div class="flex items-center p-5 border-b-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-orange-50 dark:from-gray-800 dark:to-gray-800">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <div class="w-10 h-10 rounded-xl overflow-hidden shadow-lg ring-2 ring-emerald-500/30 shrink-0 bg-gradient-to-br from-emerald-500/30 to-slate-600/30">
+                        <img src="{{ company_branding.logo_url }}" alt="" class="w-full h-full object-cover" width="40" height="40" loading="lazy">
                     </div>
-                    <div>
-                        <h2 class="text-lg font-bold gradient-text">Farm A</h2>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Employee Portal</p>
+                    <div class="min-w-0">
+                        <h2 class="text-lg font-bold gradient-text truncate">{{ company_branding.company_name }}</h2>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 truncate">{% if company_branding.company_tagline %}{{ company_branding.company_tagline }}{% else %}Employee Portal{% endif %}</p>
                     </div>
                 </div>
-                <button id="close-sidebar" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-110 active:scale-95" aria-label="Close sidebar">
-                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
             </div>
 
             <!-- Navigation Menu -->
@@ -342,12 +338,15 @@
             <!-- Sidebar Footer -->
             <div class="p-4 border-t-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
                 <div class="text-center">
-                    <p class="text-xs font-semibold text-gray-700 dark:text-gray-300">Farm A</p>
+                    <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate px-1">{{ company_branding.company_name }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">v2.0.1</p>
                 </div>
             </div>
         </div>
     </aside>
+    {% with farm_sidebar_float_toggle_bp = 'lg' %}
+    {% include 'includes/farm_sidebar_floating_toggle.html' %}
+    {% endwith %}
 
     <!-- Main Content Area (padding-top for header, margin-left for sidebar on lg+) -->
     <main class="pt-16 sm:pt-20 min-h-screen lg:pl-72 bg-gray-50 dark:bg-gray-900 transition-[padding] duration-300">
@@ -358,9 +357,6 @@
 
     <!-- Modern Footer (aligns with main content when sidebar visible) -->
     {% include 'includes/farm_shell_footer.html' %}
-
-    <!-- Overlay for mobile sidebar -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden lg:hidden transition-opacity duration-300"></div>
 
     <script>
         // Theme Toggle Functionality
@@ -419,30 +415,6 @@
             if (!userDropdownBtn.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.classList.add('hidden');
             }
-        });
-
-        // Mobile Sidebar Functionality
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const closeSidebarBtn = document.getElementById('close-sidebar');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        
-        mobileMenuBtn.addEventListener('click', () => {
-            sidebar.classList.remove('-translate-x-full');
-            sidebarOverlay.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        });
-        
-        closeSidebarBtn.addEventListener('click', () => {
-            sidebar.classList.add('-translate-x-full');
-            sidebarOverlay.classList.add('hidden');
-            document.body.style.overflow = '';
-        });
-
-        sidebarOverlay.addEventListener('click', () => {
-            sidebar.classList.add('-translate-x-full');
-            sidebarOverlay.classList.add('hidden');
-            document.body.style.overflow = '';
         });
 
         // Submenu Toggle Functionality with Smooth Animations

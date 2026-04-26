@@ -3,6 +3,10 @@
 <script>
 (function () {
   document.documentElement.classList.add('farm-unified-shell');
+  /* Most farm sidebars use md:translate-x-0 (768px); base_employee uses lg (1024). Corrected in setupSidebarToggle. */
+  if (!document.documentElement.hasAttribute('data-farm-sidebar-bp')) {
+    document.documentElement.setAttribute('data-farm-sidebar-bp', '768');
+  }
   var clockTimer = null;
 
   function isDarkMode() {
@@ -171,15 +175,48 @@
     clockTimer = setInterval(tickClock, 1000);
   }
 
+  function setupSidebarBack() {
+    if (document.documentElement.dataset.farmSidebarBackBound === '1') return;
+    document.documentElement.dataset.farmSidebarBackBound = '1';
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest && e.target.closest('[data-farm-sidebar-back]');
+      if (!btn) return;
+      e.preventDefault();
+      var refOk = false;
+      try {
+        refOk = !!document.referrer && new URL(document.referrer).origin === window.location.origin;
+      } catch (err) {}
+      if (refOk || window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    }, true);
+  }
+
   function setupSidebarToggle() {
     var mobileMenuBtn = document.getElementById('mobile-menu-btn');
     var sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     var sidebar = document.getElementById('sidebar');
     var closeSidebarBtn = document.getElementById('close-sidebar');
     var overlay = document.getElementById('mobile-overlay') || document.getElementById('sidebar-overlay');
-    if (!sidebar || sidebar.dataset.farmSidebarBound === '1') return;
+    if (!sidebar) {
+      document.documentElement.setAttribute('data-farm-sidebar-bp', 'none');
+      return;
+    }
+    if (sidebar.dataset.farmSidebarBound === '1') return;
+
+    if (sidebarToggleBtn && mobileMenuBtn) {
+      mobileMenuBtn.classList.add('hidden');
+    }
 
     var desktopBreakpoint = sidebar.className.indexOf('lg:translate-x-0') !== -1 ? 1024 : 768;
+
+    function syncSidebarBreakpointAttr() {
+      var c = sidebar.className || '';
+      var bp = c.indexOf('lg:translate-x-0') !== -1 ? '1024' : '768';
+      document.documentElement.setAttribute('data-farm-sidebar-bp', bp);
+    }
 
     function syncToggleButton(isOpen, isDesktop) {
       if (!sidebarToggleBtn) return;
@@ -211,6 +248,7 @@
     }
 
     function syncSidebarForViewport() {
+      syncSidebarBreakpointAttr();
       var isDesktop = window.innerWidth >= desktopBreakpoint;
       if (isDesktop) {
         if (overlay) overlay.classList.add('hidden');
@@ -224,6 +262,7 @@
       }
     }
 
+    syncSidebarBreakpointAttr();
     sidebar.dataset.farmSidebarBound = '1';
     if (mobileMenuBtn) {
       mobileMenuBtn.dataset.farmSidebarBound = '1';
@@ -281,6 +320,7 @@
   onReady(function () {
     setupThemeToggle();
     setupUserDropdown();
+    setupSidebarBack();
     setupSidebarToggle();
     setupClock();
     syncThemeIcons();

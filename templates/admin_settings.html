@@ -2,8 +2,8 @@
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Settings - Farm A Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin Settings — {{ company_branding.company_name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -104,93 +104,58 @@
 
             <!-- Settings Content -->
             <div class="space-y-6">
-                <!-- System Information -->
+                <!-- Company details (used in header, footer, and login) -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
                     <div class="flex items-center space-x-3 mb-6">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-info-circle text-white text-lg"></i>
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-building text-white text-lg"></i>
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">System Information</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Current system status and configuration</p>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Company details</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Name, logo, and contact information shown across the app</p>
                         </div>
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700/50">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-database text-green-600 dark:text-green-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-green-700 dark:text-green-300">Database Status</span>
-                            </div>
-                            <div class="text-2xl font-bold text-green-800 dark:text-green-200">Online</div>
-                            <div class="text-xs text-green-600 dark:text-green-400">MySQL Connected</div>
-                        </div>
-                        
-                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-server text-blue-600 dark:text-blue-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-blue-700 dark:text-blue-300">Server Status</span>
-                            </div>
-                            <div class="text-2xl font-bold text-blue-800 dark:text-blue-200">Running</div>
-                            <div class="text-xs text-blue-600 dark:text-blue-400">Flask Development</div>
-                        </div>
-                        
-                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-200 dark:border-purple-700/50">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-users text-purple-600 dark:text-purple-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">Active Users</span>
-                            </div>
-                            <div class="text-2xl font-bold text-purple-800 dark:text-purple-200" id="active-users-count">1</div>
-                            <div class="text-xs text-purple-600 dark:text-purple-400">Currently Online</div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Quick Actions -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center space-x-3 mb-6">
-                        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-bolt text-white text-lg"></i>
+                    <form id="company-settings-form" class="space-y-6">
+                        <div class="flex flex-col sm:flex-row gap-6 items-start">
+                            <div class="shrink-0">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company logo</label>
+                                <div class="w-24 h-24 rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                                    <img id="company-logo-preview" src="{{ company_branding.logo_url }}" alt="Logo preview" class="w-full h-full object-cover">
+                                </div>
+                                <input type="file" id="company-logo-input" name="logo" accept=".png,.jpg,.jpeg,.webp,.gif,.svg,image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="mt-3 block w-full text-sm text-gray-600 dark:text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:text-white file:text-sm hover:file:bg-emerald-700">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG, JPG, WebP, GIF, or SVG. Leave empty to keep the current logo.</p>
+                            </div>
+                            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                <div class="md:col-span-2">
+                                    <label for="company_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company name <span class="text-red-500">*</span></label>
+                                    <input type="text" id="company_name" name="company_name" required value="{{ company_branding.company_name }}" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="company_tagline" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tagline / subtitle</label>
+                                    <input type="text" id="company_tagline" name="company_tagline" value="{{ company_branding.company_tagline }}" placeholder="e.g. Farm Management" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label for="company_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                                    <input type="email" id="company_email" name="email" value="{{ company_branding.email }}" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label for="company_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                                    <input type="text" id="company_phone" name="phone" value="{{ company_branding.phone }}" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="company_location" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+                                    <input type="text" id="company_location" name="location" value="{{ company_branding.location }}" placeholder="Address or region" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Quick Actions</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Common administrative tasks</p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button type="submit" id="company-settings-save" class="inline-flex items-center px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold shadow hover:from-emerald-700 hover:to-teal-700 transition-colors">
+                                <i class="fas fa-save mr-2"></i> Save company details
+                            </button>
+                            <span id="company-settings-status" class="text-sm text-gray-600 dark:text-gray-400 hidden"></span>
                         </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <a href="/admin/farm/weight-settings" class="group bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 hover:from-green-100 hover:to-green-200 dark:hover:from-green-900/30 dark:hover:to-green-800/30 rounded-xl p-4 border border-green-200 dark:border-green-700/50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-weight text-green-600 dark:text-green-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-green-700 dark:text-green-300">Weight Settings</span>
-                            </div>
-                            <div class="text-xs text-green-600 dark:text-green-400">Configure animal weight categories</div>
-                        </a>
-                        
-                        <a href="/admin/farm/vaccination-settings" class="group bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 hover:from-purple-100 hover:to-purple-200 dark:hover:from-purple-900/30 dark:hover:to-purple-800/30 rounded-xl p-4 border border-purple-200 dark:border-purple-700/50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-syringe text-purple-600 dark:text-purple-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">Vaccination Settings</span>
-                            </div>
-                            <div class="text-xs text-purple-600 dark:text-purple-400">Manage vaccine schedules</div>
-                        </a>
-                        
-                        <a href="/admin/human-resource" class="group bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 hover:from-orange-100 hover:to-orange-200 dark:hover:from-orange-900/30 dark:hover:to-orange-800/30 rounded-xl p-4 border border-orange-200 dark:border-orange-700/50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-users text-orange-600 dark:text-orange-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-orange-700 dark:text-orange-300">Human Resources</span>
-                            </div>
-                            <div class="text-xs text-orange-600 dark:text-orange-400">Manage employees</div>
-                        </a>
-                        
-                        <a href="/admin/analytics" class="group bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
-                            <div class="flex items-center space-x-3 mb-2">
-                                <i class="fas fa-chart-line text-blue-600 dark:text-blue-400 text-lg"></i>
-                                <span class="text-sm font-semibold text-blue-700 dark:text-blue-300">Analytics</span>
-                            </div>
-                            <div class="text-xs text-blue-600 dark:text-blue-400">View system analytics</div>
-                        </a>
-                    </div>
+                    </form>
                 </div>
 
                 <!-- System Configuration -->
@@ -257,6 +222,46 @@
         function refreshSettings() {
             window.location.reload();
         }
+        (function () {
+            var form = document.getElementById('company-settings-form');
+            var logoInput = document.getElementById('company-logo-input');
+            var preview = document.getElementById('company-logo-preview');
+            var statusEl = document.getElementById('company-settings-status');
+            if (logoInput && preview) {
+                logoInput.addEventListener('change', function () {
+                    var f = logoInput.files && logoInput.files[0];
+                    if (!f) return;
+                    var url = URL.createObjectURL(f);
+                    preview.src = url;
+                });
+            }
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    var fd = new FormData(form);
+                    statusEl.textContent = 'Saving…';
+                    statusEl.classList.remove('hidden', 'text-red-600', 'dark:text-red-400');
+                    statusEl.classList.add('text-gray-600', 'dark:text-gray-400');
+                    fetch('/api/company-settings', { method: 'POST', body: fd, credentials: 'same-origin' })
+                        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                        .then(function (x) {
+                            if (x.ok && x.j.success) {
+                                statusEl.textContent = x.j.message || 'Saved.';
+                                if (x.j.settings && x.j.settings.logo_url) preview.src = x.j.settings.logo_url;
+                                setTimeout(function () { window.location.reload(); }, 600);
+                            } else {
+                                statusEl.textContent = (x.j && x.j.message) ? x.j.message : 'Save failed';
+                                statusEl.classList.add('text-red-600', 'dark:text-red-400');
+                                statusEl.classList.remove('text-gray-600', 'dark:text-gray-400');
+                            }
+                        })
+                        .catch(function () {
+                            statusEl.textContent = 'Network error';
+                            statusEl.classList.add('text-red-600', 'dark:text-red-400');
+                        });
+                });
+            }
+        })();
     </script>
     {% include 'includes/farm_shell_footer.html' %}
 </body>

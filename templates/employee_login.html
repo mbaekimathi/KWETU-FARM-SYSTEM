@@ -2,8 +2,8 @@
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Login - Farm A Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Employee Login — {{ company_branding.company_name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         // Error handling for external script conflicts
@@ -139,6 +139,7 @@
             .login-tile-shimmer { opacity: 0; }
         }
     </style>
+{% include 'includes/farm_standalone_responsive_head.html' %}
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
     <!-- Navigation -->
@@ -147,10 +148,10 @@
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center space-x-3">
                     <a href="/" class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-gradient-to-r from-pink-500 to-red-500 rounded-full flex items-center justify-center">
-                            <span class="text-white font-bold text-lg">🐷</span>
+                        <div class="w-10 h-10 rounded-2xl overflow-hidden ring-2 ring-white/30 dark:ring-gray-600 shadow-md shrink-0 bg-gradient-to-br from-emerald-600/40 to-slate-700/40">
+                            <img src="{{ company_branding.logo_url }}" alt="" class="w-full h-full object-cover" width="40" height="40" loading="eager">
                         </div>
-                        <span class="text-xl font-bold text-gray-800 dark:text-white">Farm A</span>
+                        <span class="text-xl font-bold text-gray-800 dark:text-white">{{ company_branding.company_name }}</span>
                     </a>
                 </div>
                 

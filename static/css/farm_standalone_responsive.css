@@ -1,0 +1,34 @@
+/**
+ * Standalone pages (login, signup, etc.) — responsive defaults without
+ * html.farm-unified-shell so page-specific backgrounds/layouts stay intact.
+ */
+
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+img,
+video,
+canvas,
+picture > img {
+  max-width: 100%;
+  height: auto;
+}
+
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
