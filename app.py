@@ -1,4 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    jsonify,
+    send_from_directory,
+)
 import pymysql
 import os
 from datetime import datetime, timedelta, date
@@ -8,6 +18,7 @@ import socket
 import subprocess
 
 import base64
+import re
 import db_migrations
 from feed_notifications_collector import collect_all_feed_notifications
 
@@ -840,6 +851,18 @@ def create_database_and_tables():
                 print("Payment method column removed from sale_records table")
         except Exception as e:
             print(f"Note: Payment method column may not exist: {e}")
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sale_buyer_contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                phone_normalized VARCHAR(32) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_sbc_phone (phone_normalized)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        print("Sale buyer contacts table checked/created successfully")
         
         # Update weight_records table to support litters if needed
         try:
@@ -2114,29 +2137,34 @@ def inject_role_url():
         build_profile_image_url=build_profile_image_url,
     )
 
-@app.route('/')
-def landing():
-    return render_template('landing.html')
+def _farmtrack_dir():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "farmtrack")
 
-@app.route('/landing')
-def landing_page():
-    return render_template('landing.html')
 
-@app.route('/solutions')
-def solutions():
-    return render_template('solutions.html')
+@app.route("/")
+def index():
+    """Public: FarmTrack marketing site. Signed-in users go to their role dashboard."""
+    if "employee_id" in session:
+        return redirect(get_role_dashboard_url(session.get("employee_role", "employee")))
+    return send_from_directory(_farmtrack_dir(), "index.html")
 
-@app.route('/features')
-def features():
-    return render_template('features.html')
 
-@app.route('/about')
-def about():
-    return render_template('about.html')
+@app.route("/pigs")
+def farmtrack_pigs():
+    """FarmTrack pig management detail page (public)."""
+    return send_from_directory(_farmtrack_dir(), "pigs.html")
 
-@app.route('/contact')
-def contact():
-    return render_template('contact.html')
+
+@app.route("/cows")
+def farmtrack_cows():
+    """FarmTrack cow & dairy detail page (public)."""
+    return send_from_directory(_farmtrack_dir(), "cows.html")
+
+
+@app.route("/chickens")
+def farmtrack_chickens():
+    """FarmTrack flock & chicken detail page (public)."""
+    return send_from_directory(_farmtrack_dir(), "chickens.html")
 
 @app.route('/fix-db-schema')
 def fix_database_schema():
@@ -4661,6 +4689,17 @@ def manager_farm_slaughter():
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
     return render_template('admin_farm_slaughter.html', user=user_data)
+
+@app.route('/manager/farm/slaughter/view-production')
+def manager_farm_slaughter_view_production():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'], 'name': session['employee_name'],
+        'role': session['employee_role'], 'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_farm_slaughter_view_production.html', user=user_data)
 
 @app.route('/manager/farm/feed-settings')
 def manager_farm_feed_settings_redirect():
@@ -12028,19 +12067,20 @@ def create_feed_setting():
         data = request.get_json()
         
         # Validate required fields
-        animal_type = data.get('animal_type', 'pig')  # Default to pig for this farm
-        age_group_name = data.get('age_group_name', '').strip()
+        animal_type = (data.get('animal_type') or 'pig')  # Default; JSON may send null
+        # JSON null / missing: use (x or '') so .strip() is never called on None
+        age_group_name = (data.get('age_group_name') or '').strip()
         start_age_days = data.get('start_age_days')
         end_age_days = data.get('end_age_days')
         feed_amount_grams = data.get('feed_amount_grams')
         feeding_times_per_day = data.get('feeding_times_per_day', 2)
         feeding_times = data.get('feeding_times', [])
-        feed_type = data.get('feed_type', '').strip() or None
+        feed_type = (data.get('feed_type') or '').strip() or None
         
         # Validate feeding times
         if not feeding_times or len(feeding_times) != feeding_times_per_day:
             return jsonify({'success': False, 'message': f'Please provide {feeding_times_per_day} feeding time(s)'})
-        notes = data.get('notes', '').strip() or None
+        notes = (data.get('notes') or '').strip() or None
         
         if not age_group_name or start_age_days is None or end_age_days is None or feed_amount_grams is None:
             return jsonify({'success': False, 'message': 'Age group name, age range, and feed amount are required'})
@@ -12154,7 +12194,7 @@ def update_feed_setting(setting_id):
         
         if 'age_group_name' in data:
             updates.append("age_group_name = %s")
-            params.append(data['age_group_name'].strip())
+            params.append((data['age_group_name'] or '').strip())
         
         if 'start_age_days' in data:
             updates.append("start_age_days = %s")
@@ -23471,6 +23511,7 @@ def create_slaughter_record():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
+    conn = None
     try:
         data = request.get_json()
         print(f"Slaughter record data received: {data}")
@@ -23482,8 +23523,40 @@ def create_slaughter_record():
             if not data.get(field):
                 return jsonify({'success': False, 'message': f'{field.replace("_", " ").title()} is required'})
         
+        try:
+            raw_pc = int(data.get('pigs_count', 1))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid number of pigs'}), 400
+
+        if data['pig_type'] == 'litter':
+            if not data.get('litter_id'):
+                return jsonify({'success': False, 'message': 'litter_id is required for litter slaughter'}), 400
+            if raw_pc < 1:
+                return jsonify({'success': False, 'message': 'Number of pigs must be at least 1'}), 400
+        elif data['pig_type'] != 'grown_pig':
+            return jsonify({'success': False, 'message': 'Invalid pig_type'}), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        if data['pig_type'] == 'litter':
+            cursor.execute("SELECT alive_piglets FROM litters WHERE id = %s", (data['litter_id'],))
+            litter_row = cursor.fetchone()
+            if not litter_row:
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Litter not found'}), 404
+            alive = int(litter_row['alive_piglets'])
+            if raw_pc > alive:
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot slaughter more than {alive} pig(s); only {alive} alive in this litter (requested {raw_pc}).'
+                }), 400
+            pigs_count = raw_pc
+        else:
+            pigs_count = 1
         
         # Calculate dressing percentage
         live_weight = float(data['live_weight'])
@@ -23492,7 +23565,6 @@ def create_slaughter_record():
         
         # Calculate total revenue
         price_per_kg = float(data['price_per_kg'])
-        pigs_count = int(data.get('pigs_count', 1))
         total_revenue = carcass_weight * price_per_kg * pigs_count
         
         # Insert slaughter record
@@ -23528,7 +23600,7 @@ def create_slaughter_record():
             
         elif data['pig_type'] == 'litter' and data.get('litter_id'):
             # For litters, reduce the number of available pigs
-            pigs_to_slaughter = int(data.get('pigs_count', 1))
+            pigs_to_slaughter = int(pigs_count)
             
             # Update litter to reduce available pigs
             cursor.execute("""
@@ -23592,7 +23664,6 @@ def create_slaughter_record():
             log_activity(session['employee_id'], 'SLAUGHTER_RECORD', 
                        f'Slaughter record created: Pig {data.get("pig_id")} - Status changed to slaughtered - ${total_revenue} revenue')
         else:
-            pigs_count = int(data.get('pigs_count', 1))
             log_activity(session['employee_id'], 'SLAUGHTER_RECORD', 
                        f'Slaughter record created: Litter {data.get("litter_id")} - {pigs_count} pigs slaughtered - ${total_revenue} revenue')
         
@@ -23619,7 +23690,12 @@ def create_slaughter_record():
         
     except Exception as e:
         print(f"Error creating slaughter record: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return jsonify({'success': False, 'message': str(e), 'error': str(e)}), 500
 
 @app.route('/api/slaughter/record/<int:record_id>/edit', methods=['PUT'])
 def edit_slaughter_record(record_id):
@@ -23879,6 +23955,7 @@ def create_death_record():
     if 'employee_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
+    conn = None
     try:
         data = request.get_json()
         print(f"Death record data received: {data}")
@@ -23889,9 +23966,41 @@ def create_death_record():
             if field not in data or not data[field]:
                 return jsonify({'success': False, 'message': f'{field} is required'}), 400
         
+        try:
+            raw_pc = int(data.get('pigs_count', 1))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid number of pigs'}), 400
+
+        if data['pig_type'] == 'litter':
+            if not data.get('litter_id'):
+                return jsonify({'success': False, 'message': 'litter_id is required for litter death'}), 400
+            if raw_pc < 1:
+                return jsonify({'success': False, 'message': 'Number of pigs must be at least 1'}), 400
+        elif data['pig_type'] != 'grown_pig':
+            return jsonify({'success': False, 'message': 'Invalid pig_type'}), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
+        if data['pig_type'] == 'litter':
+            cursor.execute("SELECT alive_piglets FROM litters WHERE id = %s", (data['litter_id'],))
+            litter_row = cursor.fetchone()
+            if not litter_row:
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Litter not found'}), 404
+            alive = int(litter_row['alive_piglets'])
+            if raw_pc > alive:
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot record more than {alive} pig(s); only {alive} alive in this litter (requested {raw_pc}).'
+                }), 400
+            pigs_count = raw_pc
+        else:
+            pigs_count = 1
+
         # Create death record
         cursor.execute("""
             INSERT INTO dead_pigs (
@@ -23910,7 +24019,7 @@ def create_death_record():
             data['weight_at_death'],
             data.get('age_at_death'),
             data.get('additional_details', ''),
-            data.get('pigs_count', 1),
+            pigs_count,
             session['employee_id']
         ))
         
@@ -23934,7 +24043,7 @@ def create_death_record():
             
         elif data['pig_type'] == 'litter' and data.get('litter_id'):
             # For litters, reduce the number of available pigs
-            pigs_to_remove = int(data.get('pigs_count', 1))
+            pigs_to_remove = int(pigs_count)
             
             # Update litter to reduce available pigs
             cursor.execute("""
@@ -23998,7 +24107,6 @@ def create_death_record():
             log_activity(session['employee_id'], 'DEATH_RECORD', 
                        f'Death record created: Pig {data.get("pig_id")} - Status changed to dead - Cause: {data["cause_of_death"]}')
         else:
-            pigs_count = int(data.get('pigs_count', 1))
             log_activity(session['employee_id'], 'DEATH_RECORD', 
                        f'Death record created: Litter {data.get("litter_id")} - {pigs_count} pigs marked as dead - Cause: {data["cause_of_death"]}')
         
@@ -24025,7 +24133,12 @@ def create_death_record():
         
     except Exception as e:
         print(f"Error creating death record: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return jsonify({'success': False, 'message': str(e), 'error': str(e)}), 500
 
 @app.route('/api/death/record/<int:record_id>/edit', methods=['PUT'])
 def edit_death_record(record_id):
@@ -24265,7 +24378,7 @@ def get_death_record_audit(record_id):
 
 @app.route('/api/pigs/available', methods=['GET'])
 def get_available_pigs():
-    """Get available pigs and litters for slaughter"""
+    """Grown/litter options for the slaughter form (default: strict status). Sale/death: pass ignore_status=1. Optional: q= search."""
     if 'employee_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -24274,11 +24387,15 @@ def get_available_pigs():
         cursor = conn.cursor()
         
         pig_type = request.args.get('type', 'grown_pig')
+        q_param = (request.args.get('q') or request.args.get('search') or '').strip()
+        q_filter = q_param if len(q_param) >= 2 else None
+        strict_status = (request.args.get('ignore_status') or '').lower() not in ('1', 'true', 'yes', 'on')
         
         if pig_type == 'grown_pig':
-            # Get available grown pigs with latest weight
-            cursor.execute("""
+            # Grown: slaughter = active only. Sale/death = any status (ignore_status=1).
+            sql = """
                 SELECT p.id, p.tag_id, p.breed, p.gender, p.status, p.created_at,
+                       p.pig_source, p.birth_date, p.purchase_date, p.age_days,
                        COALESCE(w.weight, 0) as weight
                 FROM pigs p 
                 LEFT JOIN (
@@ -24287,10 +24404,18 @@ def get_available_pigs():
                     FROM weight_records 
                     WHERE animal_id IS NOT NULL
                 ) w ON p.id = w.animal_id AND w.rn = 1
-                WHERE p.status = 'active' 
-                AND p.pig_type = 'grown_pig'
-                ORDER BY p.tag_id ASC
-            """)
+                WHERE p.pig_type = 'grown_pig'
+            """
+            if strict_status:
+                sql += " AND p.status = 'active' "
+            if q_filter:
+                like = f"%{q_filter}%"
+                sql += " AND (p.tag_id LIKE %s OR COALESCE(p.breed, '') LIKE %s) "
+                sql += " ORDER BY p.tag_id ASC LIMIT 100"
+                cursor.execute(sql, (like, like))
+            else:
+                sql += " ORDER BY p.tag_id ASC"
+                cursor.execute(sql)
             pigs = cursor.fetchall()
             
             cursor.close()
@@ -24302,17 +24427,25 @@ def get_available_pigs():
             })
             
         elif pig_type == 'litter':
-            # Get available litters with sow breed information
-            cursor.execute("""
+            # Litters: slaughter = unweaned/weaned with alive. Sale/death = any litter status, still with alive piglets
+            sql = """
                 SELECT l.id, l.litter_id, l.total_piglets as total_pigs, l.alive_piglets as available_pigs, 
                        l.avg_weight, l.status, l.created_at, l.farrowing_date,
                        p.breed, p.tag_id as sow_tag_id
                 FROM litters l
                 LEFT JOIN pigs p ON l.sow_id = p.id
-                WHERE l.status IN ('unweaned', 'weaned') 
-                AND l.alive_piglets > 0
-                ORDER BY l.litter_id ASC
-            """)
+                WHERE l.alive_piglets > 0
+            """
+            if strict_status:
+                sql += " AND l.status IN ('unweaned', 'weaned') "
+            if q_filter:
+                like = f"%{q_filter}%"
+                sql += " AND (l.litter_id LIKE %s OR COALESCE(p.tag_id, '') LIKE %s OR COALESCE(p.breed, '') LIKE %s) "
+                sql += " ORDER BY l.litter_id ASC LIMIT 100"
+                cursor.execute(sql, (like, like, like))
+            else:
+                sql += " ORDER BY l.litter_id ASC"
+                cursor.execute(sql)
             litters = cursor.fetchall()
             
             cursor.close()
@@ -24331,25 +24464,35 @@ def get_available_pigs():
 
 @app.route('/api/litters/available', methods=['GET'])
 def get_available_litters():
-    """Get available litters for death records"""
+    """Litters for sale/death search. Pass ignore_status=1 to allow any litter status (still need alive_piglets > 0). Optional: q= search."""
     if 'employee_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Get available litters with sow breed information
-        cursor.execute("""
+        q_param = (request.args.get('q') or request.args.get('search') or '').strip()
+        q_filter = q_param if len(q_param) >= 2 else None
+        strict_status = (request.args.get('ignore_status') or '').lower() not in ('1', 'true', 'yes', 'on')
+
+        sql = """
             SELECT l.id, l.litter_id, l.total_piglets as total_pigs, l.alive_piglets as available_pigs, 
                    l.avg_weight, l.status, l.created_at, l.farrowing_date,
                    p.breed, p.tag_id as sow_tag_id
             FROM litters l
             LEFT JOIN pigs p ON l.sow_id = p.id
-            WHERE l.status IN ('unweaned', 'weaned') 
-            AND l.alive_piglets > 0
-            ORDER BY l.litter_id ASC
-        """)
+            WHERE l.alive_piglets > 0
+        """
+        if strict_status:
+            sql += " AND l.status IN ('unweaned', 'weaned') "
+        if q_filter:
+            like = f"%{q_filter}%"
+            sql += " AND (l.litter_id LIKE %s OR COALESCE(p.tag_id, '') LIKE %s OR COALESCE(p.breed, '') LIKE %s) "
+            sql += " ORDER BY l.litter_id ASC LIMIT 100"
+            cursor.execute(sql, (like, like, like))
+        else:
+            sql += " ORDER BY l.litter_id ASC"
+            cursor.execute(sql)
         litters = cursor.fetchall()
         
         cursor.close()
@@ -24375,7 +24518,7 @@ def get_pig_death_details(pig_id):
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, tag_id, birth_date, breed, gender, status
+            SELECT id, tag_id, birth_date, purchase_date, pig_source, breed, gender, status, age_days
             FROM pigs 
             WHERE id = %s
         """, (pig_id,))
@@ -24428,12 +24571,100 @@ def get_litter_death_details(litter_id):
         print(f"Error fetching litter details: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def _normalize_phone_digits(phone):
+    if not phone:
+        return ''
+    return re.sub(r'\D', '', str(phone))
+
+
+@app.route('/api/sale/buyers/search', methods=['GET'])
+def search_sale_buyers():
+    """Typeahead: match saved buyer contacts by phone digits prefix."""
+    if 'employee_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    q = (request.args.get('q') or request.args.get('digits') or '').strip()
+    digits = _normalize_phone_digits(q)
+    if len(digits) < 2:
+        return jsonify({'success': True, 'matches': []})
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        like = f"{digits}%"
+        cursor.execute(
+            """
+            SELECT phone_normalized, full_name
+            FROM sale_buyer_contacts
+            WHERE phone_normalized LIKE %s
+            ORDER BY last_used_at DESC, full_name ASC
+            LIMIT 20
+            """,
+            (like,),
+        )
+        rows = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+        return jsonify(
+            {
+                'success': True,
+                'matches': [
+                    {'phone': r['phone_normalized'], 'name': r['full_name']}
+                    for r in rows
+                ],
+            }
+        )
+    except Exception as e:
+        print(f"Error searching sale buyers: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/sale/buyers/register', methods=['POST'])
+def register_sale_buyer():
+    """Save or update a buyer contact (phone + name) for later autofill."""
+    if 'employee_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json() or {}
+    phone = data.get('phone') or data.get('buyer_contact') or ''
+    name = (data.get('name') or data.get('full_name') or data.get('buyer_name') or '').strip()
+    digits = _normalize_phone_digits(phone)
+    if len(digits) < 5:
+        return jsonify({'success': False, 'message': 'Enter a valid phone number (at least 5 digits)'}), 400
+    if not name:
+        return jsonify({'success': False, 'message': 'Buyer name is required'}), 400
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO sale_buyer_contacts (phone_normalized, full_name)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE
+                full_name = VALUES(full_name),
+                last_used_at = CURRENT_TIMESTAMP
+            """,
+            (digits, name),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Buyer contact saved'})
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        print(f"Error registering sale buyer: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/api/sale/record', methods=['POST'])
 def create_sale_record():
     """Create a sale record"""
     if 'employee_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
+    conn = None
     try:
         data = request.get_json()
         print(f"Sale record data received: {data}")
@@ -24444,8 +24675,42 @@ def create_sale_record():
             if field not in data or not data[field]:
                 return jsonify({'success': False, 'message': f'{field} is required'}), 400
         
+        try:
+            raw_pc = int(data.get('pigs_count', 1))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid number of pigs'}), 400
+
+        if data['pig_type'] == 'litter':
+            if not data.get('litter_id'):
+                return jsonify({'success': False, 'message': 'litter_id is required for litter sale'}), 400
+            if raw_pc < 1:
+                return jsonify({'success': False, 'message': 'Number of pigs must be at least 1'}), 400
+        elif data['pig_type'] != 'grown_pig':
+            return jsonify({'success': False, 'message': 'Invalid pig_type'}), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        if data['pig_type'] == 'litter':
+            cursor.execute("SELECT alive_piglets FROM litters WHERE id = %s", (data['litter_id'],))
+            litter_row = cursor.fetchone()
+            if not litter_row:
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Litter not found'}), 404
+            alive = int(litter_row['alive_piglets'])
+            if raw_pc > alive:
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot sell more than {alive} pig(s); only {alive} alive in this litter (requested {raw_pc}).'
+                }), 400
+            pigs_count = raw_pc
+        else:
+            pigs_count = 1
+
+        total_revenue = float(data['sale_price']) * pigs_count
         
         # Create sale record
         cursor.execute("""
@@ -24464,9 +24729,9 @@ def create_sale_record():
             data['buyer_name'],
             data.get('buyer_contact', ''),
             data['sale_price'],
-            data['total_revenue'],
+            total_revenue,
             data.get('notes', ''),
-            data.get('pigs_count', 1),
+            pigs_count,
             session['employee_id']
         ))
         
@@ -24490,7 +24755,7 @@ def create_sale_record():
             
         elif data['pig_type'] == 'litter' and data.get('litter_id'):
             # For litters, reduce the number of available pigs
-            pigs_to_sell = int(data.get('pigs_count', 1))
+            pigs_to_sell = int(pigs_count)
             
             # Update litter to reduce available pigs
             cursor.execute("""
@@ -24525,14 +24790,31 @@ def create_sale_record():
                 updated_litter = cursor.fetchone()
                 print(f"Litter {data['litter_id']} status after update: {updated_litter['status'] if updated_litter else 'NOT FOUND'}, alive_piglets: {updated_litter['alive_piglets'] if updated_litter else 'N/A'}")
         
+        b_phone = (data.get('buyer_contact') or '').strip()
+        b_name = (data.get('buyer_name') or '').strip()
+        b_digits = _normalize_phone_digits(b_phone)
+        if len(b_digits) >= 5 and b_name:
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO sale_buyer_contacts (phone_normalized, full_name)
+                    VALUES (%s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        full_name = VALUES(full_name),
+                        last_used_at = CURRENT_TIMESTAMP
+                    """,
+                    (b_digits, b_name),
+                )
+            except Exception as sb_ex:
+                print(f"Note: could not save sale buyer contact: {sb_ex}")
+        
         # Log activity
         if data['pig_type'] == 'grown_pig':
             log_activity(session['employee_id'], 'SALE_RECORD', 
-                       f'Sale record created: Pig {data.get("pig_id")} - Status changed to sold - Revenue: ${data["total_revenue"]}')
+                       f'Sale record created: Pig {data.get("pig_id")} - Status changed to sold - Revenue: ${total_revenue}')
         else:
-            pigs_count = int(data.get('pigs_count', 1))
             log_activity(session['employee_id'], 'SALE_RECORD', 
-                       f'Sale record created: Litter {data.get("litter_id")} - {pigs_count} pigs sold - Revenue: ${data["total_revenue"]}')
+                       f'Sale record created: Litter {data.get("litter_id")} - {pigs_count} pigs sold - Revenue: ${total_revenue}')
         
         conn.commit()
         
@@ -24557,7 +24839,12 @@ def create_sale_record():
         
     except Exception as e:
         print(f"Error creating sale record: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return jsonify({'success': False, 'message': str(e), 'error': str(e)}), 500
 
 @app.route('/api/sale/record/<int:record_id>/edit', methods=['PUT'])
 def edit_sale_record(record_id):
@@ -25526,7 +25813,7 @@ def api_logout():
         # Log logout activity
         log_activity(session['employee_id'], 'LOGOUT', f'Employee {session["employee_name"]} logged out')
         session.clear()
-    return {'success': True, 'redirect': url_for('landing')}
+    return {'success': True, 'redirect': url_for('employee_login')}
 
 @app.route('/admin/farm/breeding-records')
 def breeding_records_page():

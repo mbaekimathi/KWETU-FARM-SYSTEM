@@ -4,6 +4,7 @@
      farm_sidebar_banner_sub (optional)
      farm_sidebar_nav_partial — path to template fragment with nav rows only (inside scrollable area)
    Optional: farm_sidebar_aria_label, farm_sidebar_no_main_links (true = hide Dashboard + nav partial, banner/footer unchanged)
+   Optional: farm_sidebar_slaughter_add_links (true = show add slaughter / death / sale links; use with no_main_links on view-production)
 #}
 {% set _nav = farm_sidebar_nav_partial|default('includes/farm_nav_farm_operations_hub.html') %}
 {% import 'includes/farm_nav_sidebar_macros.html' as navm %}
@@ -27,7 +28,9 @@
                 {% endif %}
 
                 <div class="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-4">
-                    {% if not (farm_sidebar_no_main_links|default(false)) %}
+                    {% if farm_sidebar_slaughter_add_links|default(false) %}
+                    {% include 'includes/farm_slaughter_production_sidebar_actions.html' %}
+                    {% elif not (farm_sidebar_no_main_links|default(false)) %}
                     {% include _nav %}
                     {% endif %}
                 </div>

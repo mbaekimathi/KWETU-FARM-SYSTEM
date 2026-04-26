@@ -196,6 +196,16 @@
                 <button id="tab-batches-btn" onclick="switchPigDataTab('batches')" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Batches</button>
             </div>
 
+            <div id="porkers-view-banner" class="hidden mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="font-medium">
+                        <span class="text-amber-800 dark:text-amber-200">Porkers</span>
+                        <span class="text-amber-700/90 dark:text-amber-200/80">— pigs 90+ days old, herd status <strong>Active</strong>, breeding status <strong>Available</strong>.</span>
+                    </p>
+                    <a href="{{ request.path }}" class="shrink-0 text-center sm:text-left font-semibold text-amber-900 underline decoration-amber-400 underline-offset-2 hover:text-amber-950 dark:text-amber-200">Show all registered pigs</a>
+                </div>
+            </div>
+
             <!-- Pigs Table Section -->
             <div id="pigs-section" class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
                 <!-- Section Header -->
@@ -206,8 +216,8 @@
                                 <i class="fas fa-list text-white text-lg"></i>
                             </div>
                             <div>
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Registered Pigs</h2>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Manage and monitor all pig records</p>
+                                <h2 id="pigs-section-title" class="text-xl font-bold text-gray-900 dark:text-white">Registered Pigs</h2>
+                                <p id="pigs-section-subtitle" class="text-sm text-gray-600 dark:text-gray-400 font-medium">Manage and monitor all pig records</p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
@@ -1251,9 +1261,53 @@
         let pigSearchTerm = '';
         let litterSearchTerm = '';
         let batchSearchTerm = '';
+        let pigListView = 'all';
+
+        function initPigListViewFromUrl() {
+            const p = new URLSearchParams(window.location.search);
+            pigListView = p.get('view') === 'porkers' ? 'porkers' : 'all';
+        }
+
+        function isPorkerPig(pig) {
+            if (!pig || pig.pig_type === 'batch' || pig.pig_type === 'litter') return false;
+            const age = parseInt(pig.age_days, 10);
+            if (isNaN(age) || age < 90) return false;
+            if ((pig.status || '').toString().toLowerCase() !== 'active') return false;
+            return (pig.breeding_status || '').toString().toLowerCase() === 'available';
+        }
+
+        function getPigsForCurrentView() {
+            const base = getFilteredStandardPigs();
+            if (pigListView !== 'porkers') return base;
+            return base.filter(isPorkerPig);
+        }
+
+        function updatePorkersUI() {
+            const banner = document.getElementById('porkers-view-banner');
+            const titleEl = document.getElementById('pigs-section-title');
+            const subEl = document.getElementById('pigs-section-subtitle');
+            if (banner) {
+                if (pigListView === 'porkers') {
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+            if (titleEl && subEl) {
+                if (pigListView === 'porkers') {
+                    titleEl.textContent = 'Porkers';
+                    subEl.textContent = '90+ days, Active, breeding status Available';
+                } else {
+                    titleEl.textContent = 'Registered Pigs';
+                    subEl.textContent = 'Manage and monitor all pig records';
+                }
+            }
+        }
 
         // Load pigs on page load
         document.addEventListener('DOMContentLoaded', function() {
+            initPigListViewFromUrl();
+            updatePorkersUI();
             loadPigs();
             loadLitters();
             loadBatches();
@@ -1381,7 +1435,7 @@
             } else {
                 pigsSection.classList.remove('hidden');
                 pigsBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
-                displayPigs(getFilteredStandardPigs());
+                displayPigs(getPigsForCurrentView());
             }
         }
 
@@ -1389,7 +1443,7 @@
             if (activePigDataTab === 'batches') {
                 loadBatches();
             } else if (activePigDataTab === 'pigs') {
-                displayPigs(getFilteredStandardPigs());
+                displayPigs(getPigsForCurrentView());
             }
         }
 
@@ -1458,7 +1512,7 @@
                 if (searchTerm.trim() === '') {
                     searchResults.classList.add('hidden');
                 } else {
-                    const pigsResult = getFilteredStandardPigs();
+                    const pigsResult = getPigsForCurrentView();
                     searchResults.classList.remove('hidden');
                     searchCount.textContent = pigsResult.length;
                 }

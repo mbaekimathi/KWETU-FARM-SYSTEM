@@ -1,0 +1,16 @@
+{# Shown on view-production when farm_sidebar_slaughter_add_links is true. Opens the same add modals as the slaughter hub (modals + script must be on the page). #}
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Add records</p>
+                <div class="space-y-1">
+                    <button type="button" onclick="if (typeof openSlaughterModal === 'function') openSlaughterModal();" class="farm-nav-action-row group text-left w-full">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">🥩</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Add slaughter</span>
+                    </button>
+                    <button type="button" onclick="if (typeof openDeathModal === 'function') openDeathModal();" class="farm-nav-action-row group text-left w-full">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">💀</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Add death</span>
+                    </button>
+                    <button type="button" onclick="if (typeof openSaleModal === 'function') openSaleModal();" class="farm-nav-action-row group text-left w-full">
+                        <span class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-pink-100 text-base dark:bg-pink-800/50" aria-hidden="true">💰</span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">Add sale</span>
+                    </button>
+                </div>

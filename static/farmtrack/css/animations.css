@@ -1,0 +1,63 @@
+/* FarmTrack v2 — motion (no mixed purple/orange gradients) */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(3%, -2%) rotate(0.5deg);
+  }
+}
+
+@keyframes grain-shift {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.section-block:not(.visible) .reveal-anim {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.section-block.visible .reveal-anim,
+.reveal-anim.is-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-anim {
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-anim.d2 {
+  transition-delay: 0.1s;
+}
+.reveal-anim.d3 {
+  transition-delay: 0.2s;
+}
+.reveal-anim.d4 {
+  transition-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-anim,
+  [data-parallax] {
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

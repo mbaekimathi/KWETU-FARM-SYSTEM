@@ -13,6 +13,9 @@
 {% set farm_sidebar_banner_sub = 'Slaughter' %}
 {% set farm_sidebar_nav_partial = 'includes/farm_nav_pig_hub.html' %}
 {% set pig_nav_active = 'slaughter' %}
+{# This page: hide Dashboard + all pig hub / farm links; keep banner and footer. Show add slaughter/death/sale links. #}
+{% set farm_sidebar_no_main_links = true %}
+{% set farm_sidebar_slaughter_add_links = true %}
 
 {% include 'includes/farm_shell_header.html' %}
 {% include 'includes/farm_unified_sidebar.html' %}
@@ -138,6 +141,9 @@
             </div>
         </div>
     </main>
+
+    {% include 'includes/farm_slaughter_record_modals.html' %}
+    {% include 'includes/farm_slaughter_record_forms_script.html' %}
 
     <script>
         // Theme toggle (aligned with farm shell / farm_chrome_bundle)
@@ -305,7 +311,7 @@
                                 </div>
                                 <div>
                                     <span class="text-slate-500 dark:text-slate-400">Revenue:</span>
-                                    <span class="ml-1 font-medium text-green-600 dark:text-green-400">$${record.total_revenue}</span>
+                                    <span class="ml-1 font-medium text-green-600 dark:text-green-400">KSHS ${parseFloat(record.total_revenue || 0).toFixed(2)}</span>
                                 </div>
                             </div>
                             <div class="mt-2 text-sm text-slate-600 dark:text-slate-400">
@@ -423,11 +429,11 @@
                                 </div>
                                 <div>
                                     <span class="text-slate-500 dark:text-slate-400">Price:</span>
-                                    <span class="ml-1 font-medium">$${record.sale_price}</span>
+                                    <span class="ml-1 font-medium">KSHS ${parseFloat(record.sale_price || 0).toFixed(2)}</span>
                                 </div>
                                 <div>
                                     <span class="text-slate-500 dark:text-slate-400">Revenue:</span>
-                                    <span class="ml-1 font-medium text-green-600 dark:text-green-400">$${record.total_revenue}</span>
+                                    <span class="ml-1 font-medium text-green-600 dark:text-green-400">KSHS ${parseFloat(record.total_revenue || 0).toFixed(2)}</span>
                                 </div>
                             </div>
                             ${record.notes ? `<div class="mt-2 text-sm text-slate-600 dark:text-slate-400">Notes: ${record.notes}</div>` : ''}
@@ -1310,11 +1316,11 @@
                         <input type="text" id="editSlaughterBuyer" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price per kg</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price per kg (KSHS)</label>
                         <input type="number" id="editSlaughterPrice" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Revenue</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total revenue (KSHS)</label>
                         <input type="number" id="editSlaughterRevenue" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                     </div>
                     <div>
@@ -1396,11 +1402,11 @@
                         <input type="text" id="editSaleContact" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale Price</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale price (KSHS)</label>
                         <input type="number" id="editSalePrice" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Revenue</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total revenue (KSHS)</label>
                         <input type="number" id="editSaleRevenue" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                     </div>
                     <div>

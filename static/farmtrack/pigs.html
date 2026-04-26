@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pig ledger — FarmTrack</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&family=Fraunces:ital,opsz,wght@0,6..144,400;0,6..144,500&family=IBM+Plex+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/farmtrack/css/style.css" />
+    <link rel="stylesheet" href="/static/farmtrack/css/animations.css" />
+    <link rel="stylesheet" href="/static/farmtrack/css/responsive.css" />
+    <link rel="stylesheet" href="/static/farmtrack/css/species.css" />
+  </head>
+  <body>
+    <div class="sp-scroll"></div>
+    <header class="nav-site spec-nav" id="top">
+      <div class="nav-in">
+        <a href="/" class="logo"><span class="farm">Farm</span><span class="track">Track</span></a>
+        <ul class="nav-links">
+          <li><a href="/#work">The work</a></li>
+          <li><a href="/#species">Species</a></li>
+          <li><a href="/pigs" aria-current="page">Pigs</a></li>
+          <li><a href="/cows">Cows</a></li>
+          <li><a href="/chickens">Poultry</a></li>
+        </ul>
+        <a class="nav-signin" href="/employee/login" style="color: inherit; opacity: 0.85">Sign in</a>
+        <a class="btn-nav" href="/#book" style="text-decoration: none; color: #fff !important; background: #7c3aed">Request access</a>
+        <button class="mobile-nav-toggle" type="button" aria-label="Menu" style="border-color: #fff6; color: #fff">≡</button>
+      </div>
+    </header>
+
+    <header class="sp-hero sp-hero--p" data-parallax-wrap>
+      <div
+        class="sp-hero__bg"
+        data-parallax="0.35"
+        data-parallax-hero
+        style="background-image: url(https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=2000&q=80&auto=format&fit=crop)"
+        aria-hidden="true"
+      ></div>
+      <div class="sp-hero__veil"></div>
+      <div class="sp-hero__in">
+        <p class="sp-crumbs"><a href="/">Home</a> — Pigs</p>
+        <p class="sp-note">Tag + litter + growth, no folklore</p>
+        <h1>Every pig, one thread from farrow to truck.</h1>
+        <p class="sp-hero__lead">
+          Register animals with a real ID, record litters with honesty, and link feed to the sack it left. Your crew logs on phones; the board still sees a straight line to profit or loss.
+        </p>
+      </div>
+    </header>
+
+    <article class="sp-article section-block" id="read">
+      <div class="sp-side">Narrative</div>
+      <div class="sp-body">
+        <h2 class="reveal-anim d2">Pigs are individuals until they aren’t</h2>
+        <p>
+          Sows, boars, finishers, and the occasional batch: FarmTrack names the stage, not the story you wish had happened. Breeding, farrowing, weaning, and exit each carry their own line — and when two workers disagree, the audit line wins.
+        </p>
+        <p class="sp-pull sp-pull--p">“I thought we had eleven alive.” — No. You have eleven, two stillborn, and a weight sheet.</p>
+        <div class="sp-frame">
+          <img
+            src="https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=1600&q=80&auto=format&fit=crop"
+            width="1200"
+            height="600"
+            alt="Farm landscape"
+            loading="lazy"
+          />
+        </div>
+        <h2 class="reveal-anim d2">What you stop improvising</h2>
+        <p>
+          Vaccine windows by programme, not by which calendar page got wet. Feed issues matched to the bin that was opened. A growth curve that doesn’t need to be “explained” in a meeting. Purple handles the form; the orange note on the day sheet is the animal — we keep the two in separate colors on purpose, never blended.
+        </p>
+      </div>
+    </article>
+
+    <div class="sp-cta section-block" style="background: #faf5ff; border-top: 1px solid #e9d5ff">
+      <h2 class="reveal-anim" style="font-family: var(--serif); font-size: 1.6rem; margin: 0 0 0.5rem; color: #1c1917">Walk a pen in software</h2>
+      <p>We map your current tags and flow — no big-bang migration fantasy.</p>
+      <a class="btn-s btn-s--fill-p" href="/#book" style="text-decoration: none; margin-top: 0.5rem; display: inline-block"
+        >Request access</a
+      >
+    </div>
+
+    <div class="sp-foot">
+      <a href="/">Home</a> ·
+      <a href="/cows">Cows</a> ·
+      <a href="/chickens">Poultry</a> ·
+      <a href="/#book">Contact</a>
+    </div>
+
+    <script src="/static/farmtrack/js/main.js"></script>
+    <script src="/static/farmtrack/js/scroll-species.js"></script>
+  </body>
+</html>

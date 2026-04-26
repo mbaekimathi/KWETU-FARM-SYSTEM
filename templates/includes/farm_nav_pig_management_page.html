@@ -1,6 +1,7 @@
 {# Dedicated premium sidebar links for pig management page. #}
 {% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
 {% set _path = request.path.rstrip('/') %}
+{% set _porkers_view = (request.args.get('view') == 'porkers') %}
 
                 <p class="farm-chicken-nav__label mb-0 px-0.5">Core operations</p>
                 <div class="farm-nav-sublinks">
@@ -20,12 +21,17 @@
                         <span class="mr-2.5 text-[13px]">📍</span>
                         <span class="flex-1">Location Management</span>
                     </a>
+                    <a href="{{ farm_b }}pig-management?view=porkers" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'pig-management').rstrip('/') and _porkers_view %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">🥩</span>
+                        <span class="flex-1">Porkers</span>
+                        <span class="ml-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/40 rounded px-1.5 py-0.5" title="90+ days, Available">90+ d</span>
+                    </a>
                     <a href="{{ farm_b }}pig-feeding-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'pig-feeding-management').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
                         <span class="mr-2.5 text-[13px]">🌾</span>
                         <span class="flex-1">Pig Feeding</span>
                     </a>
-                    <a href="{{ farm_b }}slaughter" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'slaughter').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
-                        <span class="mr-2.5 text-[13px]">🥩</span>
-                        <span class="flex-1">Slaughter Management</span>
+                    <a href="{{ farm_b }}slaughter/view-production" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if _path == (farm_b ~ 'slaughter/view-production').rstrip('/') %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                        <span class="mr-2.5 text-[13px]">📊</span>
+                        <span class="flex-1">Production Management</span>
                     </a>
                 </div>
