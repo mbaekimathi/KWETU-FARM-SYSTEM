@@ -1,0 +1,244 @@
+{# Floating cartoon AI assistant — include once before </body> (e.g. after farm_shell_footer). #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/farm_ai_chat_fab.css') }}">
+
+<div id="farm-ai-chat-root" class="farm-ai-chat-root" aria-live="polite">
+  <button type="button" id="farm-ai-chat-fab" class="farm-ai-chat-fab" aria-expanded="false" aria-controls="farm-ai-chat-panel" title="Aira — trusted farm intelligence">
+    <span class="farm-ai-chat-fab__ring" aria-hidden="true"></span>
+    <span class="farm-ai-chat-fab__character" aria-hidden="true">
+      <!-- Full-body front view: walk / think / research / gesture (viewBox fits ears→paws) -->
+      <svg viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aira advisor dog">
+        <defs>
+          <linearGradient id="farmAiDogCoat" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#a16207"/>
+            <stop offset="45%" stop-color="#78350f"/>
+            <stop offset="100%" stop-color="#451a03"/>
+          </linearGradient>
+          <linearGradient id="farmAiDogChest" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop offset="0%" stop-color="#d97706"/>
+            <stop offset="100%" stop-color="#92400e"/>
+          </linearGradient>
+          <linearGradient id="farmAiDogCollar" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#334155"/>
+            <stop offset="100%" stop-color="#1e293b"/>
+          </linearGradient>
+          <linearGradient id="farmAiDogMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#e2e8f0"/>
+            <stop offset="100%" stop-color="#64748b"/>
+          </linearGradient>
+          <linearGradient id="farmAiDogPad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#44403c"/>
+            <stop offset="100%" stop-color="#292524"/>
+          </linearGradient>
+        </defs>
+        <g class="farm-ai-char-bounce">
+          <ellipse class="farm-ai-char-shadow" cx="50" cy="112" rx="34" ry="5.5" fill="#0f172a" opacity="0.14"/>
+          <g class="farm-ai-char-tail">
+            <path fill="#451a03" d="M 72 68 Q 86 58 92 48 Q 88 66 76 80 Q 72 78 70 72 Z"/>
+          </g>
+          <!-- Hind legs -->
+          <g class="farm-ai-char-leg-lh">
+            <path fill="url(#farmAiDogCoat)" d="M 40 86 L 38 112 L 46 113 L 48 90 Z"/>
+            <ellipse cx="42" cy="113" rx="5" ry="3" fill="url(#farmAiDogPad)"/>
+          </g>
+          <g class="farm-ai-char-leg-rh">
+            <path fill="url(#farmAiDogCoat)" d="M 60 86 L 62 112 L 54 113 L 52 90 Z"/>
+            <ellipse cx="58" cy="113" rx="5" ry="3" fill="url(#farmAiDogPad)"/>
+          </g>
+          <!-- Torso -->
+          <ellipse cx="50" cy="78" rx="31" ry="25" fill="url(#farmAiDogCoat)"/>
+          <ellipse cx="50" cy="82" rx="19" ry="15" fill="url(#farmAiDogChest)"/>
+          <path fill="#fde68a" opacity="0.2" d="M 34 74 Q 50 66 66 74 Q 58 84 50 88 Q 42 84 34 74 Z"/>
+          <path fill="#292524" opacity="0.22" d="M 22 78 L 32 70 L 36 96 L 24 100 Z"/>
+          <path fill="#292524" opacity="0.18" d="M 78 78 L 68 70 L 64 96 L 76 100 Z"/>
+          <!-- Neck -->
+          <path fill="url(#farmAiDogCoat)" d="M 38 62 L 40 52 L 60 52 L 62 62 Q 50 68 38 62 Z"/>
+          <!-- Head + think -->
+          <g class="farm-ai-char-head">
+            <path fill="url(#farmAiDogCoat)" d="M 30 50 Q 30 26 50 24 Q 70 26 70 50 Q 70 60 50 64 Q 30 60 30 50 Z"/>
+            <path fill="#292524" d="M 36 46 Q 50 42 64 46 L 66 54 Q 50 62 34 54 Z" opacity="0.9"/>
+            <ellipse cx="50" cy="54" rx="11" ry="8" fill="#44403c"/>
+            <g class="farm-ai-char-ears">
+              <path fill="#451a03" d="M 34 32 L 30 12 L 44 28 Z"/>
+              <path fill="#57534e" opacity="0.45" d="M 34 30 L 32 16 L 40 26 Z"/>
+              <path fill="#451a03" d="M 66 32 L 70 12 L 56 28 Z"/>
+              <path fill="#57534e" opacity="0.45" d="M 66 30 L 68 16 L 60 26 Z"/>
+            </g>
+            <g class="farm-ai-char-eyes">
+              <ellipse cx="41" cy="40" rx="4.5" ry="5.2" fill="#0c0a09"/>
+              <ellipse cx="59" cy="40" rx="4.5" ry="5.2" fill="#0c0a09"/>
+              <ellipse cx="42.2" cy="38" rx="1.5" ry="1.7" fill="#f8fafc"/>
+              <ellipse cx="60.2" cy="38" rx="1.5" ry="1.7" fill="#f8fafc"/>
+              <ellipse cx="42.8" cy="41" rx="1" ry="1.1" fill="#38bdf8" opacity="0.35"/>
+              <ellipse cx="60.8" cy="41" rx="1" ry="1.1" fill="#38bdf8" opacity="0.35"/>
+            </g>
+            <g class="farm-ai-char-glasses" fill="none" stroke="#cbd5e1" stroke-width="1.4" stroke-linecap="round">
+              <rect x="33" y="35" width="12" height="8.5" rx="2"/>
+              <rect x="55" y="35" width="12" height="8.5" rx="2"/>
+              <path d="M 45 39.5 L 55 39.5"/>
+              <path d="M 33 39.5 L 29 38.5"/>
+              <path d="M 67 39.5 L 71 38.5"/>
+            </g>
+            <ellipse cx="50" cy="58" rx="4" ry="3" fill="#0c0a09"/>
+            <path fill="none" stroke="#292524" stroke-width="1.2" stroke-linecap="round" d="M 42 62 Q 50 66 58 62"/>
+          </g>
+          <path fill="url(#farmAiDogCollar)" d="M 34 60 Q 50 68 66 60 L 65 64 Q 50 72 35 64 Z"/>
+          <path fill="url(#farmAiDogMetal)" stroke="#475569" stroke-width="0.6" d="M 50 65 L 52.5 68.5 L 50 72 L 47.5 68.5 Z"/>
+          <!-- Front legs (in front of torso, behind tablet) -->
+          <g class="farm-ai-char-leg-lf">
+            <path fill="url(#farmAiDogCoat)" d="M 42 88 L 40 112 L 48 113 L 50 90 Z"/>
+            <ellipse cx="44" cy="113" rx="5" ry="3" fill="url(#farmAiDogPad)"/>
+          </g>
+          <g class="farm-ai-char-leg-rf">
+            <path fill="url(#farmAiDogCoat)" d="M 58 88 L 60 112 L 52 113 L 50 90 Z"/>
+            <ellipse cx="56" cy="113" rx="5" ry="3" fill="url(#farmAiDogPad)"/>
+          </g>
+          <!-- Research: tablet -->
+          <g class="farm-ai-char-research">
+            <rect x="28" y="70" width="44" height="30" rx="4" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+            <rect x="31" y="73" width="38" height="22" rx="2" fill="#e0f2fe" opacity="0.9"/>
+            <path stroke="#0ea5e9" stroke-width="0.9" opacity="0.7" d="M 34 78 H 66 M 34 82 H 62 M 34 86 H 64 M 34 90 H 58"/>
+            <circle cx="50" cy="99" r="2" fill="#cbd5e1"/>
+          </g>
+          <!-- Gesture: raised paw -->
+          <g class="farm-ai-char-gesture">
+            <path fill="url(#farmAiDogCoat)" d="M 74 82 Q 82 72 88 62 Q 90 68 86 76 L 78 88 Z"/>
+            <ellipse cx="87" cy="61" rx="5" ry="4" fill="url(#farmAiDogPad)"/>
+          </g>
+        </g>
+      </svg>
+    </span>
+  </button>
+
+  <div id="farm-ai-chat-panel" class="farm-ai-chat-panel farm-ai-chat-panel--hidden" role="dialog" aria-modal="false" aria-labelledby="farm-ai-chat-title" hidden>
+    <div class="farm-ai-chat-panel__header">
+      <div class="farm-ai-chat-panel__header-avatar farm-ai-chat-panel__header-avatar--dog" aria-hidden="true">
+        <svg viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="farmAiDogHdr" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#a16207"/>
+              <stop offset="100%" stop-color="#451a03"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="50" cy="111" rx="26" ry="3.5" fill="#0f172a" opacity="0.11"/>
+          <ellipse cx="50" cy="78" rx="24" ry="19" fill="url(#farmAiDogHdr)"/>
+          <path fill="#78350f" d="M 41 88 L 40 112 L 46 113 L 47 90 Z M 59 88 L 60 112 L 54 113 L 53 90 Z"/>
+          <path fill="#5c4033" d="M 44 90 L 43 112 L 49 113 L 50 92 Z M 56 90 L 57 112 L 51 113 L 50 92 Z"/>
+          <path fill="url(#farmAiDogHdr)" d="M 38 62 L 40 50 L 60 50 L 62 62 Q 50 66 38 62 Z"/>
+          <circle cx="50" cy="40" r="16" fill="url(#farmAiDogHdr)"/>
+          <path fill="#292524" d="M 38 38 Q 50 34 62 38 L 63 48 Q 50 56 37 48 Z" opacity="0.88"/>
+          <rect x="32" y="72" width="36" height="22" rx="3" fill="#f1f5f9" stroke="#64748b" stroke-width="1.2"/>
+          <rect x="35" y="75" width="30" height="14" rx="1.5" fill="#e0f2fe"/>
+          <g fill="none" stroke="#94a3b8" stroke-width="1" stroke-linecap="round">
+            <rect x="40" y="36" width="8" height="5" rx="1"/>
+            <rect x="52" y="36" width="8" height="5" rx="1"/>
+            <path d="M 48 38.5 L 52 38.5"/>
+          </g>
+        </svg>
+      </div>
+      <div class="farm-ai-chat-panel__header-text">
+        <div id="farm-ai-chat-title" class="farm-ai-chat-panel__title">Aira</div>
+        <div id="farm-ai-chat-subtitle" class="farm-ai-chat-panel__subtitle">Trusted intelligence for your farm</div>
+      </div>
+      <button type="button" class="farm-ai-chat-panel__close" id="farm-ai-chat-close" aria-label="Close chat">&times;</button>
+    </div>
+    <div id="farm-ai-chat-panel-body" class="farm-ai-chat-panel__body">
+      <div id="farm-ai-login-welcome" class="farm-ai-login-welcome" hidden></div>
+      <div id="farm-ai-default-intro" class="farm-ai-chat-bubble farm-ai-chat-bubble--bot">
+        <div class="farm-ai-chat-bubble__label">Aira</div>
+        <p class="farm-ai-chat-bubble__text">Hi there! <strong>AI automation is coming soon.</strong> We’re building smart helpers for your farm workflows—stay tuned!</p>
+        <div class="farm-ai-chat-typing" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  document.documentElement.classList.add('farm-ai-chat-present');
+
+  var _farmAiOpenPanel = null;
+
+  function qs(id) { return document.getElementById(id); }
+
+  function resetLoginWelcomeUi() {
+    var welcomeEl = qs('farm-ai-login-welcome');
+    var defaultEl = qs('farm-ai-default-intro');
+    var sub = qs('farm-ai-chat-subtitle');
+    if (welcomeEl && !welcomeEl.hasAttribute('hidden')) {
+      welcomeEl.setAttribute('hidden', 'hidden');
+      welcomeEl.innerHTML = '';
+      if (defaultEl) defaultEl.removeAttribute('hidden');
+      if (sub) sub.textContent = 'Trusted intelligence for your farm';
+    }
+  }
+
+  window.farmAiraShowLoginWelcome = function (html) {
+    var welcomeEl = qs('farm-ai-login-welcome');
+    var defaultEl = qs('farm-ai-default-intro');
+    var sub = qs('farm-ai-chat-subtitle');
+    if (!welcomeEl || !defaultEl || typeof _farmAiOpenPanel !== 'function') return false;
+    welcomeEl.innerHTML = html;
+    welcomeEl.removeAttribute('hidden');
+    defaultEl.setAttribute('hidden', 'hidden');
+    if (sub) sub.textContent = 'Your login briefing';
+    _farmAiOpenPanel();
+    return true;
+  };
+
+  if (window.__farmAiChatFabBound) return;
+  window.__farmAiChatFabBound = true;
+
+  function openPanel() {
+    var fab = qs('farm-ai-chat-fab');
+    var panel = qs('farm-ai-chat-panel');
+    if (!fab || !panel) return;
+    panel.classList.remove('farm-ai-chat-panel--hidden');
+    panel.removeAttribute('hidden');
+    fab.setAttribute('aria-expanded', 'true');
+  }
+
+  _farmAiOpenPanel = openPanel;
+
+  function closePanel() {
+    var fab = qs('farm-ai-chat-fab');
+    var panel = qs('farm-ai-chat-panel');
+    if (!fab || !panel) return;
+    resetLoginWelcomeUi();
+    panel.classList.add('farm-ai-chat-panel--hidden');
+    panel.setAttribute('hidden', 'hidden');
+    fab.setAttribute('aria-expanded', 'false');
+  }
+
+  function togglePanel() {
+    var panel = qs('farm-ai-chat-panel');
+    if (!panel) return;
+    if (panel.classList.contains('farm-ai-chat-panel--hidden')) openPanel();
+    else closePanel();
+  }
+
+  document.addEventListener('click', function (e) {
+    var fab = qs('farm-ai-chat-fab');
+    var panel = qs('farm-ai-chat-panel');
+    var root = qs('farm-ai-chat-root');
+    var t = e.target;
+    if (!fab || !panel || !root) return;
+    if (fab.contains(t)) {
+      e.preventDefault();
+      togglePanel();
+      return;
+    }
+    if (t.closest && t.closest('#farm-ai-chat-close')) {
+      e.preventDefault();
+      closePanel();
+      return;
+    }
+    if (!panel.classList.contains('farm-ai-chat-panel--hidden') && !root.contains(t)) {
+      closePanel();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePanel();
+  });
+})();
+</script>

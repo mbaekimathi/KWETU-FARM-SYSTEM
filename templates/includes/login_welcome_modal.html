@@ -1,22 +1,4 @@
-{# Post-login welcome: time-based greeting + today’s activity notifications (one fetch per login). #}
-<div id="login-welcome-overlay" class="fixed inset-0 z-[200] hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="login-welcome-title" aria-describedby="login-welcome-desc">
-    <div class="relative w-full max-w-lg max-h-[85vh] overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-800 flex flex-col">
-        <div class="shrink-0 px-5 pt-5 pb-3 border-b border-slate-200/80 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-800 dark:to-slate-900">
-            <p id="login-welcome-desc" class="text-sm text-emerald-800/90 dark:text-emerald-300/90 font-medium" data-welcome-clock></p>
-            <h2 id="login-welcome-title" class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-1" data-welcome-headline>Welcome</h2>
-            <p class="text-sm text-slate-600 dark:text-slate-300 mt-1" data-welcome-sub>Today’s activities for your session</p>
-        </div>
-        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3" data-welcome-body>
-            <div class="flex items-center justify-center py-8 text-slate-500">
-                <i class="fas fa-circle-notch fa-spin text-2xl text-emerald-500 mr-2"></i>
-                <span class="text-sm">Loading today’s activities…</span>
-            </div>
-        </div>
-        <div class="shrink-0 px-5 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2 bg-slate-50/80 dark:bg-slate-900/50">
-            <button type="button" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-800 dark:text-white text-sm font-semibold transition" data-welcome-dismiss>Continue</button>
-        </div>
-    </div>
-</div>
+{# Post-login welcome: first briefing is shown inside Aira (floating assistant). Fetches /api/session/welcome once. #}
 <script>
 (function() {
     function esc(s) {
@@ -29,96 +11,100 @@
     }
     function urgencyClasses(u) {
         var map = {
-            overdue: 'bg-red-600 text-white',
-            due_today: 'bg-amber-500 text-white',
-            due_soon: 'bg-amber-200 text-amber-900 dark:bg-amber-400/30 dark:text-amber-100',
-            upcoming: 'bg-slate-200 text-slate-800 dark:bg-slate-600 dark:text-slate-100',
-            now: 'bg-emerald-500 text-white'
+            overdue: 'farm-ai-w-chip farm-ai-w-chip--overdue',
+            due_today: 'farm-ai-w-chip farm-ai-w-chip--due-today',
+            due_soon: 'farm-ai-w-chip farm-ai-w-chip--due-soon',
+            upcoming: 'farm-ai-w-chip farm-ai-w-chip--upcoming',
+            now: 'farm-ai-w-chip farm-ai-w-chip--now'
         };
         return map[u] || map.upcoming;
     }
     function buildBreakdown(uc) {
         if (!uc) return '';
         var parts = [];
-        if (uc.now) parts.push('<span class="text-emerald-600 dark:text-emerald-400 font-medium">' + uc.now + ' now</span>');
-        if (uc.overdue) parts.push('<span class="text-red-600 dark:text-red-400 font-medium">' + uc.overdue + ' overdue</span>');
-        if (uc.due_today) parts.push('<span class="text-amber-600 dark:text-amber-400 font-medium">' + uc.due_today + ' due today</span>');
-        if (uc.due_soon) parts.push('<span class="text-amber-700 dark:text-amber-300">' + uc.due_soon + ' due soon</span>');
-        if (uc.upcoming) parts.push('<span class="text-slate-500 dark:text-slate-400">' + uc.upcoming + ' upcoming</span>');
+        if (uc.now) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--now">' + uc.now + ' now</span>');
+        if (uc.overdue) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--overdue">' + uc.overdue + ' overdue</span>');
+        if (uc.due_today) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--due-today">' + uc.due_today + ' due today</span>');
+        if (uc.due_soon) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--due-soon">' + uc.due_soon + ' due soon</span>');
+        if (uc.upcoming) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--upcoming">' + uc.upcoming + ' upcoming</span>');
         return parts.length ? parts.join(' · ') : '';
     }
-    function closeWelcome(overlay) {
-        if (!overlay) return;
-        overlay.classList.add('hidden');
-        overlay.classList.remove('flex');
-        document.body.classList.remove('overflow-hidden');
+    function buildWelcomeHtml(data) {
+        var greet = esc(data.greeting || 'Hello');
+        var name = esc(data.name || 'there');
+        var clock = esc(data.clock || '');
+        var sub = data.error
+            ? 'Some activity data could not be loaded. You can still use the app.'
+            : "Here are today’s activities that need your attention, grouped by type.";
+        var headBlock = ''
+            + '<div class="farm-ai-chat-bubble farm-ai-chat-bubble--bot farm-ai-chat-bubble--welcome-lead">'
+            + '<div class="farm-ai-chat-bubble__label">Aira</div>'
+            + '<p class="farm-ai-chat-bubble__text farm-ai-w-clock">' + greet + (clock ? ' · ' + clock : '') + '</p>'
+            + '<p class="farm-ai-chat-bubble__text farm-ai-w-headline">' + greet + ', ' + name + ' 👋</p>'
+            + '<p class="farm-ai-w-sub">' + esc(sub) + '</p>'
+            + '</div>';
+
+        if (data.error) {
+            return headBlock
+                + '<div class="farm-ai-chat-bubble farm-ai-chat-bubble--bot">'
+                + '<p class="farm-ai-chat-bubble__text">' + esc(data.error) + '</p></div>'
+                + footerNote();
+        }
+
+        var cats = data.categories || [];
+        if (cats.length === 0) {
+            return headBlock
+                + '<div class="farm-ai-chat-bubble farm-ai-chat-bubble--bot">'
+                + '<p class="farm-ai-chat-bubble__text">No scheduled alerts for this moment. You are all caught up for now.</p></div>'
+                + footerNote();
+        }
+
+        var sections = cats.map(function(cat) {
+            var breakdown = buildBreakdown(cat.urgency_breakdown);
+            var prev = (cat.previews || []).map(function(p) {
+                var chip = p.urgency_label
+                    ? '<span class="' + urgencyClasses(p.urgency) + '">' + esc(p.urgency_label) + '</span>'
+                    : '';
+                return '<li class="farm-ai-w-item">'
+                    + '<span class="farm-ai-w-item__txt">' + esc(p.summary) + '</span>' + chip + '</li>';
+            }).join('');
+            var urgent = cat.highest_priority === 'critical'
+                ? '<span class="farm-ai-w-urgent-flag">Urgent</span>'
+                : '';
+            return '<section class="farm-ai-w-section">'
+                + '<div class="farm-ai-w-section__head">'
+                + '<h3 class="farm-ai-w-section__title">' + esc(cat.category_label || cat.type) + '</h3>'
+                + '<span class="farm-ai-w-section__count">' + esc(String(cat.count || 0)) + ' items' + urgent + '</span></div>'
+                + (breakdown ? '<p class="farm-ai-w-section__breakdown">' + breakdown + '</p>' : '')
+                + '<ul class="farm-ai-w-list">' + prev + '</ul></section>';
+        }).join('');
+
+        return headBlock
+            + '<div class="farm-ai-w-wrap">' + sections + '</div>'
+            + footerNote();
     }
-    function openWelcome(overlay) {
-        if (!overlay) return;
-        overlay.classList.remove('hidden');
-        overlay.classList.add('flex');
-        document.body.classList.add('overflow-hidden');
+    function footerNote() {
+        return '<div class="farm-ai-chat-bubble farm-ai-chat-bubble--bot farm-ai-chat-bubble--welcome-foot">'
+            + '<p class="farm-ai-chat-bubble__text"><strong>AI automation is coming soon.</strong> This briefing is a preview of what Aira will help you with.</p>'
+            + '</div>';
+    }
+    function pushToAira(html) {
+        if (typeof window.farmAiraShowLoginWelcome !== 'function') return;
+        if (window.farmAiraShowLoginWelcome(html)) return;
+        var n = 0;
+        var id = setInterval(function() {
+            if (window.farmAiraShowLoginWelcome(html)) { clearInterval(id); return; }
+            if (++n >= 60) clearInterval(id);
+        }, 50);
     }
     function run() {
-        var overlay = document.getElementById('login-welcome-overlay');
-        if (!overlay) return;
-        var bodyEl = overlay.querySelector('[data-welcome-body]');
-        var headEl = overlay.querySelector('[data-welcome-headline]');
-        var subEl = overlay.querySelector('[data-welcome-sub]');
-        var clockEl = overlay.querySelector('[data-welcome-clock]');
-        var btn = overlay.querySelector('[data-welcome-dismiss]');
-        function dismiss() { closeWelcome(overlay); }
-        if (btn) btn.addEventListener('click', dismiss);
-        overlay.addEventListener('click', function(e) { if (e.target === overlay) dismiss(); });
-        document.addEventListener('keydown', function esc(e) {
-            if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) {
-                dismiss();
-                document.removeEventListener('keydown', esc);
-            }
-        });
         fetch('/api/session/welcome', { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (!data || !data.show) {
-                    closeWelcome(overlay);
-                    return;
-                }
-                if (clockEl) clockEl.textContent = (data.greeting || 'Hello') + ' · ' + (data.clock || '');
-                if (headEl) headEl.textContent = (data.greeting || 'Hello') + ', ' + (data.name || 'there') + ' 👋';
-                if (subEl) {
-                    if (data.error) subEl.textContent = 'Some activity data could not be loaded. You can still use the app.';
-                    else subEl.textContent = "Here are today’s activities that need your attention, grouped by type.";
-                }
-                if (data.error && bodyEl) {
-                    bodyEl.innerHTML = '<p class="text-sm text-amber-700 dark:text-amber-300 text-center py-2">' + esc(data.error) + '</p>';
-                    openWelcome(overlay);
-                    return;
-                }
-                var cats = data.categories || [];
-                if (!bodyEl) { openWelcome(overlay); return; }
-                if (cats.length === 0) {
-                    bodyEl.innerHTML = '<div class="text-center py-6 text-slate-500 dark:text-slate-400 text-sm">No scheduled alerts for this moment. You are all caught up for now.</div>';
-                    openWelcome(overlay);
-                    return;
-                }
-                bodyEl.innerHTML = cats.map(function(cat) {
-                    var breakdown = buildBreakdown(cat.urgency_breakdown);
-                    var prev = (cat.previews || []).map(function(p) {
-                        var chip = p.urgency_label ? '<span class="shrink-0 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md ' + urgencyClasses(p.urgency) + '">' + esc(p.urgency_label) + '</span>' : '';
-                        return '<li class="flex items-start justify-between gap-2 text-xs text-slate-700 dark:text-slate-200">'
-                            + '<span class="leading-snug">' + esc(p.summary) + '</span>' + chip + '</li>';
-                    }).join('');
-                    var urgent = cat.highest_priority === 'critical' ? '<span class="ml-2 text-[10px] font-bold uppercase text-red-600 dark:text-red-400">Urgent</span>' : '';
-                    return '<section class="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50 p-3">'
-                        + '<div class="flex items-center justify-between gap-2 mb-1">'
-                        + '<h3 class="text-sm font-bold text-slate-900 dark:text-white">' + esc(cat.category_label || cat.type) + '</h3>'
-                        + '<span class="text-xs font-semibold text-slate-500 dark:text-slate-400">' + esc(String(cat.count || 0)) + ' items' + urgent + '</span></div>'
-                        + (breakdown ? '<p class="text-xs mb-2 leading-relaxed">' + breakdown + '</p>' : '')
-                        + '<ul class="space-y-1.5 list-none pl-0 border-t border-slate-200/80 dark:border-slate-600/80 pt-2">' + prev + '</ul></section>';
-                }).join('');
-                openWelcome(overlay);
+                if (!data || !data.show) return;
+                pushToAira(buildWelcomeHtml(data));
             })
-            .catch(function() { closeWelcome(overlay); });
+            .catch(function() { /* silent */ });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
     else run();
