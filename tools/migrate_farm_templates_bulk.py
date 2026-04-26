@@ -59,7 +59,6 @@ for fn, bc, icon, bt, bs, cfg in [
     ("admin_farm_farrowing_activity_settings.html", "Farrowing Settings", "fas fa-piggy-bank", "Pig hub", "Breeding", pig("breeding")),
     ("admin_farm_health_management.html", "Health Management", "fas fa-piggy-bank", "Pig hub", "Health", pig("health")),
     ("admin_farm_health_status.html", "Health Status", "fas fa-piggy-bank", "Pig hub", "Health", pig("health")),
-    ("admin_farm_location.html", "Location", "fas fa-map-marker-alt", "Pig hub", "Locations", pig("location")),
     ("admin_farm_pig_feeding_tracking.html", "Pig Feeding Tracking", "fas fa-piggy-bank", "Pig hub", "Feeding", pig("feeding")),
     ("admin_farm_pig_analytics.html", "Pig Analytics", "fas fa-chart-line", "Pig hub", "Analytics", pig("hub")),
     ("admin_farm_animal_details.html", "Animal Details", "fas fa-piggy-bank", "Pig hub", "Records", pig("hub")),

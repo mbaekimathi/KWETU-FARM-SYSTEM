@@ -4,10 +4,8 @@
 {% set _path = request.path.rstrip('/') %}
 {% set _role_href = app_b ~ '/role-view' %}
 {% set _hr_href = app_b ~ '/human-resource' %}
-{% set _farm_mgmt_href = app_b ~ '/farm-management' %}
 {% set _stock_href = app_b ~ '/farm/stock-management' %}
 {% set _analytics_href = app_b ~ '/analytics' %}
-{% set _settings_href = app_b ~ '/settings' %}
 
                 <p class="farm-chicken-nav__label mb-0 px-0.5">Main menu</p>
 
@@ -27,14 +25,6 @@
                     </div>
                 </a>
 
-                <a href="{{ _farm_mgmt_href }}" class="farm-nav-link-modern group {% if _path == _farm_mgmt_href.rstrip('/') %}is-active{% endif %}">
-                    <div class="farm-nav-link-modern__icon"><i class="fas fa-warehouse text-sm"></i></div>
-                    <div class="min-w-0 flex-1">
-                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Farm Management</span>
-                        <span class="block text-xs text-slate-500 dark:text-slate-400">Operations and livestock modules</span>
-                    </div>
-                </a>
-
                 <a href="{{ _stock_href }}" class="farm-nav-link-modern group {% if _path == _stock_href.rstrip('/') %}is-active{% endif %}">
                     <div class="farm-nav-link-modern__icon"><i class="fas fa-boxes text-sm"></i></div>
                     <div class="min-w-0 flex-1">
@@ -48,13 +38,5 @@
                     <div class="min-w-0 flex-1">
                         <span class="farm-nav-link-modern__text block text-sm font-semibold">Analytics</span>
                         <span class="block text-xs text-slate-500 dark:text-slate-400">KPIs and performance trends</span>
-                    </div>
-                </a>
-
-                <a href="{{ _settings_href }}" class="farm-nav-link-modern group {% if _path == _settings_href.rstrip('/') %}is-active{% endif %}">
-                    <div class="farm-nav-link-modern__icon"><i class="fas fa-cog text-sm"></i></div>
-                    <div class="min-w-0 flex-1">
-                        <span class="farm-nav-link-modern__text block text-sm font-semibold">System Settings</span>
-                        <span class="block text-xs text-slate-500 dark:text-slate-400">Configuration and preferences</span>
                     </div>
                 </a>

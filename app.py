@@ -10,6 +10,7 @@ from flask import (
     send_from_directory,
 )
 import pymysql
+import pymysql.err
 import os
 from datetime import datetime, timedelta, date
 import hashlib
@@ -247,43 +248,70 @@ def generate_employee_code():
     return str(secrets.randbelow(900000) + 100000)
 
 def generate_pig_tag_id(pig_type):
-    """Generate a unique tag ID for pigs based on type"""
+    """Generate a unique tag ID for pigs based on type.
+    Skips any ID already used in `pigs`. For L-tags, also skips IDs used in `litters.litter_id`
+    (same L### namespace).
+    """
+    prefix_map = {
+        'grown_pig': 'P',
+        'piglet': 'S',
+        'litter': 'L',
+        'batch': 'B',
+    }
+    prefix = prefix_map.get(pig_type, 'P')
+
+    def _id_taken(c, tid):
+        c.execute("SELECT id FROM pigs WHERE tag_id = %s LIMIT 1", (tid,))
+        if c.fetchone():
+            return True
+        if prefix == 'L':
+            c.execute("SELECT id FROM litters WHERE litter_id = %s LIMIT 1", (tid,))
+            if c.fetchone():
+                return True
+        return False
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Get the prefix based on pig type
-        prefix_map = {
-            'grown_pig': 'P',
-            'piglet': 'S', 
-            'litter': 'L',
-            'batch': 'B'
-        }
-        prefix = prefix_map.get(pig_type, 'P')
-        
-        # Get the next available number for this type
-        cursor.execute("""
-            SELECT MAX(CAST(SUBSTRING(tag_id, 2) AS UNSIGNED)) as max_num 
-            FROM pigs 
+
+        cursor.execute(
+            """
+            SELECT MAX(CAST(SUBSTRING(tag_id, 2) AS UNSIGNED)) as max_num
+            FROM pigs
             WHERE tag_id LIKE %s
-        """, (f"{prefix}%",))
-        
-        result = cursor.fetchone()
-        next_num = (result['max_num'] or 0) + 1
-        
-        # Format as prefix + 3 digits (e.g., P001, S001, etc.)
-        tag_id = f"{prefix}{next_num:03d}"
-        
+            """,
+            (f"{prefix}%",),
+        )
+        max_pigs = (cursor.fetchone() or {}).get('max_num') or 0
+        next_num = max_pigs
+
+        if prefix == 'L':
+            cursor.execute(
+                """
+                SELECT MAX(CAST(SUBSTRING(litter_id, 2) AS UNSIGNED)) as max_num
+                FROM litters
+                WHERE litter_id LIKE 'L%'
+                """
+            )
+            max_litters = (cursor.fetchone() or {}).get('max_num') or 0
+            next_num = max(next_num, max_litters)
+
+        next_num = next_num + 1
+        for _ in range(10000):
+            tag_id = f"{prefix}{next_num:03d}"
+            if not _id_taken(cursor, tag_id):
+                cursor.close()
+                conn.close()
+                return tag_id
+            next_num += 1
+
         cursor.close()
         conn.close()
-        
-        return tag_id
-        
+        return f"{prefix}{next_num:03d}"
     except Exception as e:
         print(f"Error generating tag ID: {e}")
         import traceback
         traceback.print_exc()
-        # Fallback: start from 001 if database query fails
         return f"{prefix}001"
 
 def generate_litter_id():
@@ -1309,6 +1337,149 @@ def create_database_and_tables():
                 print("Added health_status column to litters table")
         except Exception as e:
             print(f"Note: could not add health_status column to litters: {e}")
+
+        # Male / female counts at farrowing (must sum to alive_piglets)
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'male_piglets'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN male_piglets INT NULL DEFAULT NULL
+                    AFTER alive_piglets
+                """)
+                print("Added male_piglets column to litters table")
+        except Exception as e:
+            print(f"Note: could not add male_piglets to litters: {e}")
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'female_piglets'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN female_piglets INT NULL DEFAULT NULL
+                    AFTER male_piglets
+                """)
+                print("Added female_piglets column to litters table")
+        except Exception as e:
+            print(f"Note: could not add female_piglets to litters: {e}")
+
+        # Born on farm vs purchased litter; optional text breeds for purchased
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'litter_source'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN litter_source ENUM('born','purchased') NOT NULL DEFAULT 'born'
+                    AFTER litter_id
+                """)
+                print("Added litter_source to litters table")
+        except Exception as e:
+            print(f"Note: could not add litter_source to litters: {e}")
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'sow_breed'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN sow_breed VARCHAR(120) NULL DEFAULT NULL
+                    AFTER boar_id
+                """)
+                print("Added sow_breed to litters table")
+        except Exception as e:
+            print(f"Note: could not add sow_breed to litters: {e}")
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'boar_breed'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN boar_breed VARCHAR(120) NULL DEFAULT NULL
+                    AFTER sow_breed
+                """)
+                print("Added boar_breed to litters table")
+        except Exception as e:
+            print(f"Note: could not add boar_breed to litters: {e}")
+        try:
+            cursor.execute("""
+                SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'litters' AND COLUMN_NAME = 'farrowing_record_id'
+            """)
+            fr = cursor.fetchone()
+            if fr and (fr.get('IS_NULLABLE') or '').upper() != 'YES':
+                cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+                cursor.execute("ALTER TABLE litters MODIFY COLUMN farrowing_record_id INT NULL")
+                cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+                print("Made litters.farrowing_record_id nullable (purchased litters)")
+        except Exception as e:
+            print(f"Note: could not make farrowing_record_id nullable: {e}")
+            try:
+                cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+            except Exception:
+                pass
+        try:
+            cursor.execute("""
+                SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'litters' AND COLUMN_NAME = 'sow_id'
+            """)
+            sr = cursor.fetchone()
+            if sr and (sr.get('IS_NULLABLE') or '').upper() != 'YES':
+                cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+                cursor.execute("ALTER TABLE litters MODIFY COLUMN sow_id INT NULL")
+                cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+                print("Made litters.sow_id nullable (purchased litters)")
+        except Exception as e:
+            print(f"Note: could not make sow_id nullable: {e}")
+            try:
+                cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+            except Exception:
+                pass
+
+        # Link litter rows to the batch (pigs.id) they were merged into; prevents re-use in another batch
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'batch_pig_id'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE litters
+                    ADD COLUMN batch_pig_id INT NULL DEFAULT NULL
+                    AFTER notes
+                """)
+                try:
+                    cursor.execute("""
+                        ALTER TABLE litters
+                        ADD CONSTRAINT fk_litters_batch_pig
+                        FOREIGN KEY (batch_pig_id) REFERENCES pigs(id) ON DELETE SET NULL
+                    """)
+                except Exception as fk_e:
+                    print(f"Note: could not add FK on litters.batch_pig_id: {fk_e}")
+                print("Added batch_pig_id to litters table")
+        except Exception as e:
+            print(f"Note: could not add batch_pig_id to litters: {e}")
+
+        try:
+            cursor.execute("SHOW COLUMNS FROM litters LIKE 'batch_pig_id'")
+            if cursor.fetchone():
+                cursor.execute(
+                    """
+                    SELECT l.id, l.notes FROM litters l
+                    WHERE l.batch_pig_id IS NULL AND l.notes LIKE %s
+                    """,
+                    ('%BATCHED->%',),
+                )
+                for row in cursor.fetchall() or []:
+                    notes = row.get('notes') or ''
+                    m = re.search(r"BATCHED->(B\d+)", notes)
+                    if not m:
+                        continue
+                    tag = m.group(1)
+                    cursor.execute(
+                        "SELECT id FROM pigs WHERE tag_id = %s AND pig_type = 'batch' LIMIT 1",
+                        (tag,),
+                    )
+                    pr = cursor.fetchone()
+                    if pr:
+                        cursor.execute(
+                            "UPDATE litters SET batch_pig_id = %s WHERE id = %s",
+                            (pr["id"], row["id"]),
+                        )
+        except Exception as e:
+            print(f"Note: batch_pig_id backfill from notes: {e}")
 
         # Create litter_health_records table — same shape as pig_health_records
         # but keyed on litter_id. Used by the farrowing-activity completion flow
@@ -3403,7 +3574,7 @@ def webauthn_register_begin():
         # PREFERRED: works more reliably on Windows/Chrome/Edge; UV still set by biometrics in practice
         reg_opts = generate_registration_options(
             rp_id=rp_id,
-            rp_name="Pig Farm Management",
+            rp_name="Farm A Management",
             user_id=_webauthn_user_id_bytes(eid),
             user_name=uname,
             user_display_name=dname,
@@ -3814,17 +3985,7 @@ def admin_human_resource():
 def admin_farm_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
-    
-    # Get user data from session
-    user_data = {
-        'id': session['employee_id'],
-        'name': session['employee_name'],
-        'role': session['employee_role'],
-        'status': session['employee_status'],
-        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
-    }
-    
-    return render_template('admin_farm_management.html', user=user_data)
+    return redirect(url_for('admin_farm_pig_management'))
 
 @app.route('/admin/analytics')
 def admin_analytics():
@@ -3900,17 +4061,7 @@ def manager_human_resource():
 def manager_farm_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
-    
-    # Get user data from session
-    user_data = {
-        'id': session['employee_id'],
-        'name': session['employee_name'],
-        'role': session['employee_role'],
-        'status': session['employee_status'],
-        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
-    }
-    
-    return render_template('admin_farm_management.html', user=user_data)
+    return redirect(url_for('manager_farm_pig_management'))
 
 @app.route('/manager/analytics')
 def manager_analytics():
@@ -3974,8 +4125,12 @@ def admin_farm_view(farm_id):
         'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    
-    return render_template('admin_farm_view.html', user=user_data, farm_id=farm_id)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    resolved_id = _scoped_farm_id(cursor)
+    cursor.close()
+    conn.close()
+    return render_template('admin_farm_view.html', user=user_data, farm_id=resolved_id)
 
 @app.route('/admin/farm/register-pigs')
 def admin_farm_register_pigs():
@@ -4491,7 +4646,12 @@ def manager_farm_view(farm_id):
         'role': session['employee_role'], 'status': session['employee_status'],
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
-    return render_template('admin_farm_view.html', user=user_data, farm_id=farm_id)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    resolved_id = _scoped_farm_id(cursor)
+    cursor.close()
+    conn.close()
+    return render_template('admin_farm_view.html', user=user_data, farm_id=resolved_id)
 
 @app.route('/manager/farm/register-pigs')
 def manager_farm_register_pigs():
@@ -4682,14 +4842,8 @@ def manager_farm_vaccination_settings():
 
 @app.route('/manager/farm/location')
 def manager_farm_location():
-    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
-        return redirect(url_for('employee_login'))
-    user_data = {
-        'id': session['employee_id'], 'name': session['employee_name'],
-        'role': session['employee_role'], 'status': session['employee_status'],
-        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
-    }
-    return render_template('admin_farm_location.html', user=user_data)
+    """Removed: Location Management page; keep URL for bookmarks."""
+    return redirect(url_for('manager_farm_pig_management'), code=302)
 
 @app.route('/manager/farm/slaughter')
 def manager_farm_slaughter():
@@ -9193,19 +9347,8 @@ def admin_farm_vaccination_tracking():
 
 @app.route('/admin/farm/location')
 def admin_farm_location():
-    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
-        return redirect(url_for('employee_login'))
-    
-    # Get user data from session
-    user_data = {
-        'id': session['employee_id'],
-        'name': session['employee_name'],
-        'role': session['employee_role'],
-        'status': session['employee_status'],
-        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
-    }
-    
-    return render_template('admin_farm_location.html', user=user_data)
+    """Removed: Location Management page; keep URL for bookmarks."""
+    return redirect(url_for('admin_farm_pig_management'), code=302)
 
 @app.route('/admin/farm/slaughter')
 def admin_farm_slaughter():
@@ -9682,10 +9825,41 @@ def get_cow_feeding_analytics():
 
 
 def _default_farm_id(cursor):
-    """Return first active farm id for stock transactions."""
+    """Prefer active farm named 'Farm A' (case-insensitive), else lowest active farm id."""
+    cursor.execute(
+        """
+        SELECT id FROM farms
+        WHERE status = 'active' AND LOWER(TRIM(farm_name)) = 'farm a'
+        LIMIT 1
+        """
+    )
+    row = cursor.fetchone()
+    if row:
+        return row["id"]
     cursor.execute("SELECT id FROM farms WHERE status = 'active' ORDER BY id ASC LIMIT 1")
     row = cursor.fetchone()
-    return row['id'] if row else 1
+    return row["id"] if row else 1
+
+
+def _scoped_farm_id(cursor):
+    """Single-site deployment: all reads/writes use the default farm; ignore client farm_id."""
+    return _default_farm_id(cursor)
+
+
+def _strip_farm_fields(row):
+    """Omit farm-identifying keys from API payloads (single-site UI; DB columns may remain)."""
+    if not row:
+        return row
+    d = dict(row)
+    for k in (
+        "farm_id",
+        "farm_name",
+        "farm_location",
+        "sow_farm_id",
+        "sow_farm_name",
+    ):
+        d.pop(k, None)
+    return d
 
 
 @app.route('/api/cow-feeding/record', methods=['POST'])
@@ -9985,9 +10159,9 @@ def get_pig_feeding_analytics():
     try:
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
-        farm_id = request.args.get('farm_id', type=int)
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         where = "WHERE 1=1"
         params = []
         if date_from:
@@ -9996,9 +10170,8 @@ def get_pig_feeding_analytics():
         if date_to:
             where += " AND DATE(pfr.feeding_datetime) <= %s"
             params.append(date_to)
-        if farm_id:
-            where += " AND pfr.farm_id = %s"
-            params.append(farm_id)
+        where += " AND pfr.farm_id = %s"
+        params.append(farm_id)
         cursor.execute("""
             SELECT COALESCE(SUM(pfr.amount_kg), 0) as total_kg, COUNT(*) as records_count, COUNT(DISTINCT pfr.pig_id) as pigs_fed_count
             FROM pig_feeding_records pfr """ + where, params)
@@ -10025,9 +10198,8 @@ def get_pig_feeding_analytics():
         else:
             daily_where = "WHERE pfr.feeding_datetime >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
             daily_params = []
-        if farm_id:
-            daily_where += " AND pfr.farm_id = %s" if "WHERE" in daily_where else " WHERE pfr.farm_id = %s"
-            daily_params.append(farm_id)
+        daily_where += " AND pfr.farm_id = %s" if "WHERE" in daily_where else " WHERE pfr.farm_id = %s"
+        daily_params.append(farm_id)
         cursor.execute("""
             SELECT DATE(pfr.feeding_datetime) as d, SUM(pfr.amount_kg) as total_kg, COUNT(*) as cnt
             FROM pig_feeding_records pfr """ + daily_where + """ GROUP BY DATE(pfr.feeding_datetime) ORDER BY d ASC
@@ -11204,12 +11376,12 @@ def get_farms_list():
             )
         """)
         
+        fid = _default_farm_id(cursor)
         cursor.execute("""
             SELECT id, farm_name, farm_location, status
             FROM farms
-            WHERE status = 'active'
-            ORDER BY farm_name ASC
-        """)
+            WHERE status = 'active' AND id = %s
+        """, (fid,))
         
         farms = []
         for row in cursor.fetchall():
@@ -11240,9 +11412,8 @@ def feed_stock_transaction():
     try:
         data = request.get_json()
         
-        # Validate required fields
+        # Validate required fields (farm is always the active default site)
         feed_id = data.get('feed_id')
-        farm_id = data.get('farm_id')
         transaction_type = data.get('transaction_type')
         quantity = data.get('quantity')
         unit_of_measure = data.get('unit_of_measure')
@@ -11251,7 +11422,7 @@ def feed_stock_transaction():
         supplier = data.get('supplier', '').strip()
         notes = data.get('notes', '').strip()
         
-        if not feed_id or not farm_id or not transaction_type or not quantity or not unit_of_measure or not transaction_date:
+        if not feed_id or not transaction_type or not quantity or not unit_of_measure or not transaction_date:
             return jsonify({'success': False, 'message': 'All required fields must be filled'})
         
         # Cost is required for stock_in transactions
@@ -11283,6 +11454,7 @@ def feed_stock_transaction():
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Verify feed exists
         cursor.execute("SELECT id, feed_name, unit_of_measure FROM feeds WHERE id = %s AND status = 'active'", (feed_id,))
@@ -11350,7 +11522,6 @@ def get_feed_stock_transactions():
         month = request.args.get('month')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        farm_id = request.args.get('farm_id', type=int)
         transaction_type = request.args.get('transaction_type')  # 'stock_in' or 'stock_out' to filter
         animal_type = (request.args.get('animal_type') or '').strip().lower()
         if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
@@ -11359,6 +11530,7 @@ def get_feed_stock_transactions():
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Build WHERE clause for date, farm, and animal filtering
         where_clause = "WHERE 1=1"
@@ -11374,9 +11546,8 @@ def get_feed_stock_transactions():
             where_clause += " AND DATE(fs.transaction_date) BETWEEN %s AND %s"
             params.extend([start_date, end_date])
         
-        if farm_id:
-            where_clause += " AND fs.farm_id = %s"
-            params.append(farm_id)
+        where_clause += " AND fs.farm_id = %s"
+        params.append(farm_id)
         
         if transaction_type in ('stock_in', 'stock_out'):
             where_clause += " AND fs.transaction_type = %s"
@@ -11423,7 +11594,6 @@ def get_feed_stock_transactions():
             transactions.append({
                 'id': row['id'],
                 'feed_id': row['feed_id'],
-                'farm_id': row['farm_id'],
                 'transaction_type': row['transaction_type'],
                 'quantity': float(row['quantity']),
                 'unit_of_measure': row['unit_of_measure'],
@@ -11435,8 +11605,6 @@ def get_feed_stock_transactions():
                 'updated_at': row['updated_at'].strftime('%Y-%m-%d %H:%M:%S') if row['updated_at'] else None,
                 'feed_name': row['feed_name'],
                 'feed_type': row['feed_type'],
-                'farm_name': row['farm_name'],
-                'farm_location': row['farm_location'],
                 'created_by_name': row['created_by_name'],
                 'created_by_code': row['created_by_code'],
                 'created_by_role': row['created_by_role']
@@ -11462,13 +11630,13 @@ def get_feed_stock_stats():
         month = request.args.get('month')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        farm_id = request.args.get('farm_id', type=int)
         animal_type = (request.args.get('animal_type') or '').strip().lower()
         if animal_type and animal_type not in ('pig', 'cow', 'chicken'):
             animal_type = None
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Check if feed_stock table exists, create if not
         cursor.execute("""
@@ -11518,9 +11686,8 @@ def get_feed_stock_stats():
         else:
             where_extra += " AND DATE(fs.transaction_date) = CURDATE()"
         
-        if farm_id:
-            where_extra += " AND fs.farm_id = %s"
-            params_extra.append(farm_id)
+        where_extra += " AND fs.farm_id = %s"
+        params_extra.append(farm_id)
         
         if animal_type:
             where_extra += " AND COALESCE(f.animal_type, 'pig') = %s"
@@ -11639,13 +11806,13 @@ def get_last_feed_stock_transaction():
     
     try:
         feed_id = request.args.get('feed_id', type=int)
-        farm_id = request.args.get('farm_id', type=int)
         
         if not feed_id:
             return jsonify({'success': False, 'message': 'Feed ID is required'}), 400
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Build query - get last stock_in transaction for this feed
         query = """
@@ -11657,13 +11824,9 @@ def get_last_feed_stock_transaction():
             FROM feed_stock fs
             WHERE fs.feed_id = %s 
             AND fs.transaction_type = 'stock_in'
+            AND fs.farm_id = %s
         """
-        params = [feed_id]
-        
-        # Optionally filter by farm if provided
-        if farm_id:
-            query += " AND fs.farm_id = %s"
-            params.append(farm_id)
+        params = [feed_id, farm_id]
         
         query += " ORDER BY fs.transaction_date DESC, fs.created_at DESC LIMIT 1"
         
@@ -11716,7 +11879,6 @@ def get_feed_stock_analytics():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        farm_id = request.args.get('farm_id', type=int)
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         days = request.args.get('days', 30, type=int)  # Default to last 30 days
@@ -11726,6 +11888,7 @@ def get_feed_stock_analytics():
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Build date filter
         date_filter = ""
@@ -11739,9 +11902,8 @@ def get_feed_stock_analytics():
             date_filter = "AND DATE(fs.transaction_date) >= DATE_SUB(CURDATE(), INTERVAL %s DAY)"
             params.append(days)
         
-        if farm_id:
-            date_filter += " AND fs.farm_id = %s"
-            params.append(farm_id)
+        date_filter += " AND fs.farm_id = %s"
+        params.append(farm_id)
         
         # Get feeds (optionally filtered by animal_type)
         feeds_sql = "SELECT id, feed_name, feed_type, unit_of_measure FROM feeds WHERE status = 'active'"
@@ -11933,11 +12095,11 @@ def get_feed_stock_audit_trail():
     try:
         limit = request.args.get('limit', 50, type=int)
         feed_id = request.args.get('feed_id', type=int)
-        farm_id = request.args.get('farm_id', type=int)
         transaction_type = request.args.get('transaction_type')
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Build query with optional filters
         query = """
@@ -11970,9 +12132,8 @@ def get_feed_stock_audit_trail():
             query += " AND fs.feed_id = %s"
             params.append(feed_id)
         
-        if farm_id:
-            query += " AND fs.farm_id = %s"
-            params.append(farm_id)
+        query += " AND fs.farm_id = %s"
+        params.append(farm_id)
         
         if transaction_type:
             query += " AND fs.transaction_type = %s"
@@ -12361,12 +12522,12 @@ def get_feed_requirements():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        filter_farm_id = request.args.get('farm_id', type=int)  # Optional filter by farm
         animal_type = request.args.get('animal_type', 'pig')  # Default to pig for backward compatibility
         as_of = _analytics_as_of_date_from_request()  # Aligns with UI date / month / range filters
 
         conn = get_db_connection()
         cursor = conn.cursor()
+        filter_farm_id = _scoped_farm_id(cursor)
 
         # Get all active animals with their age and farm based on animal_type
         if animal_type == 'cow':
@@ -12423,9 +12584,8 @@ def get_feed_requirements():
                 WHERE p.status = 'active'
             """
             params = [as_of, as_of, as_of]
-            if filter_farm_id:
-                query += " AND p.farm_id = %s"
-                params.append(filter_farm_id)
+            query += " AND p.farm_id = %s"
+            params.append(filter_farm_id)
             query += " ORDER BY p.farm_id, age_days"
 
         cursor.execute(query, params)
@@ -12574,7 +12734,6 @@ def get_feed_animals():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        farm_id = request.args.get('farm_id', type=int)
         feed_id = request.args.get('feed_id', type=int)
         animal_type = request.args.get('animal_type', 'pig')  # Default to pig for backward compatibility
         as_of = _analytics_as_of_date_from_request()
@@ -12584,6 +12743,7 @@ def get_feed_animals():
 
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
 
         cursor.execute("""
             SELECT id, start_age_days, end_age_days, feed_amount_grams
@@ -12672,9 +12832,8 @@ def get_feed_animals():
                 AND ({age_condition})
             """
             params = [as_of, as_of, as_of] * (1 + n_set)
-            if farm_id:
-                query += " AND p.farm_id = %s"
-                params.append(farm_id)
+            query += " AND p.farm_id = %s"
+            params.append(farm_id)
             query += " ORDER BY p.tag_id ASC"
 
         cursor.execute(query, params)
@@ -13060,7 +13219,6 @@ def process_feeding():
     try:
         data = request.get_json()
         feed_id = data.get('feed_id')
-        farm_id = data.get('farm_id')
         
         if not feed_id:
             return jsonify({'success': False, 'message': 'Feed ID is required'}), 400
@@ -13070,6 +13228,7 @@ def process_feeding():
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        farm_id = _scoped_farm_id(cursor)
         
         # Get feed details
         cursor.execute("SELECT id, feed_name, feed_type, unit_of_measure FROM feeds WHERE id = %s AND status = 'active'", (feed_id,))
@@ -13114,11 +13273,9 @@ def process_feeding():
             AND p.birth_date IS NOT NULL
             AND ({age_condition})
         """
-        params = []
+        params = [farm_id]
         
-        if farm_id:
-            query += " AND p.farm_id = %s"
-            params.append(farm_id)
+        query += " AND p.farm_id = %s"
         
         cursor.execute(query, params)
         animals = cursor.fetchall()
@@ -13156,7 +13313,7 @@ def process_feeding():
             VALUES (%s, %s, 'stock_out', %s, %s, %s, %s, %s)
         """, (
             feed_id,
-            farm_id if farm_id else None,
+            farm_id,
             quantity,
             unit,
             transaction_date,
@@ -14181,7 +14338,6 @@ def register_pig():
     
     try:
         data = request.get_json()
-        farm_id = data.get('farm_id')
         pig_type = data.get('pig_type')
         pig_source = data.get('pig_source')
         breed = data.get('breed')
@@ -14191,11 +14347,17 @@ def register_pig():
         purchase_date = data.get('purchase_date')
         
         # Validation
-        if not farm_id or not pig_type or not pig_source:
-            return jsonify({'success': False, 'message': 'Farm, pig type, and pig source are required'})
+        if not pig_type or not pig_source:
+            return jsonify({'success': False, 'message': 'Pig type and pig source are required'})
         
         if pig_type not in ['grown_pig', 'piglet', 'litter', 'batch']:
             return jsonify({'success': False, 'message': 'Invalid pig type'})
+
+        if pig_type == 'batch':
+            return jsonify({
+                'success': False,
+                'message': 'Batches are created by combining two or more litters (use Register batch / combine litters), not from individual pig registration.',
+            })
         
         if pig_source not in ['born', 'purchased']:
             return jsonify({'success': False, 'message': 'Invalid pig source'})
@@ -14211,7 +14373,45 @@ def register_pig():
         if pig_type == 'grown_pig':
             if not breed or not gender or not purpose:
                 return jsonify({'success': False, 'message': 'Breed, gender, and purpose are required for grown pigs'})
-        
+
+        # Litter: counts + (born: sow/boar IDs) or (purchased: parent breeds). Creates `litters` + `pigs` rows.
+        litter_source = None
+        male_piglets = None
+        female_piglets = None
+        still_births_lr = 0
+        lr_sow_id = None
+        lr_boar_id = None
+        lr_sow_breed = None
+        lr_boar_breed = None
+        if pig_type == 'litter':
+            litter_source = 'purchased' if pig_source == 'purchased' else 'born'
+            try:
+                male_piglets = int(data.get('male_piglets'))
+                female_piglets = int(data.get('female_piglets'))
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'message': 'Male and female piglet counts are required and must be whole numbers'})
+            try:
+                still_births_lr = int(data.get('still_births') or 0)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'message': 'Still births must be a number'})
+            if any(x < 0 for x in (male_piglets, female_piglets, still_births_lr)):
+                return jsonify({'success': False, 'message': 'Litter counts cannot be negative'})
+            alive_lr = male_piglets + female_piglets
+            if alive_lr < 1:
+                return jsonify({'success': False, 'message': 'At least one live piglet is required (male + female)'})
+
+            if litter_source == 'purchased':
+                lr_sow_breed = (data.get('sow_breed') or '').strip()
+                lr_boar_breed = (data.get('boar_breed') or '').strip()
+                if not lr_sow_breed or not lr_boar_breed:
+                    return jsonify({'success': False, 'message': 'Sow and boar breed are required for a purchased litter'})
+            else:
+                try:
+                    lr_sow_id = int(data.get('sow_id'))
+                    lr_boar_id = int(data.get('boar_id'))
+                except (TypeError, ValueError):
+                    return jsonify({'success': False, 'message': 'Sow and boar are required (select from search)'})
+
         # Calculate age in days if birth date is provided
         age_days = None
         if birth_date:
@@ -14230,32 +14430,133 @@ def register_pig():
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Check if farm exists
-        cursor.execute("SELECT id FROM farms WHERE id = %s AND status = 'active'", (farm_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({'success': False, 'message': 'Farm not found or inactive'})
-        
-        # Generate unique tag ID
-        tag_id = generate_pig_tag_id(pig_type)
-        print(f"Generated tag ID: {tag_id} for pig type: {pig_type}")
-        
-        # Insert new pig
-        print(f"Inserting pig with data: tag_id={tag_id}, farm_id={farm_id}, pig_type={pig_type}, pig_source={pig_source}, breed={breed}, gender={gender}, purpose={purpose}, breeding_status={breeding_status}, birth_date={birth_date}, purchase_date={purchase_date}, age_days={age_days}, registered_by={session['employee_id']}")
-        
-        cursor.execute("""
-            INSERT INTO pigs (tag_id, farm_id, pig_type, pig_source, breed, gender, purpose, breeding_status, birth_date, purchase_date, age_days, registered_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (tag_id, farm_id, pig_type, pig_source, breed, gender, purpose, breeding_status, birth_date, purchase_date, age_days, session['employee_id']))
-        
-        pig_id = cursor.lastrowid
-        print(f"Pig inserted successfully with ID: {pig_id}")
-        
-        # Log activity
-        log_activity(session['employee_id'], 'PIG_REGISTRATION', 
-                    f'New {pig_type} registered with tag {tag_id} at farm {farm_id}')
+        farm_id = _scoped_farm_id(cursor)
+
+        if pig_type == 'litter' and litter_source == 'born':
+            cursor.execute(
+                "SELECT id, gender FROM pigs WHERE id = %s AND status = 'active'",
+                (lr_sow_id,),
+            )
+            sow_lr = cursor.fetchone()
+            if not sow_lr or (sow_lr.get('gender') or '').lower() != 'female':
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Sow must be an active female pig in the system'})
+            cursor.execute(
+                "SELECT id, gender FROM pigs WHERE id = %s AND status = 'active'",
+                (lr_boar_id,),
+            )
+            boar_lr = cursor.fetchone()
+            if not boar_lr or (boar_lr.get('gender') or '').lower() != 'male':
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Boar must be an active male pig in the system'})
+
+        pig_id = None
+        tag_id = None
+
+        if pig_type == 'litter':
+            alive_lr = male_piglets + female_piglets
+            total_lr = alive_lr + still_births_lr
+            for attempt in range(10):
+                tag_id = generate_pig_tag_id('litter')
+                print(
+                    f"Litter registration: tag {tag_id}, source={litter_source}, attempt={attempt + 1}"
+                )
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO litters (
+                            litter_id, farrowing_record_id, sow_id, boar_id, farrowing_date,
+                            litter_source, sow_breed, boar_breed,
+                            total_piglets, alive_piglets, male_piglets, female_piglets, still_births, avg_weight,
+                            weaning_weight, weaning_date, notes, created_by
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            tag_id,
+                            None,
+                            lr_sow_id if litter_source == 'born' else None,
+                            lr_boar_id if litter_source == 'born' else None,
+                            birth_date,
+                            litter_source,
+                            lr_sow_breed if litter_source == 'purchased' else None,
+                            lr_boar_breed if litter_source == 'purchased' else None,
+                            total_lr,
+                            alive_lr,
+                            male_piglets,
+                            female_piglets,
+                            still_births_lr,
+                            None,
+                            None,
+                            None,
+                            None,
+                            session['employee_id'],
+                        ),
+                    )
+                    pig_breed = None
+                    if litter_source == 'purchased' and lr_sow_breed and lr_boar_breed:
+                        pig_breed = f"{lr_sow_breed} × {lr_boar_breed}"[:100]
+                    cursor.execute(
+                        """
+                        INSERT INTO pigs (tag_id, farm_id, pig_type, pig_source, breed, gender, purpose, breeding_status, birth_date, purchase_date, age_days, registered_by)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            tag_id,
+                            farm_id,
+                            pig_type,
+                            pig_source,
+                            pig_breed,
+                            None,
+                            None,
+                            None,
+                            birth_date,
+                            purchase_date,
+                            age_days,
+                            session['employee_id'],
+                        ),
+                    )
+                    pig_id = cursor.lastrowid
+                    break
+                except pymysql.err.IntegrityError as ie:
+                    if ie.args and ie.args[0] == 1062 and attempt < 9:
+                        conn.rollback()
+                        continue
+                    raise
+            if not pig_id:
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Could not allocate a unique litter tag; try again.'})
+            log_activity(
+                session['employee_id'],
+                'PIG_REGISTRATION',
+                (
+                    f'Litter {tag_id} on farm {farm_id}: {alive_lr} alive ({male_piglets}M/{female_piglets}F), '
+                    f'source {litter_source}'
+                ),
+            )
+        else:
+            for attempt in range(10):
+                tag_id = generate_pig_tag_id(pig_type)
+                print(f"Generated tag ID: {tag_id} for pig type: {pig_type} (attempt {attempt + 1})")
+                print(f"Inserting pig with data: tag_id={tag_id}, farm_id={farm_id}, pig_type={pig_type}, pig_source={pig_source}, breed={breed}, gender={gender}, purpose={purpose}, breeding_status={breeding_status}, birth_date={birth_date}, purchase_date={purchase_date}, age_days={age_days}, registered_by={session['employee_id']}")
+                try:
+                    cursor.execute("""
+                        INSERT INTO pigs (tag_id, farm_id, pig_type, pig_source, breed, gender, purpose, breeding_status, birth_date, purchase_date, age_days, registered_by)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (tag_id, farm_id, pig_type, pig_source, breed, gender, purpose, breeding_status, birth_date, purchase_date, age_days, session['employee_id']))
+                    pig_id = cursor.lastrowid
+                    break
+                except pymysql.err.IntegrityError as ie:
+                    if ie.args and ie.args[0] == 1062 and attempt < 9:
+                        conn.rollback()
+                        continue
+                    raise
+            print(f"Pig inserted successfully with ID: {pig_id}")
+            # Log activity
+            log_activity(session['employee_id'], 'PIG_REGISTRATION',
+                        f'New {pig_type} registered with tag {tag_id} at farm {farm_id}')
         
         conn.commit()
         cursor.close()
@@ -14273,6 +14574,51 @@ def register_pig():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Failed to register pig: {str(e)}'})
+
+
+def _farrowing_date_as_date(fd):
+    if fd is None:
+        return None
+    if isinstance(fd, datetime):
+        return fd.date()
+    if isinstance(fd, date):
+        return fd
+    if isinstance(fd, str):
+        try:
+            return datetime.strptime(fd[:10], '%Y-%m-%d').date()
+        except ValueError:
+            return None
+    return None
+
+
+def _litter_already_assigned_to_batch(litter_row):
+    """True if this litter is linked to a batch or legacy notes mark it batched."""
+    if litter_row.get('batch_pig_id'):
+        return True
+    notes = litter_row.get('notes') or ''
+    return 'BATCHED->' in notes
+
+
+def _weighted_batch_age_from_litter_rows(litter_rows, today_date):
+    """Return (batch_birth_date, avg_age_days, total_live_units) or (None, None, 0)."""
+    total_units = 0
+    weighted_age_sum = 0.0
+    for litter in litter_rows:
+        farrowing_date = _farrowing_date_as_date(litter.get('farrowing_date'))
+        if not farrowing_date:
+            continue
+        units = int(litter.get('alive_piglets') or litter.get('total_piglets') or 0)
+        if units <= 0:
+            continue
+        age_days = max((today_date - farrowing_date).days, 0)
+        weighted_age_sum += age_days * units
+        total_units += units
+    if total_units <= 0:
+        return None, None, 0
+    avg_age_days = int(round(weighted_age_sum / total_units))
+    batch_birth_date = today_date - timedelta(days=avg_age_days)
+    return batch_birth_date, avg_age_days, total_units
+
 
 @app.route('/api/pig/register-batch-from-litters', methods=['POST'])
 def register_batch_from_litters():
@@ -14301,9 +14647,12 @@ def register_batch_from_litters():
 
         placeholders = ','.join(['%s'] * len(litter_ids))
         cursor.execute(f"""
-            SELECT l.id, l.litter_id, l.farrowing_date, l.total_piglets, l.alive_piglets, l.status, p.farm_id
+            SELECT l.id, l.litter_id, l.farrowing_date, l.total_piglets, l.alive_piglets, l.status,
+                   l.batch_pig_id, l.notes,
+                   COALESCE(ps.farm_id, inv.farm_id) AS farm_id
             FROM litters l
-            LEFT JOIN pigs p ON l.sow_id = p.id
+            LEFT JOIN pigs ps ON l.sow_id = ps.id
+            LEFT JOIN pigs inv ON inv.tag_id = l.litter_id AND inv.pig_type = 'litter'
             WHERE l.id IN ({placeholders})
         """, tuple(litter_ids))
         selected_litters = cursor.fetchall() or []
@@ -14311,41 +14660,36 @@ def register_batch_from_litters():
         if len(selected_litters) != len(set(litter_ids)):
             return jsonify({'success': False, 'message': 'Some selected litters were not found'}), 400
 
-        valid_statuses = {'unweaned', 'weaned'}
-        blocked = [l for l in selected_litters if (l.get('status') or '').lower() not in valid_statuses]
+        blocked = [l for l in selected_litters if (l.get('status') or '').lower() != 'weaned']
         if blocked:
-            return jsonify({'success': False, 'message': 'Only unweaned or weaned litters can be combined into a batch'}), 400
+            return jsonify({'success': False, 'message': 'Only weaned litters can be combined into a batch'}), 400
 
-        # Auto-infer farm from selected litters (must be same farm)
+        in_batch = [l for l in selected_litters if _litter_already_assigned_to_batch(l)]
+        if in_batch:
+            lids = ', '.join([l.get('litter_id') or str(l.get('id')) for l in in_batch[:5]])
+            return jsonify({
+                'success': False,
+                'message': f'One or more litters are already in a batch and cannot be combined again: {lids}',
+            }), 400
+
+        # Resolve farm from litters or default site (single-tenant)
         farm_ids = {l.get('farm_id') for l in selected_litters if l.get('farm_id') is not None}
-        if len(farm_ids) != 1:
+        if len(farm_ids) > 1:
             return jsonify({'success': False, 'message': 'Selected litters must belong to the same farm'}), 400
-        farm_id = next(iter(farm_ids))
+        if len(farm_ids) == 1:
+            farm_id = next(iter(farm_ids))
+        else:
+            farm_id = _scoped_farm_id(cursor)
         pig_source = 'born'
 
         today = datetime.now().date()
-        total_units = 0
-        weighted_age_sum = 0.0
-        for litter in selected_litters:
-            farrowing_date = litter.get('farrowing_date')
-            if not farrowing_date:
-                continue
-            # Weight age by available piglets in each litter
-            units = int(litter.get('alive_piglets') or litter.get('total_piglets') or 0)
-            if units <= 0:
-                continue
-            age_days = max((today - farrowing_date).days, 0)
-            weighted_age_sum += (age_days * units)
-            total_units += units
+        batch_birth_date, avg_age_days, total_units = _weighted_batch_age_from_litter_rows(selected_litters, today)
 
-        if total_units <= 0:
+        if total_units <= 0 or batch_birth_date is None:
             return jsonify({'success': False, 'message': 'Selected litters have no available piglets to batch'}), 400
 
-        avg_age_days = int(round(weighted_age_sum / total_units))
-        batch_birth_date = (today - timedelta(days=avg_age_days))
         purchase_date = None
 
-        new_batch_tag = generate_pig_tag_id('batch')
         combined_litters_text = ', '.join([l['litter_id'] for l in selected_litters if l.get('litter_id')])
         system_note = f"Combined from litters: {combined_litters_text}"
         final_note = f"{system_note}. User notes: {batch_notes}" if batch_notes else system_note
@@ -14354,57 +14698,73 @@ def register_batch_from_litters():
         cursor.execute("SHOW COLUMNS FROM pigs LIKE 'notes'")
         has_pig_notes = cursor.fetchone() is not None
 
-        if has_pig_notes:
-            cursor.execute("""
-                INSERT INTO pigs (
-                    tag_id, farm_id, pig_type, pig_source, breed, gender, purpose,
-                    breeding_status, birth_date, purchase_date, age_days, registered_by, notes
-                )
-                VALUES (%s, %s, 'batch', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                new_batch_tag,
-                farm_id,
-                pig_source,
-                'Mixed Litter Batch',
-                'mixed',
-                'meat',
-                None,
-                batch_birth_date,
-                purchase_date,
-                avg_age_days,
-                session['employee_id'],
-                final_note
-            ))
-        else:
-            cursor.execute("""
-                INSERT INTO pigs (
-                    tag_id, farm_id, pig_type, pig_source, breed, gender, purpose,
-                    breeding_status, birth_date, purchase_date, age_days, registered_by
-                )
-                VALUES (%s, %s, 'batch', %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                new_batch_tag,
-                farm_id,
-                pig_source,
-                'Mixed Litter Batch',
-                'mixed',
-                'meat',
-                None,
-                batch_birth_date,
-                purchase_date,
-                avg_age_days,
-                session['employee_id']
-            ))
-        new_batch_id = cursor.lastrowid
+        new_batch_id = None
+        new_batch_tag = None
+        for attempt in range(10):
+            new_batch_tag = generate_pig_tag_id('batch')
+            try:
+                if has_pig_notes:
+                    cursor.execute("""
+                        INSERT INTO pigs (
+                            tag_id, farm_id, pig_type, pig_source, breed, gender, purpose,
+                            breeding_status, birth_date, purchase_date, age_days, registered_by, notes
+                        )
+                        VALUES (%s, %s, 'batch', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        new_batch_tag,
+                        farm_id,
+                        pig_source,
+                        'Mixed Litter Batch',
+                        'mixed',
+                        'meat',
+                        None,
+                        batch_birth_date,
+                        purchase_date,
+                        avg_age_days,
+                        session['employee_id'],
+                        final_note
+                    ))
+                else:
+                    cursor.execute("""
+                        INSERT INTO pigs (
+                            tag_id, farm_id, pig_type, pig_source, breed, gender, purpose,
+                            breeding_status, birth_date, purchase_date, age_days, registered_by
+                        )
+                        VALUES (%s, %s, 'batch', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        new_batch_tag,
+                        farm_id,
+                        pig_source,
+                        'Mixed Litter Batch',
+                        'mixed',
+                        'meat',
+                        None,
+                        batch_birth_date,
+                        purchase_date,
+                        avg_age_days,
+                        session['employee_id']
+                    ))
+                new_batch_id = cursor.lastrowid
+                break
+            except pymysql.err.IntegrityError as ie:
+                if ie.args and ie.args[0] == 1062 and attempt < 9:
+                    conn.rollback()
+                    continue
+                raise
 
-        # Preserve source records and mark lifecycle progression in litter notes/status
+        # Preserve source records; link litters to this batch so they cannot join another batch
         for litter in selected_litters:
             cursor.execute("""
                 UPDATE litters
                 SET status = 'weaned',
+                    batch_pig_id = %s,
                     notes = CONCAT(COALESCE(notes, ''), %s)
                 WHERE id = %s
-            """, (f" [BATCHED->{new_batch_tag} on {today.isoformat()}]{f' Notes: {batch_notes}' if batch_notes else ''}", litter['id']))
+            """, (
+                new_batch_id,
+                f" [BATCHED->{new_batch_tag} on {today.isoformat()}]{f' Notes: {batch_notes}' if batch_notes else ''}",
+                litter['id'],
+            ))
 
         conn.commit()
 
@@ -14433,6 +14793,181 @@ def register_batch_from_litters():
             cursor.close()
         if conn:
             conn.close()
+
+
+@app.route('/api/pig/add-litters-to-batch', methods=['POST'])
+def add_litters_to_batch():
+    """Attach more litters to an existing active batch; recomputes weighted average age on the batch."""
+    if 'employee_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        batch_pig_id = data.get('batch_pig_id')
+        litter_ids = data.get('litter_ids') or []
+        extra_notes = (data.get('notes') or '').strip()
+
+        if batch_pig_id is None:
+            return jsonify({'success': False, 'message': 'batch_pig_id is required'}), 400
+        try:
+            batch_pig_id = int(batch_pig_id)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid batch id'}), 400
+
+        if not isinstance(litter_ids, list) or len(litter_ids) < 1:
+            return jsonify({'success': False, 'message': 'Select at least one litter to add'}), 400
+        try:
+            litter_ids = [int(x) for x in litter_ids]
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid litter IDs'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, tag_id, farm_id, pig_type, status
+            FROM pigs WHERE id = %s
+            """,
+            (batch_pig_id,),
+        )
+        batch_row = cursor.fetchone()
+        if not batch_row or (batch_row.get('pig_type') or '').lower() != 'batch':
+            return jsonify({'success': False, 'message': 'Batch not found'}), 400
+        if (batch_row.get('status') or '').lower() != 'active':
+            return jsonify({'success': False, 'message': 'Batch is not active'}), 400
+        farm_id_batch = batch_row.get('farm_id')
+        batch_tag = batch_row.get('tag_id') or ''
+
+        placeholders = ','.join(['%s'] * len(litter_ids))
+        cursor.execute(
+            f"""
+            SELECT l.id, l.litter_id, l.farrowing_date, l.total_piglets, l.alive_piglets, l.status,
+                   l.batch_pig_id, l.notes,
+                   COALESCE(ps.farm_id, inv.farm_id) AS farm_id
+            FROM litters l
+            LEFT JOIN pigs ps ON l.sow_id = ps.id
+            LEFT JOIN pigs inv ON inv.tag_id = l.litter_id AND inv.pig_type = 'litter'
+            WHERE l.id IN ({placeholders})
+            """,
+            tuple(litter_ids),
+        )
+        new_litters = cursor.fetchall() or []
+        if len(new_litters) != len(set(litter_ids)):
+            return jsonify({'success': False, 'message': 'Some litters were not found'}), 400
+
+        for lit in new_litters:
+            if (lit.get('status') or '').lower() != 'weaned':
+                return jsonify({
+                    'success': False,
+                    'message': f"Litter {lit.get('litter_id')} must be weaned before it can be added to a batch",
+                }), 400
+            bid = lit.get('batch_pig_id')
+            if bid is not None and int(bid) == batch_pig_id:
+                return jsonify({'success': False, 'message': f"Litter {lit.get('litter_id')} is already in this batch"}), 400
+            if bid is not None and int(bid) != batch_pig_id:
+                return jsonify({'success': False, 'message': f"Litter {lit.get('litter_id')} is already assigned to another batch"}), 400
+            if _litter_already_assigned_to_batch(lit):
+                return jsonify({'success': False, 'message': f"Litter {lit.get('litter_id')} is already in a batch"}), 400
+            lf = lit.get('farm_id')
+            if farm_id_batch is not None and lf is not None and int(lf) != int(farm_id_batch):
+                return jsonify({'success': False, 'message': 'Litters must belong to the same farm as the batch'}), 400
+
+        cursor.execute(
+            """
+            SELECT l.id, l.litter_id, l.farrowing_date, l.total_piglets, l.alive_piglets, l.status,
+                   l.batch_pig_id, l.notes
+            FROM litters l WHERE l.batch_pig_id = %s
+            """,
+            (batch_pig_id,),
+        )
+        existing_linked = cursor.fetchall() or []
+
+        seen = set()
+        deduped = []
+        for r in list(existing_linked) + list(new_litters):
+            rid = r.get('id')
+            if rid in seen:
+                continue
+            seen.add(rid)
+            deduped.append(r)
+
+        today = datetime.now().date()
+        batch_birth_date, avg_age_days, total_units = _weighted_batch_age_from_litter_rows(deduped, today)
+        if total_units <= 0 or batch_birth_date is None:
+            return jsonify({'success': False, 'message': 'Could not compute batch age from litters'}), 400
+
+        cursor.execute("SHOW COLUMNS FROM pigs LIKE 'notes'")
+        has_pig_notes = cursor.fetchone() is not None
+        litter_tags = ','.join([lit.get('litter_id') or str(lit.get('id')) for lit in new_litters])
+        add_note = f" [+litters {litter_tags} on {today.isoformat()}]"
+        if extra_notes:
+            add_note += f" Notes: {extra_notes}"
+
+        if has_pig_notes:
+            cursor.execute(
+                """
+                UPDATE pigs SET birth_date = %s, age_days = %s,
+                notes = CONCAT(COALESCE(notes, ''), %s)
+                WHERE id = %s
+                """,
+                (batch_birth_date, avg_age_days, add_note, batch_pig_id),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE pigs SET birth_date = %s, age_days = %s WHERE id = %s
+                """,
+                (batch_birth_date, avg_age_days, batch_pig_id),
+            )
+
+        for lit in new_litters:
+            note_suffix = (
+                f" [BATCHED->{batch_tag} on {today.isoformat()}]"
+                f"{f' Notes: {extra_notes}' if extra_notes else ''}"
+            )
+            cursor.execute(
+                """
+                UPDATE litters
+                SET status = 'weaned',
+                    batch_pig_id = %s,
+                    notes = CONCAT(COALESCE(notes, ''), %s)
+                WHERE id = %s
+                """,
+                (batch_pig_id, note_suffix, lit['id']),
+            )
+
+        conn.commit()
+
+        log_activity(
+            session['employee_id'],
+            'BATCH_ADD_LITTERS',
+            f'Added {len(new_litters)} litter(s) to batch {batch_tag}',
+        )
+
+        return jsonify({
+            'success': True,
+            'message': f'Added {len(new_litters)} litter(s) to batch {batch_tag}',
+            'batch_id': batch_pig_id,
+            'tag_id': batch_tag,
+            'age_days': avg_age_days,
+            'quantity': total_units,
+        })
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"add-litters-to-batch error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Failed: {str(e)}'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 @app.route('/api/pig/registration-stats', methods=['GET'])
 def get_pig_registration_stats():
@@ -14504,15 +15039,14 @@ def get_pigs_list():
         
         # All pigs: no WHERE on status, breeding_status, or purpose
         cursor.execute("""
-            SELECT p.*, f.farm_name, e.full_name as registered_by_name,
+            SELECT p.*, e.full_name as registered_by_name,
                    (SELECT MAX(w.weighing_date) FROM weight_records w
                     WHERE w.animal_id = p.id) AS last_weighing_date
             FROM pigs p
-            LEFT JOIN farms f ON p.farm_id = f.id
             LEFT JOIN employees e ON p.registered_by = e.id
             ORDER BY p.tag_id DESC, p.created_at DESC
         """)
-        pigs = cursor.fetchall()
+        pigs = [_strip_farm_fields(r) for r in cursor.fetchall()]
         
         cursor.close()
         conn.close()
@@ -14536,7 +15070,10 @@ def generate_tag_id():
         pig_type = data.get('pig_type')
         
         if not pig_type or pig_type not in ['grown_pig', 'piglet', 'litter', 'batch']:
-            return jsonify({'success': False, 'message': 'Invalid pig type'})
+            return jsonify({
+                'success': False,
+                'message': 'Invalid pig type',
+            })
         
         # Generate the tag ID
         tag_id = generate_pig_tag_id(pig_type)
@@ -14572,6 +15109,14 @@ def update_pig(pig_id):
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Pig not found'})
+
+        if data.get('pig_type') == 'batch' and (current_pig.get('pig_type') or '') != 'batch':
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Batches are created by combining litters, not by setting pig type to batch.',
+            })
         
         # Prepare update data
         update_fields = []
@@ -14580,7 +15125,6 @@ def update_pig(pig_id):
         
         # Check each field for changes
         fields_to_check = {
-            'farm_id': 'Farm',
             'pig_type': 'Pig Type',
             'pig_source': 'Pig Source',
             'breed': 'Breed',
@@ -14746,12 +15290,8 @@ def get_pig_details(pig_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get pig details with farm information
         cursor.execute("""
-            SELECT p.*, f.farm_name 
-            FROM pigs p 
-            LEFT JOIN farms f ON p.farm_id = f.id 
-            WHERE p.id = %s
+            SELECT p.* FROM pigs p WHERE p.id = %s
         """, (pig_id,))
         
         pig = cursor.fetchone()
@@ -14765,7 +15305,7 @@ def get_pig_details(pig_id):
         
         return jsonify({
             'success': True,
-            'pig': pig
+            'pig': _strip_farm_fields(pig)
         })
         
     except Exception as e:
@@ -14784,7 +15324,7 @@ def delete_pig(pig_id):
         
         # First, get pig details for logging
         cursor.execute("""
-            SELECT tag_id, farm_id, pig_type, breed, gender, purpose, status 
+            SELECT tag_id, pig_type, breed, gender, purpose, status 
             FROM pigs WHERE id = %s
         """, (pig_id,))
         
@@ -14992,17 +15532,14 @@ def get_pig_audit_trail(pig_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get pig basic info
         cursor.execute("""
-            SELECT p.*, f.farm_name 
-            FROM pigs p 
-            LEFT JOIN farms f ON p.farm_id = f.id 
-            WHERE p.id = %s
+            SELECT p.* FROM pigs p WHERE p.id = %s
         """, (pig_id,))
         pig = cursor.fetchone()
         
         if not pig:
             return jsonify({'success': False, 'message': 'Pig not found'}), 404
+        pig = _strip_farm_fields(pig)
         
         # Get activity log entries for this pig
         cursor.execute("""
@@ -15075,6 +15612,44 @@ def get_sows():
         print(f"Error getting sows: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to get sows: {str(e)}'})
 
+
+@app.route('/api/pigs/search', methods=['GET'])
+def search_pigs_for_litter():
+    """Live search for sows (female) and boars (male) by tag or breed."""
+    if 'employee_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        q = (request.args.get('q') or '').strip()
+        gender = (request.args.get('gender') or '').strip().lower()
+        if gender not in ('female', 'male'):
+            return jsonify({'success': False, 'message': 'Query parameter gender must be female or male'}), 400
+        if len(q) < 1:
+            return jsonify({'success': True, 'pigs': []})
+        like = f"%{q}%"
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT p.id, p.tag_id, p.breed, p.gender, p.status, f.farm_name AS farm_name
+            FROM pigs p
+            LEFT JOIN farms f ON p.farm_id = f.id
+            WHERE p.gender = %s
+              AND p.status = 'active'
+              AND (p.tag_id LIKE %s OR COALESCE(p.breed, '') LIKE %s)
+            ORDER BY p.tag_id ASC
+            LIMIT 40
+            """,
+            (gender, like, like),
+        )
+        rows = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'pigs': rows})
+    except Exception as e:
+        print(f"Error searching pigs: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # Litter Management API Endpoints
 
 @app.route('/api/litter/next-id', methods=['GET'])
@@ -15121,84 +15696,190 @@ def get_next_litter_id():
 
 @app.route('/api/litter/register', methods=['POST'])
 def register_litter():
-    """Register a new litter"""
+    """Register a new litter (born on farm: sow/boar pig IDs + farrowing; purchased: parent breeds)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['sow_id', 'farrowing_record_id', 'litter_id', 'farrowing_date', 'total_piglets', 'alive_piglets']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'message': f'{field.replace("_", " ").title()} is required'})
-        
+        data = request.get_json() or {}
+        litter_source = (data.get('litter_source') or 'born').strip().lower()
+        if litter_source not in ('born', 'purchased'):
+            litter_source = 'born'
+
+        for key in ['litter_id', 'farrowing_date', 'total_piglets', 'alive_piglets', 'male_piglets', 'female_piglets']:
+            v = data.get(key)
+            if v is None or (isinstance(v, str) and not str(v).strip()):
+                return jsonify({'success': False, 'message': f'{key.replace("_", " ")} is required'})
+
+        if litter_source == 'purchased':
+            for key in ['sow_breed', 'boar_breed']:
+                v = (data.get(key) or '').strip() if data.get(key) is not None else ''
+                if not v:
+                    return jsonify({'success': False, 'message': f'{key.replace("_", " ")} is required for a purchased litter'})
+
+        try:
+            total_piglets = int(data['total_piglets'])
+            alive_piglets = int(data['alive_piglets'])
+            male_piglets = int(data['male_piglets'])
+            female_piglets = int(data['female_piglets'])
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Piglet counts must be valid numbers'})
+
+        if any(x < 0 for x in (male_piglets, female_piglets, alive_piglets, total_piglets)):
+            return jsonify({'success': False, 'message': 'Counts cannot be negative'})
+        if male_piglets + female_piglets != alive_piglets:
+            return jsonify({
+                'success': False,
+                'message': 'Male piglets + female piglets must equal alive piglets',
+            })
+
+        still_births = int(data.get('still_births') or 0)
+        if alive_piglets + still_births > total_piglets:
+            return jsonify({
+                'success': False,
+                'message': 'Alive piglets + still births cannot exceed total piglets',
+            })
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
+        farrowing_record_id = None
+        sow_id = None
+        boar_id = None
+        sow_breed = None
+        boar_breed = None
+        weaning_weight = None
+        weaning_date = None
+
+        if litter_source == 'born':
+            for key in ['sow_id', 'boar_id']:
+                v = data.get(key)
+                if v is None or (isinstance(v, str) and not str(v).strip()):
+                    return jsonify({'success': False, 'message': f'{key.replace("_", " ")} is required (select sow and boar from the list)'})
+            try:
+                sow_id = int(data['sow_id'])
+                boar_id = int(data['boar_id'])
+            except (TypeError, ValueError):
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Sow and boar must be valid animal IDs'})
+
+            cursor.execute(
+                "SELECT id, gender FROM pigs WHERE id = %s AND status = 'active'",
+                (sow_id,),
+            )
+            sow_row = cursor.fetchone()
+            if not sow_row or (sow_row.get('gender') or '').lower() != 'female':
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Sow must be an active female pig in the system'})
+
+            cursor.execute(
+                "SELECT id, gender FROM pigs WHERE id = %s AND status = 'active'",
+                (boar_id,),
+            )
+            boar_row = cursor.fetchone()
+            if not boar_row or (boar_row.get('gender') or '').lower() != 'male':
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Boar must be an active male pig in the system'})
+
+            farrowing_record_id = data.get('farrowing_record_id')
+            if farrowing_record_id is not None and str(farrowing_record_id).strip() != '':
+                try:
+                    farrowing_record_id = int(farrowing_record_id)
+                except (TypeError, ValueError):
+                    cursor.close()
+                    conn.close()
+                    return jsonify({'success': False, 'message': 'Farrowing record id must be a number'})
+            else:
+                farrowing_record_id = None
+            if not farrowing_record_id and data.get('breeding_record_id'):
+                cursor.execute(
+                    """
+                    SELECT id FROM farrowing_records
+                    WHERE breeding_id = %s
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (int(data['breeding_record_id']),),
+                )
+                r = cursor.fetchone()
+                if r:
+                    farrowing_record_id = r['id']
+            if not farrowing_record_id:
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Farrowing record is required (link to breeding / farrowing cycle)'})
+
+            cursor.execute("""
+                SELECT weaning_weight, weaning_date
+                FROM farrowing_activities
+                WHERE farrowing_record_id = %s AND activity_name = 'Weaning' AND completed = TRUE
+            """, (farrowing_record_id,))
+
+            weaning_data = cursor.fetchone()
+            if weaning_data:
+                weaning_weight = weaning_data['weaning_weight']
+                weaning_date = weaning_data['weaning_date']
+        else:
+            sow_breed = (data.get('sow_breed') or '').strip()
+            boar_breed = (data.get('boar_breed') or '').strip()
+
         # Check if litter ID already exists
         cursor.execute("SELECT id FROM litters WHERE litter_id = %s", (data['litter_id'],))
         if cursor.fetchone():
+            cursor.close()
+            conn.close()
             return jsonify({'success': False, 'message': 'Litter ID already exists'})
-        
-        # Get weaning data from farrowing activities if available
-        weaning_weight = None
-        weaning_date = None
-        
-        cursor.execute("""
-            SELECT weaning_weight, weaning_date 
-            FROM farrowing_activities 
-            WHERE farrowing_record_id = %s AND activity_name = 'Weaning' AND completed = TRUE
-        """, (data['farrowing_record_id'],))
-        
-        weaning_data = cursor.fetchone()
-        if weaning_data:
-            weaning_weight = weaning_data['weaning_weight']
-            weaning_date = weaning_data['weaning_date']
-        
+
         # Insert litter record
         cursor.execute("""
             INSERT INTO litters (
                 litter_id, farrowing_record_id, sow_id, boar_id, farrowing_date,
-                total_piglets, alive_piglets, still_births, avg_weight, 
+                litter_source, sow_breed, boar_breed,
+                total_piglets, alive_piglets, male_piglets, female_piglets, still_births, avg_weight,
                 weaning_weight, weaning_date, notes, created_by
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            data['litter_id'], data['farrowing_record_id'], data['sow_id'], 
-            data.get('boar_id'), data['farrowing_date'], data['total_piglets'],
-            data['alive_piglets'], data.get('still_births', 0), data.get('avg_weight'),
+            data['litter_id'], farrowing_record_id, sow_id, boar_id, data['farrowing_date'],
+            litter_source, sow_breed, boar_breed,
+            total_piglets, alive_piglets, male_piglets, female_piglets, still_births, data.get('avg_weight'),
             weaning_weight, weaning_date, data.get('notes'), session['employee_id']
         ))
-        
-        litter_id = cursor.lastrowid
-        
-        # Get breeding record ID from farrowing record
-        cursor.execute("""
-            SELECT breeding_id FROM farrowing_records WHERE id = %s
-        """, (data['farrowing_record_id'],))
-        
-        breeding_record = cursor.fetchone()
-        if not breeding_record:
-            return jsonify({'success': False, 'message': 'Breeding record not found for this farrowing'})
-        
-        # NOTE: Do NOT flip the sow to 'available' here. The sow remains 'farrowed'
-        # until the full farrowing cycle (all activities completed AND litter weaned)
-        # is satisfied. The transition is performed centrally by
-        # maybe_mark_sow_available_after_farrowing_cycle() when the Weaning activity
-        # is marked complete.
 
-        # Log activity
-        log_activity(session['employee_id'], 'LITTER_REGISTRATION', 
-                   f'Registered litter {data["litter_id"]} with {data["alive_piglets"]} alive piglets from sow {data["sow_id"]}')
-        
+        if litter_source == 'born' and farrowing_record_id:
+            cursor.execute(
+                "SELECT breeding_id FROM farrowing_records WHERE id = %s",
+                (farrowing_record_id,),
+            )
+            breeding_record = cursor.fetchone()
+            if not breeding_record:
+                conn.rollback()
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Breeding record not found for this farrowing'})
+        # NOTE: Do NOT flip the sow to 'available' here (born flow). Purchased litters are not tied to a farm sow record.
+
+        if litter_source == 'born':
+            log_desc = (
+                f'Registered born litter {data["litter_id"]} with {alive_piglets} alive '
+                f'({male_piglets}M/{female_piglets}F), sow {sow_id}, boar {boar_id}'
+            )
+        else:
+            log_desc = (
+                f'Registered purchased litter {data["litter_id"]} with {alive_piglets} alive '
+                f'({male_piglets}M/{female_piglets}F), dam breed {sow_breed!r}, sire breed {boar_breed!r}'
+            )
+        log_activity(session['employee_id'], 'LITTER_REGISTRATION', log_desc)
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         return jsonify({
             'success': True,
-            'message': f'Litter {data["litter_id"]} registered successfully with {data["alive_piglets"]} alive piglets'
+            'message': f'Litter {data["litter_id"]} registered successfully with {alive_piglets} alive piglets',
         })
         
     except Exception as e:
@@ -15212,18 +15893,37 @@ def postpone_litter_registration():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         
         if not data.get('reason'):
             return jsonify({'success': False, 'message': 'Reason for postponement is required'})
         
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        farrowing_record_id = data.get('farrowing_record_id')
+        if not farrowing_record_id and data.get('breeding_record_id'):
+            cursor.execute(
+                """
+                SELECT id FROM farrowing_records
+                WHERE breeding_id = %s
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (int(data['breeding_record_id']),),
+            )
+            r = cursor.fetchone()
+            if r:
+                farrowing_record_id = r['id']
+        if not farrowing_record_id:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Farrowing or breeding record is required'})
         
         # Get breeding record ID from farrowing record
         cursor.execute("""
             SELECT breeding_id FROM farrowing_records WHERE id = %s
-        """, (data['farrowing_record_id'],))
+        """, (farrowing_record_id,))
         
         breeding_record = cursor.fetchone()
         if not breeding_record:
@@ -15237,7 +15937,7 @@ def postpone_litter_registration():
         
         # Log activity
         log_activity(session['employee_id'], 'LITTER_POSTPONED', 
-                   f'Postponed litter registration for farrowing record {data["farrowing_record_id"]}. Reason: {data["reason"]}')
+                   f'Postponed litter registration for farrowing record {farrowing_record_id}. Reason: {data["reason"]}')
         
         conn.commit()
         cursor.close()
@@ -15477,7 +16177,7 @@ def get_completed_breeding_cycles():
             ORDER BY br.expected_due_date ASC
         """)
         
-        completed_cycles = cursor.fetchall()
+        completed_cycles = [_strip_farm_fields(r) for r in cursor.fetchall()]
         
         cursor.close()
         conn.close()
@@ -15503,9 +16203,8 @@ def get_available_boars():
         
         # Get boars that are available for breeding
         cursor.execute("""
-            SELECT p.id, p.tag_id, p.breed, p.age_days, f.farm_name
+            SELECT p.id, p.tag_id, p.breed, p.age_days
             FROM pigs p 
-            LEFT JOIN farms f ON p.farm_id = f.id 
             WHERE p.gender = 'male' 
             AND p.pig_type = 'grown_pig' 
             AND p.purpose = 'breeding' 
@@ -17717,8 +18416,8 @@ def get_farrowing_litter_registration_data(farrowing_id):
         
         # Get comprehensive farrowing data for litter registration
         cursor.execute("""
-            SELECT fr.*, 
-                   br.mating_date, br.expected_due_date,
+            SELECT fr.*, fr.id AS farrowing_id,
+                   br.sow_id, br.boar_id, br.mating_date, br.expected_due_date,
                    sow.tag_id as sow_tag_id, sow.breed as sow_breed, sow.age_days as sow_age_days,
                    sow.farm_id as sow_farm_id, f.farm_name as sow_farm_name,
                    boar.tag_id as boar_tag_id, boar.breed as boar_breed,
@@ -17741,7 +18440,7 @@ def get_farrowing_litter_registration_data(farrowing_id):
         
         return jsonify({
             'success': True,
-            'farrowing_data': farrowing_data
+            'farrowing_data': _strip_farm_fields(farrowing_data)
         })
         
     except Exception as e:
@@ -21220,20 +21919,29 @@ def get_all_litters():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # No WHERE on l.status or pig columns — full litter list for management UIs
+        # No WHERE on l.status or pig columns — full litter list for management UIs.
+        # Use ps/pb so l.sow_breed / l.boar_breed (purchased parent breeds) are not shadowed.
         cursor.execute("""
             SELECT l.*,
-                   p.tag_id as sow_tag_id, p.breed as sow_breed,
-                   f.farm_name as farm_name,
+                   ps.tag_id AS sow_tag_id,
+                   ps.breed AS linked_sow_pig_breed,
+                   pb.tag_id AS boar_tag_id,
+                   COALESCE(ps.farm_id, inv.farm_id) AS farm_id,
+                   COALESCE(f.farm_name, finv.farm_name) AS farm_name,
+                   bbatch.tag_id AS batch_tag_id,
                    (SELECT MAX(w.weighing_date) FROM weight_records w
                     WHERE w.litter_id = l.id) AS last_weighing_date
             FROM litters l
-            LEFT JOIN pigs p ON l.sow_id = p.id
-            LEFT JOIN farms f ON p.farm_id = f.id
+            LEFT JOIN pigs ps ON l.sow_id = ps.id
+            LEFT JOIN pigs pb ON l.boar_id = pb.id
+            LEFT JOIN pigs inv ON inv.tag_id = l.litter_id AND inv.pig_type = 'litter'
+            LEFT JOIN farms f ON ps.farm_id = f.id
+            LEFT JOIN farms finv ON inv.farm_id = finv.id
+            LEFT JOIN pigs bbatch ON l.batch_pig_id = bbatch.id
             ORDER BY l.farrowing_date DESC
         """)
         
-        litters = cursor.fetchall()
+        litters = [_strip_farm_fields(r) for r in cursor.fetchall()]
         
         cursor.close()
         conn.close()
@@ -22579,23 +23287,34 @@ def check_litter_id(litter_id):
 
 @app.route('/api/litter/update/<int:litter_id>', methods=['PUT'])
 def update_litter(litter_id):
-    """Update litter details"""
+    """Update litter details (born: sow + boar pig IDs; purchased: parent breed text)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['litter_id', 'sow_id', 'farrowing_date', 'alive_piglets', 'status']
-        for field in required_fields:
+        data = request.get_json() or {}
+        base_required = ['litter_id', 'farrowing_date', 'alive_piglets', 'male_piglets', 'female_piglets', 'status']
+        for field in base_required:
             if field not in data or data[field] is None:
                 return jsonify({'success': False, 'message': f'Missing required field: {field}'})
-        
+
+        try:
+            alive_piglets = int(data['alive_piglets'])
+            male_piglets = int(data['male_piglets'])
+            female_piglets = int(data['female_piglets'])
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Piglet counts must be valid numbers'})
+        if any(x < 0 for x in (alive_piglets, male_piglets, female_piglets)):
+            return jsonify({'success': False, 'message': 'Piglet counts cannot be negative'})
+        if male_piglets + female_piglets != alive_piglets:
+            return jsonify({
+                'success': False,
+                'message': 'Male piglets + female piglets must equal alive piglets',
+            })
+
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if litter exists
         cursor.execute("SELECT * FROM litters WHERE id = %s", (litter_id,))
         existing_litter = cursor.fetchone()
         
@@ -22603,6 +23322,67 @@ def update_litter(litter_id):
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Litter not found'})
+
+        raw_src = data.get('litter_source')
+        if raw_src is None or (isinstance(raw_src, str) and not str(raw_src).strip()):
+            litter_source = (existing_litter.get('litter_source') or 'born')
+        else:
+            litter_source = str(raw_src).strip().lower()
+        if isinstance(litter_source, bytes):
+            litter_source = litter_source.decode('utf-8', errors='ignore')
+        if litter_source not in ('born', 'purchased'):
+            litter_source = (existing_litter.get('litter_source') or 'born')
+        if litter_source not in ('born', 'purchased'):
+            litter_source = 'born'
+
+        if litter_source == 'purchased':
+            for key in ('sow_breed', 'boar_breed'):
+                v = (data.get(key) or '').strip() if data.get(key) is not None else ''
+                if not v:
+                    cursor.close()
+                    conn.close()
+                    return jsonify({'success': False, 'message': f'{key.replace("_", " ")} is required for a purchased litter'})
+        else:
+            for key in ('sow_id', 'boar_id'):
+                v = data.get(key)
+                if v is None or (isinstance(v, str) and not str(v).strip()):
+                    cursor.close()
+                    conn.close()
+                    return jsonify({'success': False, 'message': f'{key.replace("_", " ")} is required (select sow and boar)'})
+
+        if litter_source == 'born':
+            try:
+                sow_id = int(data['sow_id'])
+                boar_id = int(data['boar_id'])
+            except (TypeError, ValueError):
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Sow and boar must be valid animal IDs'})
+
+            cursor.execute(
+                "SELECT id, gender FROM pigs WHERE id = %s AND status = 'active'",
+                (sow_id,),
+            )
+            sow_row = cursor.fetchone()
+            if not sow_row or (sow_row.get('gender') or '').lower() != 'female':
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Sow must be an active female pig in the system'})
+
+            cursor.execute(
+                "SELECT id, gender FROM pigs WHERE id = %s AND status = 'active'",
+                (boar_id,),
+            )
+            boar_row = cursor.fetchone()
+            if not boar_row or (boar_row.get('gender') or '').lower() != 'male':
+                cursor.close()
+                conn.close()
+                return jsonify({'success': False, 'message': 'Boar must be an active male pig in the system'})
+        else:
+            sow_id = None
+            boar_id = None
+            sow_breed = (data.get('sow_breed') or '').strip()
+            boar_breed = (data.get('boar_breed') or '').strip()
         
         # Check if new litter_id already exists (excluding current litter)
         if data['litter_id'] != existing_litter['litter_id']:
@@ -22633,28 +23413,62 @@ def update_litter(litter_id):
         if new_litter_id != existing_litter['litter_id'] and not new_litter_id.startswith('E'):
             new_litter_id = f"E{data['litter_id']}"
         
-        # Update the litter
-        update_query = """
-            UPDATE litters 
-            SET litter_id = %s, sow_id = %s, farrowing_date = %s, 
-                weaning_date = %s, alive_piglets = %s, weaning_weight = %s, 
-                status = %s, updated_at = NOW()
-            WHERE id = %s
-        """
-        
-        cursor.execute(update_query, (
-            new_litter_id,
-            data['sow_id'],
-            data['farrowing_date'],
-            data.get('weaning_date'),
-            data['alive_piglets'],
-            data.get('weaning_weight'),
-            data['status'],
-            litter_id
-        ))
+        if litter_source == 'born':
+            cursor.execute(
+                """
+                UPDATE litters
+                SET litter_id = %s, litter_source = 'born', sow_id = %s, boar_id = %s,
+                    sow_breed = NULL, boar_breed = NULL, farrowing_date = %s,
+                    weaning_date = %s, alive_piglets = %s, male_piglets = %s, female_piglets = %s,
+                    weaning_weight = %s, status = %s, updated_at = NOW()
+                WHERE id = %s
+                """,
+                (
+                    new_litter_id,
+                    sow_id,
+                    boar_id,
+                    data['farrowing_date'],
+                    data.get('weaning_date'),
+                    alive_piglets,
+                    male_piglets,
+                    female_piglets,
+                    data.get('weaning_weight'),
+                    data['status'],
+                    litter_id,
+                ),
+            )
+            log_extra = f"sow {sow_id}, boar {boar_id}"
+        else:
+            cursor.execute(
+                """
+                UPDATE litters
+                SET litter_id = %s, litter_source = 'purchased', farrowing_record_id = NULL,
+                    sow_id = NULL, boar_id = NULL, sow_breed = %s, boar_breed = %s, farrowing_date = %s,
+                    weaning_date = %s, alive_piglets = %s, male_piglets = %s, female_piglets = %s,
+                    weaning_weight = %s, status = %s, updated_at = NOW()
+                WHERE id = %s
+                """,
+                (
+                    new_litter_id,
+                    sow_breed,
+                    boar_breed,
+                    data['farrowing_date'],
+                    data.get('weaning_date'),
+                    alive_piglets,
+                    male_piglets,
+                    female_piglets,
+                    data.get('weaning_weight'),
+                    data['status'],
+                    litter_id,
+                ),
+            )
+            log_extra = f"dam breed {sow_breed!r}, sire breed {boar_breed!r}"
         
         # Log the activity
-        activity_description = f"Litter details updated: ID changed to {new_litter_id}, Sow: {data['sow_id']}, Farrowing: {data['farrowing_date']}, Alive piglets: {data['alive_piglets']}, Status: {data['status']}"
+        activity_description = (
+            f"Litter details updated: ID → {new_litter_id}, {log_extra}, "
+            f"date {data['farrowing_date']}, alive {alive_piglets} ({male_piglets}M/{female_piglets}F), status {data['status']}"
+        )
         
         cursor.execute("""
             INSERT INTO litter_activities (litter_id, activity_type, description, created_at)
@@ -24554,7 +25368,7 @@ def get_available_pigs():
 
 @app.route('/api/litters/available', methods=['GET'])
 def get_available_litters():
-    """Litters for sale/death search. Pass ignore_status=1 to allow any litter status (still need alive_piglets > 0). Optional: q= search."""
+    """Litters for sale/death search, or batch combine (for_batch=1). Optional: q= search."""
     if 'employee_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -24562,28 +25376,55 @@ def get_available_litters():
         conn = get_db_connection()
         cursor = conn.cursor()
         q_param = (request.args.get('q') or request.args.get('search') or '').strip()
-        q_filter = q_param if len(q_param) >= 2 else None
+        for_batch = (request.args.get('for_batch') or '').lower() in ('1', 'true', 'yes', 'on')
+        list_all = (request.args.get('list_all') or '').lower() in ('1', 'true', 'yes', 'on')
+        min_q = 1 if for_batch else 2
+        q_filter = q_param if len(q_param) >= min_q else None
         strict_status = (request.args.get('ignore_status') or '').lower() not in ('1', 'true', 'yes', 'on')
 
         sql = """
-            SELECT l.id, l.litter_id, l.total_piglets as total_pigs, l.alive_piglets as available_pigs, 
+            SELECT l.id, l.litter_id, l.total_piglets as total_pigs, l.alive_piglets as available_pigs,
                    l.avg_weight, l.status, l.created_at, l.farrowing_date,
-                   p.breed, p.tag_id as sow_tag_id
+                   p.breed, p.tag_id as sow_tag_id,
+                   COALESCE(p.farm_id, inv.farm_id) AS farm_id,
+                   COALESCE(f1.farm_name, f2.farm_name) AS farm_name
             FROM litters l
             LEFT JOIN pigs p ON l.sow_id = p.id
+            LEFT JOIN pigs inv ON inv.tag_id = l.litter_id AND inv.pig_type = 'litter'
+            LEFT JOIN farms f1 ON p.farm_id = f1.id
+            LEFT JOIN farms f2 ON inv.farm_id = f2.id
             WHERE l.alive_piglets > 0
         """
-        if strict_status:
+        params = []
+        if for_batch:
+            sql += " AND LOWER(COALESCE(l.status, '')) = 'weaned' "
+        elif strict_status:
             sql += " AND l.status IN ('unweaned', 'weaned') "
+        if for_batch:
+            sql += " AND l.batch_pig_id IS NULL "
+            sql += " AND COALESCE(l.notes, '') NOT LIKE %s "
+            params.append('%BATCHED->%')
         if q_filter:
             like = f"%{q_filter}%"
-            sql += " AND (l.litter_id LIKE %s OR COALESCE(p.tag_id, '') LIKE %s OR COALESCE(p.breed, '') LIKE %s) "
-            sql += " ORDER BY l.litter_id ASC LIMIT 100"
-            cursor.execute(sql, (like, like, like))
+            sql += (
+                " AND (l.litter_id LIKE %s OR COALESCE(p.tag_id, '') LIKE %s OR COALESCE(p.breed, '') LIKE %s "
+                " OR COALESCE(f1.farm_name, f2.farm_name, '') LIKE %s) "
+            )
+            params.extend([like, like, like, like])
+            sql += " ORDER BY l.farrowing_date DESC LIMIT 100" if for_batch else " ORDER BY l.litter_id ASC LIMIT 100"
         else:
-            sql += " ORDER BY l.litter_id ASC"
+            if for_batch:
+                batch_limit = 500 if list_all else 40
+                batch_limit = max(1, min(int(batch_limit), 500))
+                sql += f" ORDER BY l.farrowing_date DESC LIMIT {batch_limit}"
+            else:
+                sql += " ORDER BY l.litter_id ASC"
+
+        if params:
+            cursor.execute(sql, tuple(params))
+        else:
             cursor.execute(sql)
-        litters = cursor.fetchall()
+        litters = [_strip_farm_fields(r) for r in cursor.fetchall()]
         
         cursor.close()
         conn.close()
@@ -26474,7 +27315,7 @@ except Exception as _e:
     print("Database setup on load:", _e)
 
 if __name__ == '__main__':
-    print("Starting Pig Farm Management System...")
+    print("Starting Farm A Management System...")
     print("Checking database and tables...")
     
     # Update pregnancy statuses on startup

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Pigs - Pig Farm Management System</title>
+    <title>Register Pigs - Farm A Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
@@ -88,7 +88,6 @@
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
                                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Source</th>
                                                              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breed</th>
@@ -100,7 +99,7 @@
                         </thead>
                         <tbody id="pigs-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                                          <tr>
-                                 <td colspan="9" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                 <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                     <div class="flex items-center justify-center space-x-2">
                                         <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                                         <span>Loading pigs...</span>
@@ -182,7 +181,6 @@
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Source</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age (Days)</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Registered By</th>
@@ -191,7 +189,7 @@
                         </thead>
                         <tbody id="batches-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             <tr>
-                                <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                     Open the Batches tab to load data
                                 </td>
                             </tr>
@@ -207,7 +205,7 @@
                 </div>
                 <div class="p-6 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible Litters (unweaned/weaned)</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible litters (weaned only)</label>
                         <div id="combine-litters-list" class="max-h-72 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
                             <p class="text-sm text-gray-500 dark:text-gray-400">Open this tab to load litters...</p>
                         </div>
@@ -248,17 +246,6 @@
                 <!-- Modal Body -->
                 <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 overflow-y-auto flex-1">
                     <form id="pigRegistrationForm" class="space-y-4 sm:space-y-6">
-                        <!-- Farm Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
-                                <i class="fas fa-building mr-2 text-blue-500"></i>
-                                Farm <span class="text-red-500">*</span>
-                            </label>
-                            <select id="farmSelect" name="farm_id" required class="w-full px-2 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-xs sm:text-base transition-all duration-200">
-                                <option value="">Select a farm</option>
-                            </select>
-                        </div>
-
                         <!-- Pig Type -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
@@ -270,7 +257,6 @@
                                 <option value="grown_pig">Grown Pig</option>
                                 <option value="piglet">Piglet</option>
                                 <option value="litter">Litter</option>
-                                <option value="batch">Batch</option>
                             </select>
                         </div>
 
@@ -286,7 +272,7 @@
                             </button>
                         </div>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Format: P001 (Grown), S001 (Piglet), L001 (Litter), B001 (Batch)
+                                Format: P001 (Grown), S001 (Piglet), L001 (Litter). Batches: use the Batches tab or Register batch to combine litters.
                             </p>
                         </div>
 
@@ -357,6 +343,57 @@
                                         <option value="breeding">Breeding</option>
                                         <option value="meat">Meat</option>
                                     </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Litter: live counts first, then sow/boar (born) or breeds (purchased) -->
+                        <div id="litterRegistrationFields" class="hidden space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Litter details</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Enter how many male and female piglets are in this litter, then complete sow/boar (born) or parent breeds (purchased) below.</p>
+
+                            <div class="p-3 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/20 space-y-3">
+                                <h5 class="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Live piglet counts <span class="text-red-500">*</span></h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1" for="regLitterMale">Number of males in litter</label>
+                                        <input type="number" id="regLitterMale" name="reg_litter_male" min="0" max="50" inputmode="numeric" class="w-full px-3 py-2.5 border border-indigo-200 dark:border-indigo-700 rounded-lg dark:bg-gray-800 dark:text-white text-base font-medium" value="0" aria-required="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1" for="regLitterFemale">Number of females in litter</label>
+                                        <input type="number" id="regLitterFemale" name="reg_litter_female" min="0" max="50" inputmode="numeric" class="w-full px-3 py-2.5 border border-indigo-200 dark:border-indigo-700 rounded-lg dark:bg-gray-800 dark:text-white text-base font-medium" value="0" aria-required="true">
+                                    </div>
+                                </div>
+                                <p class="text-xs text-indigo-800/80 dark:text-indigo-200/80">Males + females = total <strong>live</strong> piglets (at least 1).</p>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="regLitterStill">Still births (optional)</label>
+                                    <input type="number" id="regLitterStill" name="reg_litter_still" min="0" max="50" inputmode="numeric" class="w-full sm:max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" value="0">
+                                </div>
+                            </div>
+
+                            <div id="regLitterBornBlock" class="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-slate-800/40">
+                                <input type="hidden" id="regLitterSowId" value="">
+                                <input type="hidden" id="regLitterBoarId" value="">
+                                <div class="relative">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (female) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterSowSearch" autocomplete="off" placeholder="Search by tag or breed…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="regLitterPigSearchDebounced('regLitterSowSearch','regLitterSowResults','regLitterSowId','female')">
+                                    <div id="regLitterSowResults" class="hidden absolute z-20 mt-1 w-full max-h-40 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (male) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterBoarSearch" autocomplete="off" placeholder="Search by tag or breed…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="regLitterPigSearchDebounced('regLitterBoarSearch','regLitterBoarResults','regLitterBoarId','male')">
+                                    <div id="regLitterBoarResults" class="hidden absolute z-20 mt-1 w-full max-h-40 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                                </div>
+                            </div>
+
+                            <div id="regLitterPurchasedBlock" class="hidden space-y-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (dam) breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterSowBreed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Large White">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (sire) breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterBoarBreed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Duroc">
                                 </div>
                             </div>
                         </div>
@@ -447,16 +484,15 @@
             if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
             if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
             
-            loadFarms();
             loadPigs();
 
-            // Sidebar "Register Litter" link lands here and preselects batch (Bxxx tags)
             const params = new URLSearchParams(window.location.search);
             if (params.get('registration') === 'batch') {
-                openPigRegistrationModal();
-                const pigTypeSelect = document.getElementById('pigTypeSelect');
-                pigTypeSelect.value = 'batch';
-                pigTypeSelect.dispatchEvent(new Event('change'));
+                if (window.location.pathname.includes('/manager/')) {
+                    window.location.replace('/manager/farm/register-batch');
+                } else {
+                    window.location.replace('/admin/farm/register-batch');
+                }
             }
         });
 
@@ -528,30 +564,21 @@
                 modal.classList.add('hidden');
                 document.getElementById('pigRegistrationForm').reset();
                 document.getElementById('grownPigFields').classList.add('hidden');
+                const lf = document.getElementById('litterRegistrationFields');
+                if (lf) lf.classList.add('hidden');
+                ['regLitterSowId', 'regLitterBoarId'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                ['regLitterSowSearch', 'regLitterBoarSearch', 'regLitterSowBreed', 'regLitterBoarBreed', 'regLitterMale', 'regLitterFemale', 'regLitterStill'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.value = id === 'regLitterStill' ? '0' : (id === 'regLitterMale' || id === 'regLitterFemale' ? '0' : '');
+                });
+                ['regLitterSowResults', 'regLitterBoarResults'].forEach(function (id) {
+                    var b = document.getElementById(id);
+                    if (b) { b.classList.add('hidden'); b.innerHTML = ''; }
+                });
             }, 300);
-        }
-
-        // Load farms for dropdown
-        async function loadFarms() {
-            try {
-                const response = await fetch('/api/farm/list');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const farmSelect = document.getElementById('farmSelect');
-                    farmSelect.innerHTML = '<option value="">Select a farm</option>';
-                    
-                    data.farms.forEach(farm => {
-                        const option = document.createElement('option');
-                        option.value = farm.id;
-                        option.textContent = farm.farm_name;
-                        farmSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading farms:', error);
-                showToast('Error loading farms', 'error');
-            }
         }
 
         // Load pigs for table
@@ -565,7 +592,7 @@
                  } else {
                      document.getElementById('pigs-table-body').innerHTML = `
                          <tr>
-                             <td colspan="9" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                             <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                  No pigs registered yet
                              </td>
                          </tr>
@@ -575,7 +602,7 @@
                  console.error('Error loading pigs:', error);
                  document.getElementById('pigs-table-body').innerHTML = `
                      <tr>
-                         <td colspan="9" class="px-6 py-4 text-center text-red-500">
+                         <td colspan="8" class="px-6 py-4 text-center text-red-500">
                              Error loading pigs
                          </td>
                      </tr>
@@ -590,7 +617,7 @@
                          if (pigs.length === 0) {
                  tbody.innerHTML = `
                      <tr>
-                         <td colspan="9" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                         <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                              No pigs registered yet
                          </td>
                      </tr>
@@ -604,9 +631,6 @@
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                             ${pig.tag_id}
                         </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        ${pig.farm_name}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -698,7 +722,7 @@
                 } else {
                     document.getElementById('batches-table-body').innerHTML = `
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td>
                         </tr>
                     `;
                 }
@@ -706,7 +730,7 @@
                 console.error('Error loading batches:', error);
                 document.getElementById('batches-table-body').innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading batches</td>
+                        <td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading batches</td>
                     </tr>
                 `;
             }
@@ -717,7 +741,7 @@
             if (!batches.length) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td>
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td>
                     </tr>
                 `;
                 return;
@@ -726,7 +750,6 @@
             tbody.innerHTML = batches.map(batch => `
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">${batch.tag_id || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.farm_name || '-'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.pig_source || '-'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.age_days ?? '-'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${batch.registered_by_name || '-'}</td>
@@ -741,7 +764,7 @@
             try {
                 const response = await fetch('/api/litter/all');
                 const data = await response.json();
-                const litters = (data.litters || []).filter(l => ['unweaned', 'weaned'].includes((l.status || '').toLowerCase()));
+                const litters = (data.litters || []).filter(l => (l.status || '').toLowerCase() === 'weaned');
                 if (!litters.length) {
                     holder.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No eligible litters available.</p>';
                     return;
@@ -834,19 +857,29 @@
         document.getElementById('pigTypeSelect').addEventListener('change', function() {
             const pigType = this.value;
             const grownPigFields = document.getElementById('grownPigFields');
+            const litterFields = document.getElementById('litterRegistrationFields');
             
             if (pigType === 'grown_pig') {
                 grownPigFields.classList.remove('hidden');
+                if (litterFields) litterFields.classList.add('hidden');
                 // Make breed, gender, and purpose required
                 document.getElementById('breed').required = true;
                 document.getElementById('gender').required = true;
                 document.getElementById('purpose').required = true;
             } else {
                 grownPigFields.classList.add('hidden');
-                // Remove required attributes
                 document.getElementById('breed').required = false;
                 document.getElementById('gender').required = false;
                 document.getElementById('purpose').required = false;
+                if (pigType === 'litter' && litterFields) {
+                    litterFields.classList.remove('hidden');
+                    updateRegLitterSourcePanels();
+                    try {
+                        litterFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } catch (e) {}
+                } else if (litterFields) {
+                    litterFields.classList.add('hidden');
+                }
             }
             
             // Generate new tag ID when type changes
@@ -874,13 +907,87 @@
                     birthDateInput.required = true;
                     purchaseDateInput.required = false;
                     purchaseDateInput.value = ''; // Clear purchase date
-                } else if (pigSource === 'purchased') {
+                } else                 if (pigSource === 'purchased') {
                     // Show both birth date and purchase date fields
                     birthDateField.classList.remove('hidden');
                     purchaseDateField.classList.remove('hidden');
                     birthDateInput.required = true;
                     purchaseDateInput.required = true;
                 }
+                if (document.getElementById('pigTypeSelect') && document.getElementById('pigTypeSelect').value === 'litter') {
+                    updateRegLitterSourcePanels();
+                }
+            }
+        });
+
+        function updateRegLitterSourcePanels() {
+            var litterFields = document.getElementById('litterRegistrationFields');
+            if (!litterFields || litterFields.classList.contains('hidden')) return;
+            var src = (document.querySelector('input[name="pig_source"]:checked') || {}).value;
+            var bornB = document.getElementById('regLitterBornBlock');
+            var purB = document.getElementById('regLitterPurchasedBlock');
+            if (src === 'purchased') {
+                if (bornB) bornB.classList.add('hidden');
+                if (purB) purB.classList.remove('hidden');
+            } else {
+                if (bornB) bornB.classList.remove('hidden');
+                if (purB) purB.classList.add('hidden');
+            }
+        }
+
+        var _regLitterSearchTimers = {};
+        function regLitterPigSearchDebounced(inputId, resultId, hiddenId, gender) {
+            clearTimeout(_regLitterSearchTimers[inputId]);
+            _regLitterSearchTimers[inputId] = setTimeout(function () {
+                regLitterRunPigSearch(inputId, resultId, hiddenId, gender);
+            }, 220);
+        }
+        function regLitterRunPigSearch(inputId, resultId, hiddenId, gender) {
+            var inp = document.getElementById(inputId);
+            var box = document.getElementById(resultId);
+            if (!inp || !box) return;
+            var q = (inp.value || '').trim();
+            if (q.length < 1) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            fetch('/api/pigs/search?gender=' + encodeURIComponent(gender) + '&q=' + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success || !d.pigs || !d.pigs.length) {
+                        box.innerHTML = '<div class="px-3 py-2 text-gray-500">No matches</div>';
+                        box.classList.remove('hidden');
+                        return;
+                    }
+                    box.innerHTML = d.pigs.map(function (p) {
+                        var tag = (p.tag_id || '').replace(/'/g, "\\'");
+                        return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-0" onclick="regLitterSelectPig(' + p.id + ',\'' + tag + '\',\'' + inputId + '\',\'' + resultId + '\',\'' + hiddenId + '\')">' +
+                            '<span class="font-mono font-semibold">' + (p.tag_id || '') + '</span>' +
+                            '<span class="text-gray-500 text-xs ml-2">' + (p.breed || '') + '</span></button>';
+                    }).join('');
+                    box.classList.remove('hidden');
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="px-3 py-2 text-red-500">Search failed</div>';
+                    box.classList.remove('hidden');
+                });
+        }
+        function regLitterSelectPig(pigId, tag, inputId, resultId, hiddenId) {
+            document.getElementById(hiddenId).value = pigId;
+            document.getElementById(inputId).value = tag;
+            var box = document.getElementById(resultId);
+            if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+        }
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest) return;
+            var inReg = e.target.closest('#regLitterSowSearch') || e.target.closest('#regLitterSowResults') ||
+                e.target.closest('#regLitterBoarSearch') || e.target.closest('#regLitterBoarResults');
+            if (!inReg) {
+                var a = document.getElementById('regLitterSowResults');
+                var b = document.getElementById('regLitterBoarResults');
+                if (a) { a.classList.add('hidden'); }
+                if (b) { b.classList.add('hidden'); }
             }
         });
 
@@ -890,11 +997,10 @@
             const formData = new FormData(form);
             
             // Validate required fields
-            const farmId = formData.get('farm_id');
             const pigType = formData.get('pig_type');
             const pigSource = formData.get('pig_source');
             
-            if (!farmId || !pigType || !pigSource) {
+            if (!pigType || !pigSource) {
                 showToast('Please fill in all required fields', 'error');
                 return;
             }
@@ -924,9 +1030,41 @@
                 }
             }
 
-            // Prepare data for API (tag ID will be generated by server)
+            if (pigType === 'litter') {
+                const m = parseInt(document.getElementById('regLitterMale').value, 10);
+                const f = parseInt(document.getElementById('regLitterFemale').value, 10);
+                const still = parseInt(document.getElementById('regLitterStill').value || '0', 10);
+                if (Number.isNaN(m) || Number.isNaN(f) || m < 0 || f < 0) {
+                    showToast('Enter valid male and female piglet counts', 'error');
+                    return;
+                }
+                if (m + f < 1) {
+                    showToast('At least one live piglet is required (male + female)', 'error');
+                    return;
+                }
+                if (Number.isNaN(still) || still < 0) {
+                    showToast('Still births must be a valid number', 'error');
+                    return;
+                }
+                if (pigSource === 'born') {
+                    const sid = (document.getElementById('regLitterSowId') && document.getElementById('regLitterSowId').value) || '';
+                    const bid = (document.getElementById('regLitterBoarId') && document.getElementById('regLitterBoarId').value) || '';
+                    if (!sid || !bid) {
+                        showToast('Select a sow and a boar from the search results', 'error');
+                        return;
+                    }
+                } else {
+                    const sbr = (document.getElementById('regLitterSowBreed') && document.getElementById('regLitterSowBreed').value || '').trim();
+                    const bbr = (document.getElementById('regLitterBoarBreed') && document.getElementById('regLitterBoarBreed').value || '').trim();
+                    if (!sbr || !bbr) {
+                        showToast('Enter sow (dam) and boar (sire) breeds for purchased litter', 'error');
+                        return;
+                    }
+                }
+            }
+
+            // Prepare data for API (tag ID will be generated by server; farm is resolved server-side)
             const data = {
-                farm_id: parseInt(farmId),
                 pig_type: pigType,
                 pig_source: pigSource,
                 breed: formData.get('breed') || null,
@@ -935,6 +1073,18 @@
                 birth_date: birthDate,
                 purchase_date: purchaseDate || null
             };
+            if (pigType === 'litter') {
+                data.male_piglets = parseInt(document.getElementById('regLitterMale').value, 10);
+                data.female_piglets = parseInt(document.getElementById('regLitterFemale').value, 10);
+                data.still_births = parseInt(document.getElementById('regLitterStill').value || '0', 10);
+                if (pigSource === 'born') {
+                    data.sow_id = parseInt(document.getElementById('regLitterSowId').value, 10);
+                    data.boar_id = parseInt(document.getElementById('regLitterBoarId').value, 10);
+                } else {
+                    data.sow_breed = (document.getElementById('regLitterSowBreed').value || '').trim();
+                    data.boar_breed = (document.getElementById('regLitterBoarBreed').value || '').trim();
+                }
+            }
 
             try {
                 const response = await fetch('/api/pig/register', {
@@ -950,7 +1100,10 @@
                 if (result.success) {
                     showToast(result.message, 'success');
                     closePigRegistrationModal();
-                    loadPigs(); // Refresh the pigs list
+                    loadPigs();
+                    if (pigType === 'litter' && typeof loadLitters === 'function') {
+                        loadLitters();
+                    }
                 } else {
                     showToast(result.message, 'error');
                 }

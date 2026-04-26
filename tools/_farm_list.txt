@@ -45,7 +45,6 @@ admin_farm_health_management.html
 admin_farm_health_status.html
 admin_farm_insert_weight.html
 admin_farm_litters.html
-admin_farm_location.html
 admin_farm_management.html
 admin_farm_milk_production_analytics.html
 admin_farm_milk_quality_records.html

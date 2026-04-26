@@ -1,0 +1,630 @@
+<script>
+/** Pig registration modal on pig management — register grown pig / piglet / litter / batch. Depends on showToast + loadPigs (+ loadLitters) from parent page. */
+(function () {
+    let currentTagId = '';
+    var regBatchSelected = {};
+    var regBatchLastSearchResults = {};
+    var _regBatchSearchTimer = null;
+
+    function _modalContentEl() {
+        const modal = document.getElementById('pigRegistrationModal');
+        if (!modal) return null;
+        return modal.querySelector('.shadow-2xl');
+    }
+
+    function _resetLitterFormFields() {
+        const lf = document.getElementById('litterRegistrationFields');
+        if (lf) lf.classList.add('hidden');
+        ['regLitterSowId', 'regLitterBoarId'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        ['regLitterSowSearch', 'regLitterBoarSearch', 'regLitterSowBreed', 'regLitterBoarBreed', 'regLitterMale', 'regLitterFemale', 'regLitterStill'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = id === 'regLitterStill' ? '0' : (id === 'regLitterMale' || id === 'regLitterFemale' ? '0' : '');
+        });
+        ['regLitterSowResults', 'regLitterBoarResults'].forEach(function (id) {
+            var b = document.getElementById(id);
+            if (b) { b.classList.add('hidden'); b.innerHTML = ''; }
+        });
+    }
+
+    function _resetBatchCombineFields() {
+        regBatchSelected = {};
+        regBatchLastSearchResults = {};
+        var inp = document.getElementById('regBatchLitterSearch');
+        if (inp) inp.value = '';
+        var box = document.getElementById('regBatchLitterResults');
+        if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+        var n = document.getElementById('regBatchCombineNotes');
+        if (n) n.value = '';
+        regBatchCollapseAllLittersPanel();
+        var ab = document.getElementById('regBatchAllLittersBody');
+        if (ab) ab.innerHTML = '<p class="px-2 py-3 text-xs text-gray-500 dark:text-gray-400 text-center">Open this list to load…</p>';
+        var ac = document.getElementById('regBatchAllLittersCount');
+        if (ac) ac.textContent = '';
+        regBatchRenderSelected();
+    }
+
+    function regModalSetBatchMode(isBatch) {
+        var srcBlock = document.getElementById('regModalPigSourceBlock');
+        var dateFields = document.getElementById('dateFields');
+        var birth = document.getElementById('birthDate');
+        var purchase = document.getElementById('purchaseDate');
+        var hint = document.getElementById('regModalTagHint');
+        if (isBatch) {
+            if (srcBlock) srcBlock.classList.add('hidden');
+            if (dateFields) dateFields.classList.add('hidden');
+            if (birth) birth.required = false;
+            if (purchase) purchase.required = false;
+            if (hint) hint.textContent = 'Preview of the next B-tag below. The batch is created when you save.';
+        } else {
+            if (srcBlock) srcBlock.classList.remove('hidden');
+            if (dateFields) dateFields.classList.remove('hidden');
+            if (birth) birth.required = true;
+            if (hint) {
+                hint.textContent = 'Format: P001 (Grown), S001 (Piglet), L001 (Litter), B001 (Batch). For batches, search litters below; the B-tag is created when you save.';
+            }
+            var src = (document.querySelector('input[name="pig_source"]:checked') || {}).value;
+            if (purchase) purchase.required = src === 'purchased';
+        }
+        var icon = document.getElementById('regModalSubmitIcon');
+        var label = document.getElementById('regModalSubmitLabel');
+        if (icon && label) {
+            if (isBatch) {
+                icon.className = 'fas fa-object-group mr-2';
+                label.textContent = 'Create batch';
+            } else {
+                icon.className = 'fas fa-save mr-2';
+                label.textContent = 'Register Pig';
+            }
+        }
+    }
+
+    function regBatchRenderSelected() {
+        var list = document.getElementById('regBatchSelectedList');
+        var empty = document.getElementById('regBatchSelectedEmpty');
+        var prev = document.getElementById('regBatchCombinePreview');
+        if (!list) return;
+        var keys = Object.keys(regBatchSelected);
+        if (!keys.length) {
+            list.innerHTML = '';
+            if (empty) empty.classList.remove('hidden');
+            if (prev) prev.textContent = '';
+            return;
+        }
+        if (empty) empty.classList.add('hidden');
+        list.innerHTML = keys.map(function (k) {
+            var r = regBatchSelected[k];
+            var lid = (r.litter_id || k).replace(/</g, '');
+            var alive = r.available_pigs != null ? r.available_pigs : (r.alive_piglets != null ? r.alive_piglets : 0);
+            return (
+                '<span class="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-lg bg-amber-200/90 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100 text-xs font-medium">' +
+                '<span class="font-mono">' + lid + '</span>' +
+                '<span class="text-amber-800/80 dark:text-amber-200/80">(' + alive + ')</span>' +
+                '<button type="button" class="ml-1 p-1 rounded hover:bg-amber-300/50 dark:hover:bg-amber-800" aria-label="Remove" onclick="regBatchRemoveLitter(' + k + ')">' +
+                '<i class="fas fa-times text-[10px]"></i></button></span>'
+            );
+        }).join('');
+
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var qty = 0;
+        var weighted = 0;
+        keys.forEach(function (k) {
+            var r = regBatchSelected[k];
+            var units = parseInt(r.available_pigs != null ? r.available_pigs : (r.alive_piglets || 0), 10) || 0;
+            var fd = r.farrowing_date ? new Date(r.farrowing_date) : null;
+            if (fd) fd.setHours(0, 0, 0, 0);
+            var ageDays = fd ? Math.max(Math.floor((today - fd) / 86400000), 0) : 0;
+            qty += units;
+            weighted += ageDays * units;
+        });
+        var avg = qty > 0 ? Math.round(weighted / qty) : 0;
+        if (prev) {
+            prev.textContent = keys.length + ' litter(s) · Est. headcount ' + qty + ' · Est. weighted avg age ' + avg + ' days';
+        }
+    }
+
+    window.regBatchRemoveLitter = function (id) {
+        delete regBatchSelected[String(id)];
+        regBatchRenderSelected();
+    };
+
+    window.regBatchPickLitterById = function (id) {
+        var row = regBatchLastSearchResults[id];
+        if (!row) return;
+        if (regBatchSelected[String(id)]) {
+            if (typeof showToast === 'function') showToast('Litter already in the list', 'error');
+            return;
+        }
+        regBatchSelected[String(id)] = row;
+        regBatchRenderSelected();
+        var inp = document.getElementById('regBatchLitterSearch');
+        var box = document.getElementById('regBatchLitterResults');
+        if (inp) inp.value = '';
+        if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+    };
+
+    function regBatchCollapseAllLittersPanel() {
+        var panel = document.getElementById('regBatchAllLittersPanel');
+        var btn = document.getElementById('regBatchBrowseAllBtn');
+        if (panel) panel.classList.add('hidden');
+        if (btn) {
+            btn.setAttribute('aria-expanded', 'false');
+            var chev = btn.querySelector('.reg-batch-browse-chevron');
+            if (chev) chev.classList.remove('rotate-180');
+        }
+    }
+
+    function regBatchLoadAllUncombinedLitters() {
+        var body = document.getElementById('regBatchAllLittersBody');
+        var countEl = document.getElementById('regBatchAllLittersCount');
+        if (!body) return;
+        body.innerHTML = '<p class="px-2 py-3 text-xs text-gray-500 dark:text-gray-400 text-center"><i class="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i>Loading…</p>';
+        if (countEl) countEl.textContent = '';
+        fetch('/api/litters/available?for_batch=1&list_all=1')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success || !d.litters || !d.litters.length) {
+                    body.innerHTML = '<p class="px-2 py-3 text-xs text-gray-500 dark:text-gray-400 text-center">No uncombined litters</p>';
+                    if (countEl) countEl.textContent = '0';
+                    return;
+                }
+                d.litters.forEach(function (l) {
+                    regBatchLastSearchResults[l.id] = l;
+                });
+                if (countEl) countEl.textContent = d.litters.length + ' shown';
+                body.innerHTML = d.litters.map(function (l) {
+                    var alive = l.available_pigs != null ? l.available_pigs : l.alive_piglets;
+                    var sub = l.sow_tag_id || '';
+                    return (
+                        '<button type="button" class="w-full text-left px-3 py-2 hover:bg-amber-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-0" onclick="regBatchPickLitterById(' + l.id + ')">' +
+                        '<span class="font-mono font-semibold">' + (l.litter_id || '') + '</span>' +
+                        '<span class="text-gray-600 dark:text-gray-300 text-xs ml-2">Alive ' + (alive != null ? alive : '—') + '</span>' +
+                        '<div class="text-xs text-gray-500 truncate">' + sub + '</div></button>'
+                    );
+                }).join('');
+            })
+            .catch(function () {
+                body.innerHTML = '<p class="px-2 py-3 text-xs text-red-500 text-center">Failed to load list</p>';
+                if (countEl) countEl.textContent = '';
+            });
+    }
+
+    window.regBatchToggleAllLittersPanel = function regBatchToggleAllLittersPanel(ev) {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        var panel = document.getElementById('regBatchAllLittersPanel');
+        var btn = document.getElementById('regBatchBrowseAllBtn');
+        if (!panel || !btn) return;
+        if (!panel.classList.contains('hidden')) {
+            regBatchCollapseAllLittersPanel();
+            return;
+        }
+        panel.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        var chev = btn.querySelector('.reg-batch-browse-chevron');
+        if (chev) chev.classList.add('rotate-180');
+        regBatchLoadAllUncombinedLitters();
+    };
+
+    window.regBatchLitterSearchDebounced = function regBatchLitterSearchDebounced() {
+        clearTimeout(_regBatchSearchTimer);
+        _regBatchSearchTimer = setTimeout(regBatchRunLitterSearch, 220);
+    };
+
+    function regBatchRunLitterSearch() {
+        var pigType = document.getElementById('pigTypeSelect') && document.getElementById('pigTypeSelect').value;
+        if (pigType !== 'batch') return;
+        var inp = document.getElementById('regBatchLitterSearch');
+        var box = document.getElementById('regBatchLitterResults');
+        if (!inp || !box) return;
+        var q = (inp.value || '').trim();
+        var url = '/api/litters/available?for_batch=1';
+        if (q.length) {
+            url += '&q=' + encodeURIComponent(q);
+        }
+        fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                regBatchLastSearchResults = {};
+                if (!d.success || !d.litters || !d.litters.length) {
+                    box.innerHTML = '<div class="px-3 py-2 text-gray-500 dark:text-gray-400">No eligible litters</div>';
+                    box.classList.remove('hidden');
+                    return;
+                }
+                d.litters.forEach(function (l) {
+                    regBatchLastSearchResults[l.id] = l;
+                });
+                box.innerHTML = d.litters.map(function (l) {
+                    var alive = l.available_pigs != null ? l.available_pigs : l.alive_piglets;
+                    var sub = l.sow_tag_id || '';
+                    return (
+                        '<button type="button" class="w-full text-left px-3 py-2 hover:bg-amber-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-0" onclick="regBatchPickLitterById(' + l.id + ')">' +
+                        '<span class="font-mono font-semibold">' + (l.litter_id || '') + '</span>' +
+                        '<span class="text-gray-600 dark:text-gray-300 text-xs ml-2">Alive ' + (alive != null ? alive : '—') + '</span>' +
+                        '<div class="text-xs text-gray-500 truncate">' + sub + '</div></button>'
+                    );
+                }).join('');
+                box.classList.remove('hidden');
+            })
+            .catch(function () {
+                box.innerHTML = '<div class="px-3 py-2 text-red-500">Search failed</div>';
+                box.classList.remove('hidden');
+            });
+    }
+
+    window.openPigRegistrationModal = function openPigRegistrationModal() {
+        const modal = document.getElementById('pigRegistrationModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.offsetHeight;
+        setTimeout(function () {
+            const modalContent = _modalContentEl();
+            if (modalContent) {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }
+        }, 10);
+        var tagEl = document.getElementById('tagIdDisplay');
+        if (tagEl) tagEl.value = '';
+    };
+
+    window.closePigRegistrationModal = function closePigRegistrationModal() {
+        const modal = document.getElementById('pigRegistrationModal');
+        if (!modal) return;
+        const modalContent = _modalContentEl();
+        if (modalContent) {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(function () {
+            modal.classList.add('hidden');
+            var form = document.getElementById('pigRegistrationForm');
+            if (form) form.reset();
+            var g = document.getElementById('grownPigFields');
+            if (g) g.classList.add('hidden');
+            _resetLitterFormFields();
+            _resetBatchCombineFields();
+            var bf = document.getElementById('batchCombineFields');
+            if (bf) bf.classList.add('hidden');
+            regModalSetBatchMode(false);
+        }, 300);
+    };
+
+    window.generateNewTagId = function generateNewTagId() {
+        const pigType = document.getElementById('pigTypeSelect') && document.getElementById('pigTypeSelect').value;
+        if (!pigType) {
+            if (typeof showToast === 'function') showToast('Please select a pig type first', 'error');
+            return;
+        }
+        fetch('/api/pig/generate-tag-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pig_type: pigType })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    currentTagId = data.tag_id;
+                    const el = document.getElementById('tagIdDisplay');
+                    if (el) el.value = currentTagId;
+                } else {
+                    if (typeof showToast === 'function') showToast('Error generating tag ID: ' + (data.message || ''), 'error');
+                }
+            })
+            .catch(function (err) {
+                console.error(err);
+                if (typeof showToast === 'function') showToast('Error generating tag ID. Please try again.', 'error');
+            });
+    };
+
+    window.updateRegLitterSourcePanels = function updateRegLitterSourcePanels() {
+        var litterFields = document.getElementById('litterRegistrationFields');
+        if (!litterFields || litterFields.classList.contains('hidden')) return;
+        var src = (document.querySelector('input[name="pig_source"]:checked') || {}).value;
+        var bornB = document.getElementById('regLitterBornBlock');
+        var purB = document.getElementById('regLitterPurchasedBlock');
+        if (src === 'purchased') {
+            if (bornB) bornB.classList.add('hidden');
+            if (purB) purB.classList.remove('hidden');
+        } else {
+            if (bornB) bornB.classList.remove('hidden');
+            if (purB) purB.classList.add('hidden');
+        }
+    };
+
+    var _regLitterSearchTimers = {};
+    window.regLitterPigSearchDebounced = function regLitterPigSearchDebounced(inputId, resultId, hiddenId, gender) {
+        clearTimeout(_regLitterSearchTimers[inputId]);
+        _regLitterSearchTimers[inputId] = setTimeout(function () {
+            regLitterRunPigSearch(inputId, resultId, hiddenId, gender);
+        }, 220);
+    };
+
+    function regLitterRunPigSearch(inputId, resultId, hiddenId, gender) {
+        var inp = document.getElementById(inputId);
+        var box = document.getElementById(resultId);
+        if (!inp || !box) return;
+        var q = (inp.value || '').trim();
+        if (q.length < 1) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+        fetch('/api/pigs/search?gender=' + encodeURIComponent(gender) + '&q=' + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success || !d.pigs || !d.pigs.length) {
+                    box.innerHTML = '<div class="px-3 py-2 text-gray-500">No matches</div>';
+                    box.classList.remove('hidden');
+                    return;
+                }
+                box.innerHTML = d.pigs.map(function (p) {
+                    var tag = (p.tag_id || '').replace(/'/g, "\\'");
+                    return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-0" onclick="regLitterSelectPig(' + p.id + ',\'' + tag + '\',\'' + inputId + '\',\'' + resultId + '\',\'' + hiddenId + '\')">' +
+                        '<span class="font-mono font-semibold">' + (p.tag_id || '') + '</span>' +
+                        '<span class="text-gray-500 text-xs ml-2">' + (p.breed || '') + '</span></button>';
+                }).join('');
+                box.classList.remove('hidden');
+            })
+            .catch(function () {
+                box.innerHTML = '<div class="px-3 py-2 text-red-500">Search failed</div>';
+                box.classList.remove('hidden');
+            });
+    }
+
+    window.regLitterSelectPig = function regLitterSelectPig(pigId, tag, inputId, resultId, hiddenId) {
+        document.getElementById(hiddenId).value = pigId;
+        document.getElementById(inputId).value = tag;
+        var box = document.getElementById(resultId);
+        if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+    };
+
+    window.submitPigRegistration = async function submitPigRegistration() {
+        const form = document.getElementById('pigRegistrationForm');
+        if (!form) return;
+        const formData = new FormData(form);
+        const pigType = formData.get('pig_type');
+
+        if (pigType === 'batch') {
+            var litterIds = Object.keys(regBatchSelected);
+            if (litterIds.length < 2) {
+                if (typeof showToast === 'function') showToast('Select at least two litters to create a batch', 'error');
+                return;
+            }
+            var batchNotes = (document.getElementById('regBatchCombineNotes') && document.getElementById('regBatchCombineNotes').value || '').trim();
+            try {
+                const response = await fetch('/api/pig/register-batch-from-litters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        litter_ids: litterIds.map(function (x) { return parseInt(x, 10); }),
+                        notes: batchNotes
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    if (typeof showToast === 'function') showToast(result.message || 'Batch created', 'success');
+                    closePigRegistrationModal();
+                    if (typeof loadPigs === 'function') loadPigs();
+                    if (typeof loadLitters === 'function') loadLitters();
+                    if (typeof initPigMgmtBatchTools === 'function') initPigMgmtBatchTools();
+                } else {
+                    if (typeof showToast === 'function') showToast(result.message || 'Failed to create batch', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                if (typeof showToast === 'function') showToast('Error creating batch. Please try again.', 'error');
+            }
+            return;
+        }
+
+        const pigSource = formData.get('pig_source');
+        if (!pigType || !pigSource) {
+            if (typeof showToast === 'function') showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        const birthDate = formData.get('birth_date');
+        const purchaseDate = formData.get('purchase_date');
+        if (!birthDate) {
+            if (typeof showToast === 'function') showToast('Birth date is required for all pigs', 'error');
+            return;
+        }
+        if (pigSource === 'purchased' && !purchaseDate) {
+            if (typeof showToast === 'function') showToast('Purchase date is required for purchased pigs', 'error');
+            return;
+        }
+        if (pigType === 'grown_pig') {
+            if (!formData.get('breed') || !formData.get('gender') || !formData.get('purpose')) {
+                if (typeof showToast === 'function') showToast('Breed, gender, and purpose are required for grown pigs', 'error');
+                return;
+            }
+        }
+
+        if (pigType === 'litter') {
+            const m = parseInt(document.getElementById('regLitterMale').value, 10);
+            const f = parseInt(document.getElementById('regLitterFemale').value, 10);
+            const still = parseInt(document.getElementById('regLitterStill').value || '0', 10);
+            if (Number.isNaN(m) || Number.isNaN(f) || m < 0 || f < 0) {
+                if (typeof showToast === 'function') showToast('Enter valid male and female piglet counts', 'error');
+                return;
+            }
+            if (m + f < 1) {
+                if (typeof showToast === 'function') showToast('At least one live piglet is required (male + female)', 'error');
+                return;
+            }
+            if (Number.isNaN(still) || still < 0) {
+                if (typeof showToast === 'function') showToast('Still births must be a valid number', 'error');
+                return;
+            }
+            if (pigSource === 'born') {
+                const sid = (document.getElementById('regLitterSowId') && document.getElementById('regLitterSowId').value) || '';
+                const bid = (document.getElementById('regLitterBoarId') && document.getElementById('regLitterBoarId').value) || '';
+                if (!sid || !bid) {
+                    if (typeof showToast === 'function') showToast('Select a sow and a boar from the search results', 'error');
+                    return;
+                }
+            } else {
+                const sbr = (document.getElementById('regLitterSowBreed') && document.getElementById('regLitterSowBreed').value || '').trim();
+                const bbr = (document.getElementById('regLitterBoarBreed') && document.getElementById('regLitterBoarBreed').value || '').trim();
+                if (!sbr || !bbr) {
+                    if (typeof showToast === 'function') showToast('Enter sow (dam) and boar (sire) breeds for purchased litter', 'error');
+                    return;
+                }
+            }
+        }
+
+        const data = {
+            pig_type: pigType,
+            pig_source: pigSource,
+            breed: formData.get('breed') || null,
+            gender: formData.get('gender') || null,
+            purpose: formData.get('purpose') || null,
+            birth_date: birthDate,
+            purchase_date: purchaseDate || null
+        };
+        if (pigType === 'litter') {
+            data.male_piglets = parseInt(document.getElementById('regLitterMale').value, 10);
+            data.female_piglets = parseInt(document.getElementById('regLitterFemale').value, 10);
+            data.still_births = parseInt(document.getElementById('regLitterStill').value || '0', 10);
+            if (pigSource === 'born') {
+                data.sow_id = parseInt(document.getElementById('regLitterSowId').value, 10);
+                data.boar_id = parseInt(document.getElementById('regLitterBoarId').value, 10);
+            } else {
+                data.sow_breed = (document.getElementById('regLitterSowBreed').value || '').trim();
+                data.boar_breed = (document.getElementById('regLitterBoarBreed').value || '').trim();
+            }
+        }
+
+        try {
+            const response = await fetch('/api/pig/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (result.success) {
+                if (typeof showToast === 'function') showToast(result.message, 'success');
+                closePigRegistrationModal();
+                if (typeof loadPigs === 'function') loadPigs();
+                if (pigType === 'litter' && typeof loadLitters === 'function') loadLitters();
+            } else {
+                if (typeof showToast === 'function') showToast(result.message || 'Registration failed', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            if (typeof showToast === 'function') showToast('Error registering pig. Please try again.', 'error');
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var pigTypeSelect = document.getElementById('pigTypeSelect');
+        if (pigTypeSelect) {
+            pigTypeSelect.addEventListener('change', function () {
+                var pigType = this.value;
+                var grownPigFields = document.getElementById('grownPigFields');
+                var litterFields = document.getElementById('litterRegistrationFields');
+                var batchFields = document.getElementById('batchCombineFields');
+
+                if (pigType === 'grown_pig' && grownPigFields) {
+                    grownPigFields.classList.remove('hidden');
+                    if (litterFields) litterFields.classList.add('hidden');
+                    if (batchFields) batchFields.classList.add('hidden');
+                    regModalSetBatchMode(false);
+                    var b = document.getElementById('breed'), g = document.getElementById('gender'), p = document.getElementById('purpose');
+                    if (b) b.required = true;
+                    if (g) g.required = true;
+                    if (p) p.required = true;
+                } else if (pigType === 'litter' && litterFields) {
+                    if (grownPigFields) grownPigFields.classList.add('hidden');
+                    litterFields.classList.remove('hidden');
+                    if (batchFields) batchFields.classList.add('hidden');
+                    regModalSetBatchMode(false);
+                    var b2 = document.getElementById('breed'), g2 = document.getElementById('gender'), p2 = document.getElementById('purpose');
+                    if (b2) b2.required = false;
+                    if (g2) g2.required = false;
+                    if (p2) p2.required = false;
+                    if (typeof updateRegLitterSourcePanels === 'function') updateRegLitterSourcePanels();
+                    try { litterFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+                } else if (pigType === 'batch') {
+                    if (grownPigFields) grownPigFields.classList.add('hidden');
+                    if (litterFields) litterFields.classList.add('hidden');
+                    if (batchFields) batchFields.classList.remove('hidden');
+                    var b3 = document.getElementById('breed'), g3 = document.getElementById('gender'), p3 = document.getElementById('purpose');
+                    if (b3) b3.required = false;
+                    if (g3) g3.required = false;
+                    if (p3) p3.required = false;
+                    regModalSetBatchMode(true);
+                    regBatchRunLitterSearch();
+                    try { batchFields.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e2) {}
+                } else {
+                    if (grownPigFields) grownPigFields.classList.add('hidden');
+                    if (litterFields) litterFields.classList.add('hidden');
+                    if (batchFields) batchFields.classList.add('hidden');
+                    regModalSetBatchMode(false);
+                    var b4 = document.getElementById('breed'), g4 = document.getElementById('gender'), p4 = document.getElementById('purpose');
+                    if (b4) b4.required = false;
+                    if (g4) g4.required = false;
+                    if (p4) p4.required = false;
+                }
+
+                if (pigType) {
+                    if (typeof generateNewTagId === 'function') generateNewTagId();
+                } else {
+                    var t = document.getElementById('tagIdDisplay');
+                    if (t) t.value = '';
+                }
+            });
+        }
+        document.addEventListener('change', function (e) {
+            if (e.target && e.target.name === 'pig_source') {
+                var pigTypeNow = document.getElementById('pigTypeSelect') && document.getElementById('pigTypeSelect').value;
+                if (pigTypeNow === 'batch') return;
+                var pigSource = e.target.value;
+                var birthDateField = document.getElementById('birthDateField');
+                var purchaseDateField = document.getElementById('purchaseDateField');
+                var birthDateInput = document.getElementById('birthDate');
+                var purchaseDateInput = document.getElementById('purchaseDate');
+                if (!birthDateField || !purchaseDateField || !birthDateInput || !purchaseDateInput) return;
+                if (pigSource === 'born') {
+                    birthDateField.classList.remove('hidden');
+                    purchaseDateField.classList.add('hidden');
+                    birthDateInput.required = true;
+                    purchaseDateInput.required = false;
+                    purchaseDateInput.value = '';
+                } else if (pigSource === 'purchased') {
+                    birthDateField.classList.remove('hidden');
+                    purchaseDateField.classList.remove('hidden');
+                    birthDateInput.required = true;
+                    purchaseDateInput.required = true;
+                }
+                if (document.getElementById('pigTypeSelect') && document.getElementById('pigTypeSelect').value === 'litter') {
+                    if (typeof updateRegLitterSourcePanels === 'function') updateRegLitterSourcePanels();
+                }
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest) return;
+            var inReg = e.target.closest('#regLitterSowSearch') || e.target.closest('#regLitterSowResults') ||
+                e.target.closest('#regLitterBoarSearch') || e.target.closest('#regLitterBoarResults');
+            if (!inReg) {
+                var a = document.getElementById('regLitterSowResults');
+                var b = document.getElementById('regLitterBoarResults');
+                if (a) { a.classList.add('hidden'); }
+                if (b) { b.classList.add('hidden'); }
+            }
+            var inBatchSearch = e.target.closest('#regBatchLitterSearch') || e.target.closest('#regBatchLitterResults');
+            var inBatchBrowse = e.target.closest('#regBatchBrowseAllBtn') || e.target.closest('#regBatchAllLittersPanel');
+            if (!inBatchSearch) {
+                var br = document.getElementById('regBatchLitterResults');
+                if (br) br.classList.add('hidden');
+            }
+            if (!inBatchBrowse) {
+                regBatchCollapseAllLittersPanel();
+            }
+        });
+    });
+})();
+</script>

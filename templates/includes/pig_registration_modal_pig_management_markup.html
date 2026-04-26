@@ -1,0 +1,200 @@
+{# Same registration modal as admin_farm_register_pigs.html – opened from pig management + sidebar. #}
+    <div id="pigRegistrationModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 transition-all duration-300">
+        <div class="flex items-start sm:items-center justify-center min-h-screen p-1 sm:p-4 overflow-y-auto">
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-3xl shadow-2xl w-full max-w-4xl mx-1 sm:mx-4 my-2 sm:my-6 max-h-[96vh] sm:max-h-[90vh] overflow-hidden flex flex-col transform scale-95 opacity-0 transition-all duration-300">
+                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-piggy-bank text-white text-sm sm:text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Register New Pig</h3>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Fill in the pig details below</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="closePigRegistrationModal()" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 overflow-y-auto flex-1">
+                    <form id="pigRegistrationForm" class="space-y-4 sm:space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
+                                <i class="fas fa-tag mr-2 text-purple-500"></i>
+                                Type of Pig Registration <span class="text-red-500">*</span>
+                            </label>
+                            <select id="pigTypeSelect" name="pig_type" required class="w-full px-2 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-xs sm:text-base transition-all duration-200">
+                                <option value="">Select pig type</option>
+                                <option value="grown_pig">Grown Pig</option>
+                                <option value="piglet">Piglet</option>
+                                <option value="litter">Litter</option>
+                                <option value="batch">Batch (combine litters)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Generated Tag ID</label>
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                <input type="text" id="tagIdDisplay" readonly placeholder="Select pig type to generate tag ID" class="w-full sm:flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-base sm:text-lg font-bold">
+                                <button type="button" onclick="generateNewTagId()" class="w-full sm:w-auto px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">
+                                    <i class="fas fa-sync-alt mr-2"></i>Regenerate
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="regModalTagHint">Format: P001 (Grown), S001 (Piglet), L001 (Litter), B001 (Batch). For batches, search litters below; the B-tag is created when you save.</p>
+                        </div>
+                        <div id="regModalPigSourceBlock" class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pig Source <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-1 xs:grid-cols-2 gap-3">
+                                <label class="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 bg-white/70 dark:bg-gray-800/50">
+                                    <input type="radio" name="pig_source" value="born" class="shrink-0" checked>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Born on Farm</span>
+                                </label>
+                                <label class="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 bg-white/70 dark:bg-gray-800/50">
+                                    <input type="radio" name="pig_source" value="purchased" class="shrink-0">
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Purchased</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="dateFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div id="birthDateField">
+                                <label for="birthDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Birth Date <span class="text-red-500">*</span></label>
+                                <input type="date" id="birthDate" name="birth_date" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Used to calculate age in days</p>
+                            </div>
+                            <div id="purchaseDateField" class="hidden">
+                                <label for="purchaseDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Purchase Date <span class="text-red-500">*</span></label>
+                                <input type="date" id="purchaseDate" name="purchase_date" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">When the pig was purchased</p>
+                            </div>
+                        </div>
+                        <div id="grownPigFields" class="hidden space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Grown Pig Details</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="breed" name="breed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" placeholder="e.g., Large White">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gender <span class="text-red-500">*</span></label>
+                                    <select id="gender" name="gender" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                        <option value="">Select gender</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Purpose <span class="text-red-500">*</span></label>
+                                    <select id="purpose" name="purpose" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                        <option value="">Select purpose</option>
+                                        <option value="breeding">Breeding</option>
+                                        <option value="meat">Meat</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Litter: live counts, sow/boar live search (born) or parent breeds (purchased) -->
+                        <div id="litterRegistrationFields" class="hidden space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Litter details</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Enter how many male and female piglets are in this litter, then complete sow/boar (born on farm) or parent breeds (purchased) below.</p>
+
+                            <div class="p-3 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/20 space-y-3">
+                                <h5 class="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Live piglet counts <span class="text-red-500">*</span></h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1" for="regLitterMale">Number of males in litter</label>
+                                        <input type="number" id="regLitterMale" name="reg_litter_male" min="0" max="50" inputmode="numeric" class="w-full px-3 py-2.5 border border-indigo-200 dark:border-indigo-700 rounded-lg dark:bg-gray-800 dark:text-white text-base font-medium" value="0" aria-required="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1" for="regLitterFemale">Number of females in litter</label>
+                                        <input type="number" id="regLitterFemale" name="reg_litter_female" min="0" max="50" inputmode="numeric" class="w-full px-3 py-2.5 border border-indigo-200 dark:border-indigo-700 rounded-lg dark:bg-gray-800 dark:text-white text-base font-medium" value="0" aria-required="true">
+                                    </div>
+                                </div>
+                                <p class="text-xs text-indigo-800/80 dark:text-indigo-200/80">Males + females = total <strong>live</strong> piglets (at least 1).</p>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="regLitterStill">Still births (optional)</label>
+                                    <input type="number" id="regLitterStill" name="reg_litter_still" min="0" max="50" inputmode="numeric" class="w-full sm:max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" value="0">
+                                </div>
+                            </div>
+
+                            <div id="regLitterBornBlock" class="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-slate-800/40">
+                                <input type="hidden" id="regLitterSowId" value="">
+                                <input type="hidden" id="regLitterBoarId" value="">
+                                <div class="relative">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (female) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterSowSearch" autocomplete="off" placeholder="Type tag or breed — live search…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="regLitterPigSearchDebounced('regLitterSowSearch','regLitterSowResults','regLitterSowId','female')">
+                                    <div id="regLitterSowResults" class="hidden absolute z-20 mt-1 w-full max-h-40 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (male) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterBoarSearch" autocomplete="off" placeholder="Type tag or breed — live search…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="regLitterPigSearchDebounced('regLitterBoarSearch','regLitterBoarResults','regLitterBoarId','male')">
+                                    <div id="regLitterBoarResults" class="hidden absolute z-20 mt-1 w-full max-h-40 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                                </div>
+                            </div>
+
+                            <div id="regLitterPurchasedBlock" class="hidden space-y-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (dam) breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterSowBreed" name="reg_litter_sow_breed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Large White">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (sire) breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="regLitterBoarBreed" name="reg_litter_boar_breed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Duroc">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Batch: live search litters to combine (same farm as selected above) -->
+                        <div id="batchCombineFields" class="hidden space-y-4 border-t border-amber-200 dark:border-amber-800 pt-4">
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <i class="fas fa-boxes-stacked text-amber-600"></i> Combine litters into a batch
+                            </h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Choose the <strong>farm</strong> at the top, then search by litter ID, sow tag, breed, or farm name. Add at least two <strong>weaned</strong> litters from that farm. Unweaned litters cannot be batched; only weaned litters not already in a batch are listed.</p>
+                            <div class="relative">
+                                <div class="flex items-center justify-between gap-2 mb-1">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="regBatchLitterSearch">Search litters</label>
+                                    <button type="button" id="regBatchBrowseAllBtn" onclick="regBatchToggleAllLittersPanel(event)" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-400 dark:border-amber-600 bg-amber-100/80 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 text-xs font-medium hover:bg-amber-200/80 dark:hover:bg-amber-800/50 transition-colors" title="Show all weaned litters not in a batch" aria-expanded="false" aria-controls="regBatchAllLittersPanel">
+                                        <i class="fas fa-list-ul" aria-hidden="true"></i>
+                                        <i class="fas fa-chevron-down text-[10px] opacity-80 reg-batch-browse-chevron transition-transform" aria-hidden="true"></i>
+                                        <span class="hidden sm:inline">All uncombined</span>
+                                    </button>
+                                </div>
+                                <input type="text" id="regBatchLitterSearch" name="reg_batch_litter_search" autocomplete="off" placeholder="Type to search…" class="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" oninput="regBatchLitterSearchDebounced()">
+                                <div id="regBatchLitterResults" class="hidden absolute z-30 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl text-sm"></div>
+                                <div id="regBatchAllLittersPanel" class="hidden mt-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 shadow-lg z-20 overflow-hidden" role="region" aria-label="All uncombined litters">
+                                    <div class="px-3 py-2 border-b border-amber-200 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/40 flex items-center justify-between gap-2">
+                                        <span class="text-xs font-semibold text-amber-900 dark:text-amber-100">Weaned litters (not in a batch)</span>
+                                        <span id="regBatchAllLittersCount" class="text-[11px] text-amber-800/80 dark:text-amber-200/80"></span>
+                                    </div>
+                                    <div id="regBatchAllLittersBody" class="max-h-56 overflow-y-auto text-sm p-1">
+                                        <p class="px-2 py-3 text-xs text-gray-500 dark:text-gray-400 text-center">Open this list to load…</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Selected litters <span class="text-red-500">*</span> <span class="text-gray-500 font-normal">(minimum 2)</span></p>
+                                <div id="regBatchSelectedList" class="flex flex-wrap gap-2 min-h-[2.5rem] p-2 rounded-lg border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"></div>
+                                <p id="regBatchSelectedEmpty" class="text-xs text-gray-500 dark:text-gray-400 mt-1">None selected yet — pick from search results.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="regBatchCombineNotes">Batch notes (optional)</label>
+                                <textarea id="regBatchCombineNotes" name="reg_batch_notes" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm" placeholder="Optional notes"></textarea>
+                            </div>
+                            <p id="regBatchCombinePreview" class="text-xs text-amber-800 dark:text-amber-200/90"></p>
+                        </div>
+                    </form>
+                </div>
+                <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white/95 dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 backdrop-blur-sm flex-shrink-0 sticky bottom-0">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <button type="button" onclick="closePigRegistrationModal()" class="w-full sm:w-auto sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md text-sm sm:text-base font-semibold">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="button" id="regModalSubmitBtn" onclick="submitPigRegistration()" class="w-full sm:w-auto sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-200 hover:shadow-lg sm:hover:scale-105 text-sm sm:text-base font-semibold">
+                            <i class="fas fa-save mr-2" id="regModalSubmitIcon"></i><span id="regModalSubmitLabel">Register Pig</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

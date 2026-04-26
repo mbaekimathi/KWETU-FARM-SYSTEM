@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chicken Feed Stock Management - Farm Management System</title>
+    <title>Chicken Feed Stock Management - Farm A Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
@@ -89,12 +89,6 @@
                                 <option value="">Select feed</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Farm</label>
-                            <select name="farm_id" id="stock-in-farm" required class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                                <option value="">Select farm</option>
-                            </select>
-                        </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quantity</label>
@@ -178,12 +172,6 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Feed</label>
                             <select name="feed_id" id="stock-out-feed" required class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200">
                                 <option value="">Select feed</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Farm</label>
-                            <select name="farm_id" id="stock-out-farm" required class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200">
-                                <option value="">Select farm</option>
                             </select>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -470,17 +458,15 @@
         // Load feeds (with stock table), active feeds for dropdowns, and farms for stock in/out
         async function loadFeedsAndFarms() {
             try {
-                const [stockResponse, feedsResponse, farmsResponse] = await Promise.all([
+                const [stockResponse, feedsResponse] = await Promise.all([
                     fetch('/api/feed/list-with-stock?animal_type=chicken&include_inactive=1'),
                     fetch('/api/feed/list?animal_type=chicken'),
-                    fetch('/api/farm/list')
                 ]);
                 
                 const stockData = await stockResponse.json();
                 const feedsData = await feedsResponse.json();
-                const farmsData = await farmsResponse.json();
                 
-                if (stockData.success && feedsData.success && farmsData.success) {
+                if (stockData.success && feedsData.success) {
                     // Populate feed dropdowns (active chicken feeds only)
                     const stockInFeed = document.getElementById('stock-in-feed');
                     const stockOutFeed = document.getElementById('stock-out-feed');
@@ -501,26 +487,6 @@
                         option2.textContent = `${feed.feed_name} (${feed.feed_type})`;
                         option2.dataset.unit = feed.unit_of_measure;
                         stockOutFeed.appendChild(option2);
-                    });
-                    
-                    // Populate farm dropdowns
-                    const stockInFarm = document.getElementById('stock-in-farm');
-                    const stockOutFarm = document.getElementById('stock-out-farm');
-                    
-                    // Clear existing options except the first one
-                    while (stockInFarm.children.length > 1) stockInFarm.removeChild(stockInFarm.lastChild);
-                    while (stockOutFarm.children.length > 1) stockOutFarm.removeChild(stockOutFarm.lastChild);
-                    
-                    farmsData.farms.forEach(farm => {
-                        const option1 = document.createElement('option');
-                        option1.value = farm.id;
-                        option1.textContent = `${farm.farm_name} - ${farm.farm_location}`;
-                        stockInFarm.appendChild(option1);
-                        
-                        const option2 = document.createElement('option');
-                        option2.value = farm.id;
-                        option2.textContent = `${farm.farm_name} - ${farm.farm_location}`;
-                        stockOutFarm.appendChild(option2);
                     });
                     
                     // Stats + full feeds table (all registered chicken feeds + current stock kg)
@@ -603,7 +569,6 @@
                     stockInFeedNew.addEventListener('change', async function() {
                         const selectedOption = this.options[this.selectedIndex];
                         const feedId = this.value;
-                        const farmId = document.getElementById('stock-in-farm').value;
                         
                         if (selectedOption && selectedOption.dataset.unit) {
                             const unit = selectedOption.dataset.unit;
@@ -631,11 +596,7 @@
                             // Load previous cost and supplier if feed is selected
                             if (feedId) {
                                 try {
-                                    let url = `/api/feed/stock/last-transaction?feed_id=${feedId}`;
-                                    if (farmId) {
-                                        url += `&farm_id=${farmId}`;
-                                    }
-                                    
+                                    const url = `/api/feed/stock/last-transaction?feed_id=${feedId}`;
                                     const response = await fetch(url);
                                     const data = await response.json();
                                     
@@ -707,48 +668,6 @@
                             document.getElementById('stock-in-total-cost').value = '0.00';
                             document.getElementById('stock-in-cost').value = '0';
                             document.getElementById('stock-in-supplier').value = '';
-                        }
-                    });
-                    
-                    // Also load previous values when farm changes (if feed is already selected)
-                    document.getElementById('stock-in-farm').addEventListener('change', async function() {
-                        const feedId = document.getElementById('stock-in-feed').value;
-                        const farmId = this.value;
-                        
-                        if (feedId && farmId) {
-                            try {
-                                const response = await fetch(`/api/feed/stock/last-transaction?feed_id=${feedId}&farm_id=${farmId}`);
-                                const data = await response.json();
-                                
-                                if (data.success) {
-                                    const costInput = document.getElementById('stock-in-cost');
-                                    const supplierInput = document.getElementById('stock-in-supplier');
-                                    
-                                    // Update cost per kg if available
-                                    const costPerKgInput = document.getElementById('stock-in-cost-per-kg');
-                                    if (data.cost_per_kg !== null && data.cost_per_kg !== undefined && costPerKgInput) {
-                                        costPerKgInput.value = data.cost_per_kg.toFixed(2);
-                                        costPerKgInput.classList.add('ring-2', 'ring-blue-500');
-                                        setTimeout(() => {
-                                            costPerKgInput.classList.remove('ring-2', 'ring-blue-500');
-                                        }, 1500);
-                                        
-                                        // Calculate total cost if quantity is already entered
-                                        calculateTotalCost();
-                                    }
-                                    
-                                    // Update supplier if available
-                                    if (data.supplier) {
-                                        supplierInput.value = data.supplier;
-                                        supplierInput.classList.add('ring-2', 'ring-blue-500');
-                                        setTimeout(() => {
-                                            supplierInput.classList.remove('ring-2', 'ring-blue-500');
-                                        }, 1500);
-                                    }
-                                }
-                            } catch (error) {
-                                console.error('Error loading previous transaction:', error);
-                            }
                         }
                     });
                     
@@ -886,7 +805,6 @@
                 
                 const data = {
                     feed_id: parseInt(formData.get('feed_id')),
-                    farm_id: parseInt(formData.get('farm_id')),
                     transaction_type: 'stock_in',
                     quantity: quantity,
                     unit_of_measure: unitOfMeasure,
@@ -944,7 +862,6 @@
             try {
                 const data = {
                     feed_id: parseInt(formData.get('feed_id')),
-                    farm_id: parseInt(formData.get('farm_id')),
                     transaction_type: 'stock_out',
                     quantity: parseFloat(formData.get('quantity')),
                     unit_of_measure: formData.get('unit_of_measure'),
@@ -1033,7 +950,6 @@
                             <td class="px-3 py-2.5 whitespace-nowrap text-gray-700 dark:text-gray-300">${escapeHtml(t.transaction_date || '—')}</td>
                             <td class="px-3 py-2.5 font-medium text-gray-900 dark:text-white">${escapeHtml(t.feed_name)}</td>
                             <td class="px-3 py-2.5 text-gray-600 dark:text-gray-400 capitalize hidden md:table-cell">${escapeHtml(t.feed_type || '—')}</td>
-                            <td class="px-3 py-2.5 text-gray-700 dark:text-gray-300 min-w-[140px]">${escapeHtml(t.farm_name || '')}${t.farm_location ? '<span class="text-gray-500 dark:text-gray-500"> · </span>' + escapeHtml(t.farm_location) : ''}</td>
                             <td class="px-3 py-2.5 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">${qtyStr}</td>
                             <td class="px-3 py-2.5 text-right text-sm hidden lg:table-cell">${costCell}</td>
                             <td class="px-3 py-2.5 hidden xl:table-cell text-gray-600 dark:text-gray-400">${t.supplier ? escapeHtml(t.supplier) : '—'}</td>
@@ -1051,7 +967,6 @@
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Txn date</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Feed</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell">Type</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">Farm</th>
                                 <th class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide">Quantity</th>
                                 <th class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide hidden lg:table-cell">Total cost</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden xl:table-cell">Supplier</th>
@@ -1061,7 +976,7 @@
                             </tr>
                         </thead>`;
                     const body = empty
-                        ? `<tbody><tr><td colspan="10" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No ${title.toLowerCase()} yet</td></tr></tbody>`
+                        ? `<tbody><tr><td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No ${title.toLowerCase()} yet</td></tr></tbody>`
                         : `<tbody class="divide-y divide-gray-200 dark:divide-gray-700">${rows.map(transactionTableRow).join('')}</tbody>`;
                     return `
                         <div class="rounded-xl border-2 ${borderClass} overflow-hidden">

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Batch - Pig Farm Management System</title>
+    <title>Register Batch - Farm A Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
@@ -23,11 +23,11 @@
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
                 <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">Combine Litters Into Batch</h2>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Select two or more litters. A new B-tag is created and source litter records remain in history.</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Select two or more weaned litters. A new B-tag is created and source litter records remain in history.</p>
                 </div>
                 <div class="p-6 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible Litters (unweaned/weaned)</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Eligible litters (weaned only)</label>
                         <div id="combine-litters-list" class="max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
                             <p class="text-sm text-gray-500 dark:text-gray-400">Loading litters...</p>
                         </div>
@@ -150,7 +150,13 @@
             try {
                 const response = await fetch('/api/litter/all');
                 const data = await response.json();
-                const litters = (data.litters || []).filter(l => ['unweaned', 'weaned'].includes((l.status || '').toLowerCase()));
+                const litters = (data.litters || []).filter(l => {
+                    if ((l.status || '').toLowerCase() !== 'weaned') return false;
+                    if (l.batch_pig_id) return false;
+                    if ((l.notes || '').indexOf('BATCHED->') >= 0) return false;
+                    const n = parseInt(l.alive_piglets ?? l.total_piglets ?? 0, 10);
+                    return n > 0;
+                });
                 availableLitters = litters;
                 if (!litters.length) {
                     holder.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No eligible litters available.</p>';

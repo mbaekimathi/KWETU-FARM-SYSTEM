@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Management - Pig Farm Management System</title>
+    <title>Stock Management - Farm A Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
@@ -12,6 +12,7 @@
 {% set farm_hub_nav_active = 'stock' %}
 {% set farm_sidebar_banner_title = 'Stock hub' %}
 {% set farm_sidebar_banner_sub = 'Feed inventory' %}
+{% set farm_sidebar_no_main_links = true %}
 {% include 'includes/farm_shell_header.html' %}
 {% include 'includes/farm_unified_sidebar.html' %}
 

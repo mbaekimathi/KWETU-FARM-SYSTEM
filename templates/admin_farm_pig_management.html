@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pig Management - Pig Farm Management System</title>
+    <title>Pig Management - Farm A Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -180,30 +180,22 @@
                             <button id="theme-toggle" data-theme-toggle class="group p-3 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Toggle theme">
                                 <i class="fas fa-moon text-lg group-hover:scale-110 transition-transform duration-300"></i>
                             </button>
-                            <a href="{% if user.role == 'manager' %}/manager/farm/register-pigs{% else %}/admin/farm/register-pigs{% endif %}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold">
+                            <button type="button" onclick="openPigRegistrationModal()" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold">
                                 <i class="fas fa-plus mr-2"></i>
                             Register New Pig
-                        </a>
+                        </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Data Tabs -->
-            <div class="mb-4 flex items-center gap-2 overflow-x-auto">
-                <button id="tab-pigs-btn" onclick="switchPigDataTab('pigs')" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap">Pigs</button>
-                <button id="tab-litters-btn" onclick="switchPigDataTab('litters')" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Litters</button>
-                <button id="tab-batches-btn" onclick="switchPigDataTab('batches')" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Batches</button>
-            </div>
-
-            <div id="porkers-view-banner" class="hidden mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p class="font-medium">
-                        <span class="text-amber-800 dark:text-amber-200">Porkers</span>
-                        <span class="text-amber-700/90 dark:text-amber-200/80">— pigs 90+ days old, herd status <strong>Active</strong>, breeding status <strong>Available</strong>.</span>
-                    </p>
-                    <a href="{{ request.path }}" class="shrink-0 text-center sm:text-left font-semibold text-amber-900 underline decoration-amber-400 underline-offset-2 hover:text-amber-950 dark:text-amber-200">Show all registered pigs</a>
-                </div>
+            <!-- Data Tabs (horizontal scroll on narrow screens) -->
+            <div class="mb-4 -mx-1 px-1 flex items-center gap-2 overflow-x-auto overflow-y-hidden pb-1 scroll-smooth touch-pan-x" style="-webkit-overflow-scrolling: touch;">
+                <button type="button" id="tab-pigs-btn" onclick="switchPigDataTab('pigs')" title="All registered pigs (excludes litters and batches list)" class="flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap">All pigs</button>
+                <button type="button" id="tab-litters-btn" onclick="switchPigDataTab('litters')" title="All litters" class="flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Litters</button>
+                <button type="button" id="tab-batches-btn" onclick="switchPigDataTab('batches')" title="All batches" class="flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Batches</button>
+                <button type="button" id="tab-porkers-btn" onclick="switchPigDataTab('porkers')" title="Porker stage: age 113–140 days" class="flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Porkers <span class="hidden sm:inline">(113–140d)</span></button>
+                <button type="button" id="tab-bacons-btn" onclick="switchPigDataTab('bacons')" title="Baconer stage: age 141–180 days" class="flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">Bacons <span class="hidden sm:inline">(141–180d)</span></button>
             </div>
 
             <!-- Pigs Table Section -->
@@ -266,7 +258,7 @@
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID / Gender / Age (days)</th>
-                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
+                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stage</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type / Source / Breed</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Purpose</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breeding Status</th>
@@ -288,7 +280,7 @@
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID / Gender / Age (days)</th>
-                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farm</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stage</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type / Source / Breed</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
@@ -296,7 +288,7 @@
                             </thead>
                             <tbody id="pigs-table-body-md" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                         Loading pigs...
                                     </td>
                                 </tr>
@@ -374,15 +366,17 @@
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sow</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Farrowing Date</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Weaning Date</th>
-                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age (Days)</th>
-                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Alive Piglets</th>
+                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="Days since farrowing">Age (Days)</th>
+                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="Life stage from litter age (days since farrowing)">Stage</th>
+                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Alive</th>
+                                    <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">♂ / ♀</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Weaning Status</th>
                                     <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="litters-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 <tr>
-                                    <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="10" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                         Loading litters...
                                     </td>
                                 </tr>
@@ -396,13 +390,14 @@
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Litter ID</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sow</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age / Piglets</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="From days since farrowing">Stage</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="litters-table-body-md" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                         Loading litters...
                                     </td>
                                 </tr>
@@ -430,10 +425,78 @@
                                 <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Edit and delete batch records</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-3">
-                            <button onclick="loadBatches()" class="group px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all duration-200 hover:shadow-md">
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <a href="{% if '/manager/' in request.path %}/manager/farm/register-batch{% else %}/admin/farm/register-batch{% endif %}" class="group px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-all duration-200 hover:shadow-md text-sm font-medium">
+                                <i class="fas fa-object-group mr-2"></i>Combine litters (new batch)
+                            </a>
+                            <button onclick="loadBatches(); refreshPigMgmtBatchToolsIfVisible();" class="group px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all duration-200 hover:shadow-md">
                                 <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-500"></i>
                                 Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pig-mgmt-batch-tools-teaser" class="px-3 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/30">
+                    <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">Register or combine batches on this page</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Batch tools stay hidden until you open them. You can still search and edit batches in the list below.</p>
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-3">
+                        <button type="button" onclick="showPigMgmtBatchTools('new')" class="inline-flex items-center px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium shadow-sm transition-colors">
+                            <i class="fas fa-object-group mr-2"></i>Create new batch from litters
+                        </button>
+                        <button type="button" onclick="showPigMgmtBatchTools('add')" class="inline-flex items-center px-3 py-2 rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                            <i class="fas fa-plus-circle mr-2"></i>Add litters to an existing batch
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Combine litters → new batch; add litters → existing batch (shown after user clicks a link above) -->
+                <div id="pig-mgmt-batch-tools-panel" class="hidden px-3 sm:px-6 py-4 border-b border-amber-200/60 dark:border-amber-800/50 bg-amber-50/40 dark:bg-amber-950/20 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs font-medium text-amber-900 dark:text-amber-100">Batch setup tools</p>
+                        <button type="button" onclick="hidePigMgmtBatchTools()" class="text-xs text-amber-800 dark:text-amber-200 hover:underline font-medium">
+                            Hide batch tools
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div id="pig-mgmt-batch-card-new" class="rounded-xl border border-amber-200 dark:border-amber-800 bg-white/80 dark:bg-gray-800/80 p-4 space-y-3 shadow-sm scroll-mt-4">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-object-group text-amber-600"></i> Create new batch from litters
+                            </h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-400">Pick at least two weaned litters (not already merged into a batch). A new B-tag is created and those litters cannot join another batch.</p>
+                            <div id="pig-mgmt-new-batch-litter-list" class="max-h-52 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1 text-sm">
+                                <p class="text-gray-500 dark:text-gray-400 px-2 py-1">Use “Create new batch from litters” to load eligible litters…</p>
+                            </div>
+                            <div>
+                                <label for="pig-mgmt-new-batch-notes" class="text-xs font-medium text-gray-700 dark:text-gray-300">Notes (optional)</label>
+                                <textarea id="pig-mgmt-new-batch-notes" rows="2" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm" placeholder="Optional notes for this batch"></textarea>
+                            </div>
+                            <p id="pig-mgmt-new-batch-preview" class="text-xs text-gray-600 dark:text-gray-400 min-h-[1.25rem]"></p>
+                            <button type="button" onclick="submitPigMgmtNewBatch()" class="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow-sm">
+                                Create batch from selected litters
+                            </button>
+                        </div>
+                        <div id="pig-mgmt-batch-card-add" class="rounded-xl border border-blue-200 dark:border-blue-800 bg-white/80 dark:bg-gray-800/80 p-4 space-y-3 shadow-sm scroll-mt-4">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-plus-circle text-blue-600"></i> Add litters to an existing batch
+                            </h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-400">Choose an active batch, then add more weaned litters. The batch’s average age is recalculated from all litters linked to it.</p>
+                            <div>
+                                <label for="pig-mgmt-target-batch-select" class="text-xs font-medium text-gray-700 dark:text-gray-300">Batch</label>
+                                <select id="pig-mgmt-target-batch-select" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm" onchange="onPigMgmtTargetBatchChange()">
+                                    <option value="">Select batch…</option>
+                                </select>
+                            </div>
+                            <div id="pig-mgmt-add-litter-list" class="max-h-52 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1 text-sm">
+                                <p class="text-gray-500 dark:text-gray-400 px-2 py-1">Select a batch first…</p>
+                            </div>
+                            <div>
+                                <label for="pig-mgmt-add-to-batch-notes" class="text-xs font-medium text-gray-700 dark:text-gray-300">Notes (optional)</label>
+                                <textarea id="pig-mgmt-add-to-batch-notes" rows="2" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm" placeholder="Optional"></textarea>
+                            </div>
+                            <p id="pig-mgmt-add-batch-preview" class="text-xs text-gray-600 dark:text-gray-400 min-h-[1.25rem]"></p>
+                            <button type="button" onclick="submitPigMgmtAddLittersToBatch()" class="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm">
+                                Add selected litters to batch
                             </button>
                         </div>
                     </div>
@@ -474,28 +537,30 @@
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
-                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age (days)</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="Weighted average age from linked litters">Avg. age (d)</th>
+                                <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="Life stage from average age">Stage</th>
                                 <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breed</th>
                                 <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="batches-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading batches...</td></tr>
+                            <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading batches...</td></tr>
                         </tbody>
                     </table>
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 hidden md:table lg:hidden">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
                                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Age (days)</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="Weighted average age">Avg. age</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" title="From average age">Stage</th>
                                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breed</th>
                                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="batches-table-body-md" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading batches...</td></tr>
+                            <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading batches...</td></tr>
                         </tbody>
                     </table>
                     <div id="batches-mobile-cards" class="md:hidden divide-y divide-gray-200 dark:divide-gray-700 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"></div>
@@ -530,17 +595,6 @@
                 <div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
                     <form id="editPigForm" class="space-y-4 sm:space-y-6">
                         <input type="hidden" id="editPigId" name="pig_id">
-                        
-                        <!-- Farm Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-3">
-                                <i class="fas fa-building mr-2 text-blue-500"></i>
-                                Farm <span class="text-red-500">*</span>
-                            </label>
-                            <select id="editFarmSelect" name="farm_id" required class="w-full px-2 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-xs sm:text-base transition-all duration-200">
-                                <option value="">Select a farm</option>
-                            </select>
-                        </div>
 
                         <!-- Pig Type -->
                         <div>
@@ -746,6 +800,7 @@
                 <div class="p-4 sm:p-6">
                     <form id="editLitterForm" class="space-y-4 sm:space-y-6">
                         <input type="hidden" id="editLitterId" name="litter_id">
+                        <input type="hidden" id="editLitterSource" name="litter_source" value="born">
                         
                         <!-- Litter ID (Editable) -->
                         <div>
@@ -771,14 +826,36 @@
                             </p>
                         </div>
 
-                        <!-- Sow Selection -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Sow <span class="text-red-500">*</span>
-                            </label>
-                            <select id="editSowSelect" name="sow_id" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                                <option value="">Select a sow</option>
-                            </select>
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-600 p-3 bg-gray-50/80 dark:bg-slate-800/50">
+                            <p class="text-sm font-medium text-gray-800 dark:text-gray-200" id="editLitterOriginText">Litter origin</p>
+                        </div>
+
+                        <div id="editLitterBornBlock" class="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-slate-800/40">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Search by tag or breed, then select sow and boar.</p>
+                            <input type="hidden" id="editLitterSowId" value="">
+                            <input type="hidden" id="editLitterBoarId" value="">
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (female) <span class="text-red-500">*</span></label>
+                                <input type="text" id="editLitterSowSearch" autocomplete="off" placeholder="Type to search sows…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="litterPigSearchDebounced('editLitterSowSearch','editLitterSowResults','editLitterSowId','female')">
+                                <div id="editLitterSowResults" class="hidden absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                            </div>
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (male) <span class="text-red-500">*</span></label>
+                                <input type="text" id="editLitterBoarSearch" autocomplete="off" placeholder="Type to search boars…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="litterPigSearchDebounced('editLitterBoarSearch','editLitterBoarResults','editLitterBoarId','male')">
+                                <div id="editLitterBoarResults" class="hidden absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                            </div>
+                        </div>
+
+                        <div id="editLitterPurchasedBlock" class="hidden space-y-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+                            <p class="text-sm text-amber-800 dark:text-amber-200">Parent <strong>breeds</strong> (no farm pig IDs for purchased litters).</p>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (dam) breed <span class="text-red-500">*</span></label>
+                                <input type="text" id="editLitterSowBreedText" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Large White">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (sire) breed <span class="text-red-500">*</span></label>
+                                <input type="text" id="editLitterBoarBreedText" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Duroc">
+                            </div>
                         </div>
 
                         <!-- Farrowing Date -->
@@ -817,6 +894,17 @@
                             </label>
                             <input type="number" id="editAlivePigletsInput" name="alive_piglets" required min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" placeholder="Number of alive piglets">
                         </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Male piglets <span class="text-red-500">*</span></label>
+                                <input type="number" id="editMalePigletsInput" name="male_piglets" required min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Female piglets <span class="text-red-500">*</span></label>
+                                <input type="number" id="editFemalePigletsInput" name="female_piglets" required min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">Males + females must equal alive piglets.</p>
 
                         <!-- Weaning Weight (conditional) -->
                         <div id="weaningWeightField" class="hidden">
@@ -922,7 +1010,7 @@
                     <!-- Sow Information Section -->
                     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Sow Information</h4>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                             <div>
                                 <span class="text-gray-600 dark:text-gray-400">Tag ID:</span>
                                 <span id="litterSowTagIdInfo" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
@@ -935,15 +1023,11 @@
                                 <span class="text-gray-600 dark:text-gray-400">Age:</span>
                                 <span id="litterSowAge" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
                             </div>
-                            <div>
-                                <span class="text-gray-600 dark:text-gray-400">Farm:</span>
-                                <span id="litterSowFarm" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
-                            </div>
                         </div>
                     </div>
 
                     <!-- Breeding Record Information -->
-                    <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                    <div id="litterBreedingCyclePanel" class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                         <h4 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3">Breeding Cycle Details</h4>
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                             <div>
@@ -964,9 +1048,51 @@
                     <!-- Litter Registration Form -->
                     <div class="mb-6">
                         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Litter Details</h4>
-                        <form id="litterRegistrationForm" class="space-y-4">
-                            <input type="hidden" id="litterSowId" name="sow_id">
-                            <input type="hidden" id="litterBreedingRecordId" name="breeding_record_id">
+                        <form id="litterRegistrationForm" class="space-y-4" novalidate>
+                            <input type="hidden" id="litterSowId" value="">
+                            <input type="hidden" id="litterBoarId" value="">
+                            <input type="hidden" id="litterBreedingRecordId" value="">
+                            <input type="hidden" id="litterFarrowingRecordId" value="">
+                            
+                            <div>
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Litter origin <span class="text-red-500">*</span></p>
+                                <div class="flex flex-wrap gap-4">
+                                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="litter_source" id="litterSourceBorn" value="born" class="litter-source-radio" checked onchange="onLitterSourceChange()">
+                                        <span class="text-sm text-gray-800 dark:text-gray-200">Born on farm (sow and boar in system)</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="litter_source" id="litterSourcePurchased" value="purchased" class="litter-source-radio" onchange="onLitterSourceChange()">
+                                        <span class="text-sm text-gray-800 dark:text-gray-200">Purchased (parent breeds only)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="litterBornBlock" class="space-y-4 p-4 rounded-lg border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-gray-800/30">
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Search by tag ID or breed. Select a row to set the animal.</p>
+                                <div class="relative">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (female) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="litterSowSearch" autocomplete="off" placeholder="Type to search sows…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="litterPigSearchDebounced('litterSowSearch','litterSowResults','litterSowId','female')">
+                                    <div id="litterSowResults" class="hidden absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (male) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="litterBoarSearch" autocomplete="off" placeholder="Type to search boars…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="litterPigSearchDebounced('litterBoarSearch','litterBoarResults','litterBoarId','male')">
+                                    <div id="litterBoarResults" class="hidden absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                                </div>
+                            </div>
+
+                            <div id="litterPurchasedBlock" class="hidden space-y-4 p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+                                <p class="text-sm text-amber-800 dark:text-amber-200">Enter the dam and sire <strong>breeds</strong> as known when the litter was purchased (no farrowing record).</p>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (dam) breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="litterSowBreedText" name="sow_breed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Large White">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (sire) breed <span class="text-red-500">*</span></label>
+                                    <input type="text" id="litterBoarBreedText" name="boar_breed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Duroc">
+                                </div>
+                            </div>
                             
                             <!-- Litter ID -->
                             <div>
@@ -1000,6 +1126,18 @@
                                 </label>
                                 <input type="number" id="litterAlivePiglets" name="alive_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
                             </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Male piglets <span class="text-red-500">*</span></label>
+                                    <input type="number" id="litterMalePiglets" name="male_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Female piglets <span class="text-red-500">*</span></label>
+                                    <input type="number" id="litterFemalePiglets" name="female_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">Males + females must equal alive piglets.</p>
 
                             <!-- Still Births -->
                             <div>
@@ -1113,14 +1251,10 @@
                     <!-- Pig Info Section -->
                     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Pig Information</h4>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                             <div>
                                 <span class="text-gray-600 dark:text-gray-400">Tag ID:</span>
                                 <span id="auditPigTagIdInfo" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
-                            </div>
-                            <div>
-                                <span class="text-gray-600 dark:text-gray-400">Farm:</span>
-                                <span id="auditPigFarm" class="ml-2 font-medium text-gray-900 dark:text-white"></span>
                             </div>
                             <div>
                                 <span class="text-gray-600 dark:text-gray-400">Type:</span>
@@ -1202,6 +1336,8 @@
         </div>
     </div>
 
+{% include 'includes/pig_registration_modal_pig_management_markup.html' %}
+
     <!-- Footer -->
 {% set farm_shell_footer_note = 'Pig module' %}
 {% include 'includes/farm_shell_footer.html' %}
@@ -1261,60 +1397,61 @@
         let pigSearchTerm = '';
         let litterSearchTerm = '';
         let batchSearchTerm = '';
-        let pigListView = 'all';
 
-        function initPigListViewFromUrl() {
-            const p = new URLSearchParams(window.location.search);
-            pigListView = p.get('view') === 'porkers' ? 'porkers' : 'all';
+        function hidePigMgmtBatchTools() {
+            var panel = document.getElementById('pig-mgmt-batch-tools-panel');
+            var teaser = document.getElementById('pig-mgmt-batch-tools-teaser');
+            if (panel) panel.classList.add('hidden');
+            if (teaser) teaser.classList.remove('hidden');
         }
 
-        function isPorkerPig(pig) {
-            if (!pig || pig.pig_type === 'batch' || pig.pig_type === 'litter') return false;
-            const age = parseInt(pig.age_days, 10);
-            if (isNaN(age) || age < 90) return false;
-            if ((pig.status || '').toString().toLowerCase() !== 'active') return false;
-            return (pig.breeding_status || '').toString().toLowerCase() === 'available';
-        }
-
-        function getPigsForCurrentView() {
-            const base = getFilteredStandardPigs();
-            if (pigListView !== 'porkers') return base;
-            return base.filter(isPorkerPig);
-        }
-
-        function updatePorkersUI() {
-            const banner = document.getElementById('porkers-view-banner');
-            const titleEl = document.getElementById('pigs-section-title');
-            const subEl = document.getElementById('pigs-section-subtitle');
-            if (banner) {
-                if (pigListView === 'porkers') {
-                    banner.classList.remove('hidden');
-                } else {
-                    banner.classList.add('hidden');
-                }
+        function refreshPigMgmtBatchToolsIfVisible() {
+            var panel = document.getElementById('pig-mgmt-batch-tools-panel');
+            if (panel && !panel.classList.contains('hidden') && typeof initPigMgmtBatchTools === 'function') {
+                initPigMgmtBatchTools();
             }
-            if (titleEl && subEl) {
-                if (pigListView === 'porkers') {
-                    titleEl.textContent = 'Porkers';
-                    subEl.textContent = '90+ days, Active, breeding status Available';
-                } else {
-                    titleEl.textContent = 'Registered Pigs';
-                    subEl.textContent = 'Manage and monitor all pig records';
-                }
+        }
+
+        function showPigMgmtBatchTools(focus) {
+            var panel = document.getElementById('pig-mgmt-batch-tools-panel');
+            var teaser = document.getElementById('pig-mgmt-batch-tools-teaser');
+            if (panel) panel.classList.remove('hidden');
+            if (teaser) teaser.classList.add('hidden');
+            if (typeof initPigMgmtBatchTools === 'function') {
+                initPigMgmtBatchTools();
             }
+            var targetId = focus === 'add' ? 'pig-mgmt-batch-card-add' : 'pig-mgmt-batch-card-new';
+            requestAnimationFrame(function () {
+                var el = document.getElementById(targetId);
+                if (el) {
+                    try {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } catch (e) {
+                        el.scrollIntoView();
+                    }
+                }
+            });
         }
 
         // Load pigs on page load
         document.addEventListener('DOMContentLoaded', function() {
-            initPigListViewFromUrl();
-            updatePorkersUI();
             loadPigs();
             loadLitters();
             loadBatches();
-            loadFarms();
             recalculateAllPigAges();
             checkCompletedBreedingCycles();
-            switchPigDataTab('pigs');
+            var viewParam = (new URLSearchParams(window.location.search).get('view') || '').toLowerCase();
+            if (viewParam === 'batches') {
+                switchPigDataTab('batches');
+            } else if (viewParam === 'porkers') {
+                switchPigDataTab('porkers');
+            } else if (viewParam === 'bacons' || viewParam === 'bacon') {
+                switchPigDataTab('bacons');
+            } else if (viewParam === 'litters') {
+                switchPigDataTab('litters');
+            } else {
+                switchPigDataTab('pigs');
+            }
         });
 
         // Recalculate ages for all pigs
@@ -1335,31 +1472,6 @@
             })
             .catch(error => {
                 console.error('Error recalculating pig ages:', error);
-            });
-        }
-
-        // Load farms for dropdown
-        function loadFarms() {
-            fetch('/api/farm/list')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const farmSelect = document.getElementById('editFarmSelect');
-                    if (farmSelect) {
-                        farmSelect.innerHTML = '<option value="">Select a farm</option>';
-                        
-                        data.farms.forEach(function(farm) {
-                            const option = document.createElement('option');
-                            option.value = farm.id;
-                            option.textContent = farm.farm_name;
-                            farmSelect.appendChild(option);
-                        });
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error loading farms:', error);
-                showToast('Error loading farms', 'error');
             });
         }
 
@@ -1407,11 +1519,32 @@
             }
         }
 
+        const PIG_MGMT_TAB_INACTIVE = 'flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
+        const PIG_MGMT_TAB_ACTIVE = 'flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+
+        function updatePigsSectionHeaderForTab(tab) {
+            const titleEl = document.getElementById('pigs-section-title');
+            const subEl = document.getElementById('pigs-section-subtitle');
+            if (!titleEl || !subEl) return;
+            if (tab === 'porkers') {
+                titleEl.textContent = 'Porkers';
+                subEl.textContent = 'Porker stage: ages 113–140 days (litters excluded). Search by tag ID below.';
+            } else if (tab === 'bacons') {
+                titleEl.textContent = 'Bacons';
+                subEl.textContent = 'Baconer stage: ages 141–180 days (litters excluded). Search by tag ID below.';
+            } else {
+                titleEl.textContent = 'Registered Pigs';
+                subEl.textContent = 'Manage and monitor all pig records (grown pigs and piglets; batches and litters use other tabs).';
+            }
+        }
+
         function switchPigDataTab(tab) {
             activePigDataTab = tab;
             const pigsBtn = document.getElementById('tab-pigs-btn');
             const littersBtn = document.getElementById('tab-litters-btn');
             const batchesBtn = document.getElementById('tab-batches-btn');
+            const porkersBtn = document.getElementById('tab-porkers-btn');
+            const baconsBtn = document.getElementById('tab-bacons-btn');
             const pigsSection = document.getElementById('pigs-section');
             const littersSection = document.getElementById('litters-section');
             const batchesSection = document.getElementById('batches-section');
@@ -1420,22 +1553,34 @@
             littersSection.classList.add('hidden');
             batchesSection.classList.add('hidden');
 
-            pigsBtn.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
-            littersBtn.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
-            batchesBtn.className = 'px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap';
+            if (pigsBtn) pigsBtn.className = PIG_MGMT_TAB_INACTIVE;
+            if (littersBtn) littersBtn.className = PIG_MGMT_TAB_INACTIVE;
+            if (batchesBtn) batchesBtn.className = PIG_MGMT_TAB_INACTIVE;
+            if (porkersBtn) porkersBtn.className = PIG_MGMT_TAB_INACTIVE;
+            if (baconsBtn) baconsBtn.className = PIG_MGMT_TAB_INACTIVE;
 
             if (tab === 'litters') {
                 littersSection.classList.remove('hidden');
-                littersBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+                if (littersBtn) littersBtn.className = PIG_MGMT_TAB_ACTIVE;
                 loadLitters();
             } else if (tab === 'batches') {
                 batchesSection.classList.remove('hidden');
-                batchesBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+                if (batchesBtn) batchesBtn.className = PIG_MGMT_TAB_ACTIVE;
+                hidePigMgmtBatchTools();
                 loadBatches();
-            } else {
+            } else if (tab === 'porkers' || tab === 'bacons') {
+                hidePigMgmtBatchTools();
                 pigsSection.classList.remove('hidden');
-                pigsBtn.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
-                displayPigs(getPigsForCurrentView());
+                if (tab === 'porkers' && porkersBtn) porkersBtn.className = PIG_MGMT_TAB_ACTIVE;
+                if (tab === 'bacons' && baconsBtn) baconsBtn.className = PIG_MGMT_TAB_ACTIVE;
+                updatePigsSectionHeaderForTab(tab);
+                displayPigs(getFilteredPigsForCurrentTab());
+            } else {
+                hidePigMgmtBatchTools();
+                pigsSection.classList.remove('hidden');
+                if (pigsBtn) pigsBtn.className = PIG_MGMT_TAB_ACTIVE;
+                updatePigsSectionHeaderForTab('pigs');
+                displayPigs(getFilteredStandardPigs());
             }
         }
 
@@ -1443,7 +1588,9 @@
             if (activePigDataTab === 'batches') {
                 loadBatches();
             } else if (activePigDataTab === 'pigs') {
-                displayPigs(getPigsForCurrentView());
+                displayPigs(getFilteredStandardPigs());
+            } else if (activePigDataTab === 'porkers' || activePigDataTab === 'bacons') {
+                displayPigs(getFilteredPigsForCurrentTab());
             }
         }
 
@@ -1476,6 +1623,63 @@
             });
         }
 
+        function getPigAgeDays(pig) {
+            const n = parseInt(pig && pig.age_days, 10);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        /** Display-only life stage from age in days (not stored; does not affect APIs). */
+        function _pigLifeStageMeta(ageDays) {
+            const n = parseInt(ageDays, 10);
+            const unk = {
+                label: '—',
+                badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 ring-1 ring-gray-200 dark:ring-gray-600',
+            };
+            if (!Number.isFinite(n) || n < 0) return unk;
+            if (n <= 28) {
+                return {
+                    label: 'Piglet',
+                    badgeClass: 'bg-pink-100 text-pink-900 dark:bg-pink-900/40 dark:text-pink-100 ring-1 ring-pink-200 dark:ring-pink-700',
+                };
+            }
+            if (n <= 70) {
+                return {
+                    label: 'Weaner',
+                    badgeClass: 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100 ring-1 ring-amber-200 dark:ring-amber-700',
+                };
+            }
+            if (n <= 112) {
+                return {
+                    label: 'Grower',
+                    badgeClass: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100 ring-1 ring-emerald-200 dark:ring-emerald-700',
+                };
+            }
+            if (n <= 140) {
+                return {
+                    label: 'Porker',
+                    badgeClass: 'bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100 ring-1 ring-orange-200 dark:ring-orange-700',
+                };
+            }
+            if (n <= 180) {
+                return {
+                    label: 'Baconer',
+                    badgeClass: 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100 ring-1 ring-red-200 dark:ring-red-800',
+                };
+            }
+            return {
+                label: 'Adult',
+                badgeClass: 'bg-violet-100 text-violet-900 dark:bg-violet-900/40 dark:text-violet-100 ring-1 ring-violet-200 dark:ring-violet-700',
+            };
+        }
+
+        function formatPigLifeStageFromAgeDays(ageDays) {
+            return _pigLifeStageMeta(ageDays).label;
+        }
+
+        function getPigLifeStageBadgeClasses(ageDays) {
+            return _pigLifeStageMeta(ageDays).badgeClass;
+        }
+
         function getFilteredStandardPigs() {
             const term = (pigSearchTerm || '').trim().toLowerCase();
             const filtered = (allPigs || []).filter(pig => {
@@ -1485,6 +1689,38 @@
                 return (pig.tag_id || '').toLowerCase().includes(term);
             });
             return sortPigsByStatus(filtered);
+        }
+
+        /** Porker stage: 113–140 days (matches Stage column). Litters excluded; batches included if age matches. */
+        function getFilteredPorkersPigs() {
+            const term = (pigSearchTerm || '').trim().toLowerCase();
+            const filtered = (allPigs || []).filter(pig => {
+                if ((pig.pig_type || '') === 'litter') return false;
+                const age = getPigAgeDays(pig);
+                if (age === null || age < 113 || age > 140) return false;
+                if (!term) return true;
+                return (pig.tag_id || '').toLowerCase().includes(term);
+            });
+            return sortPigsByStatus(filtered);
+        }
+
+        /** Baconer stage: 141–180 days (matches Stage column). */
+        function getFilteredBaconsPigs() {
+            const term = (pigSearchTerm || '').trim().toLowerCase();
+            const filtered = (allPigs || []).filter(pig => {
+                if ((pig.pig_type || '') === 'litter') return false;
+                const age = getPigAgeDays(pig);
+                if (age === null || age < 141 || age > 180) return false;
+                if (!term) return true;
+                return (pig.tag_id || '').toLowerCase().includes(term);
+            });
+            return sortPigsByStatus(filtered);
+        }
+
+        function getFilteredPigsForCurrentTab() {
+            if (activePigDataTab === 'porkers') return getFilteredPorkersPigs();
+            if (activePigDataTab === 'bacons') return getFilteredBaconsPigs();
+            return getFilteredStandardPigs();
         }
 
         function getFilteredBatches() {
@@ -1512,7 +1748,7 @@
                 if (searchTerm.trim() === '') {
                     searchResults.classList.add('hidden');
                 } else {
-                    const pigsResult = getPigsForCurrentView();
+                    const pigsResult = getFilteredPigsForCurrentTab();
                     searchResults.classList.remove('hidden');
                     searchCount.textContent = pigsResult.length;
                 }
@@ -1573,6 +1809,230 @@
             if (results) results.classList.add('hidden');
             litterSearchTerm = '';
             displayLitters(getFilteredLitters());
+        }
+
+        let pigMgmtBatchToolsLitters = [];
+
+        function litterEligibleForBatchCombine(l) {
+            const st = (l.status || '').toLowerCase();
+            if (st !== 'weaned') return false;
+            if (l.batch_pig_id) return false;
+            if ((l.notes || '').indexOf('BATCHED->') >= 0) return false;
+            const n = parseInt(l.alive_piglets ?? l.total_piglets ?? 0, 10);
+            if (!n || n < 1) return false;
+            return true;
+        }
+
+        function populatePigMgmtBatchSelect() {
+            const sel = document.getElementById('pig-mgmt-target-batch-select');
+            if (!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">Select batch…</option>';
+            (allPigs || [])
+                .filter(function (p) {
+                    return p.pig_type === 'batch' && (p.status || '').toLowerCase() === 'active';
+                })
+                .sort(function (a, b) {
+                    return (a.tag_id || '').localeCompare(b.tag_id || '', undefined, { numeric: true, sensitivity: 'base' });
+                })
+                .forEach(function (p) {
+                    const o = document.createElement('option');
+                    o.value = p.id;
+                    o.textContent = p.tag_id || 'B?';
+                    sel.appendChild(o);
+                });
+            if (cur) {
+                sel.value = cur;
+            }
+        }
+
+        async function initPigMgmtBatchTools() {
+            const listNew = document.getElementById('pig-mgmt-new-batch-litter-list');
+            if (listNew) {
+                listNew.innerHTML = '<p class="text-gray-500 dark:text-gray-400 px-2 py-1">Loading litters…</p>';
+            }
+            try {
+                const res = await fetch('/api/litter/all');
+                const data = await res.json();
+                pigMgmtBatchToolsLitters = (data.success && data.litters) ? data.litters : [];
+                renderPigMgmtNewBatchList();
+                populatePigMgmtBatchSelect();
+                onPigMgmtTargetBatchChange();
+            } catch (e) {
+                console.error(e);
+                if (listNew) {
+                    listNew.innerHTML = '<p class="text-red-500 px-2 py-1">Failed to load litters.</p>';
+                }
+            }
+        }
+
+        function renderPigMgmtNewBatchList() {
+            const holder = document.getElementById('pig-mgmt-new-batch-litter-list');
+            if (!holder) return;
+            const elig = pigMgmtBatchToolsLitters.filter(litterEligibleForBatchCombine);
+            if (!elig.length) {
+                holder.innerHTML = '<p class="text-gray-500 dark:text-gray-400 px-2 py-1">No eligible litters (weaned only, alive &gt; 0, not already in a batch).</p>';
+                updatePigMgmtNewBatchPreview();
+                return;
+            }
+            holder.innerHTML = elig.map(function (l) {
+                const lid = (l.litter_id || '').replace(/"/g, '&quot;');
+                return (
+                    '<label class="flex items-start gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">' +
+                    '<input type="checkbox" class="pig-mgmt-new-batch-cb mt-1" value="' + l.id + '" data-piglets="' + (l.alive_piglets ?? l.total_piglets ?? 0) + '" data-farrowing="' + (l.farrowing_date || '') + '">' +
+                    '<span class="text-gray-800 dark:text-gray-200">' + (l.litter_id || '—') + ' · ' + (l.sow_tag_id || '—') + ' · Alive: ' + (l.alive_piglets ?? 0) + '</span>' +
+                    '</label>'
+                );
+            }).join('');
+            holder.querySelectorAll('.pig-mgmt-new-batch-cb').forEach(function (cb) {
+                cb.addEventListener('change', updatePigMgmtNewBatchPreview);
+            });
+            updatePigMgmtNewBatchPreview();
+        }
+
+        function onPigMgmtTargetBatchChange() {
+            renderPigMgmtAddLitterList();
+            updatePigMgmtAddBatchPreview();
+        }
+
+        function renderPigMgmtAddLitterList() {
+            const holder = document.getElementById('pig-mgmt-add-litter-list');
+            const sel = document.getElementById('pig-mgmt-target-batch-select');
+            if (!holder || !sel) return;
+            const bid = sel.value;
+            if (!bid) {
+                holder.innerHTML = '<p class="text-gray-500 dark:text-gray-400 px-2 py-1">Select a batch first…</p>';
+                return;
+            }
+            const elig = pigMgmtBatchToolsLitters.filter(function (l) {
+                return litterEligibleForBatchCombine(l);
+            });
+            if (!elig.length) {
+                holder.innerHTML = '<p class="text-gray-500 dark:text-gray-400 px-2 py-1">No eligible litters for this batch.</p>';
+                updatePigMgmtAddBatchPreview();
+                return;
+            }
+            holder.innerHTML = elig.map(function (l) {
+                return (
+                    '<label class="flex items-start gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">' +
+                    '<input type="checkbox" class="pig-mgmt-add-batch-cb mt-1" value="' + l.id + '" data-piglets="' + (l.alive_piglets ?? l.total_piglets ?? 0) + '" data-farrowing="' + (l.farrowing_date || '') + '">' +
+                    '<span class="text-gray-800 dark:text-gray-200">' + (l.litter_id || '—') + ' · ' + (l.sow_tag_id || '—') + ' · Alive: ' + (l.alive_piglets ?? 0) + '</span>' +
+                    '</label>'
+                );
+            }).join('');
+            holder.querySelectorAll('.pig-mgmt-add-batch-cb').forEach(function (cb) {
+                cb.addEventListener('change', updatePigMgmtAddBatchPreview);
+            });
+            updatePigMgmtAddBatchPreview();
+        }
+
+        function _pigMgmtWeightedPreviewFromCheckboxes(selector) {
+            const selected = Array.from(document.querySelectorAll(selector + ':checked'));
+            const qty = selected.reduce(function (sum, cb) {
+                return sum + (parseInt(cb.dataset.piglets || '0', 10) || 0);
+            }, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let weightedAgeSum = 0;
+            selected.forEach(function (cb) {
+                const units = parseInt(cb.dataset.piglets || '0', 10) || 0;
+                const fd = cb.dataset.farrowing ? new Date(cb.dataset.farrowing) : null;
+                if (fd) fd.setHours(0, 0, 0, 0);
+                const ageDays = fd ? Math.max(Math.floor((today - fd) / 86400000), 0) : 0;
+                weightedAgeSum += ageDays * units;
+            });
+            const avgAge = qty > 0 ? Math.round(weightedAgeSum / qty) : 0;
+            return { count: selected.length, qty: qty, avgAge: avgAge };
+        }
+
+        function updatePigMgmtNewBatchPreview() {
+            const el = document.getElementById('pig-mgmt-new-batch-preview');
+            if (!el) return;
+            const p = _pigMgmtWeightedPreviewFromCheckboxes('.pig-mgmt-new-batch-cb');
+            el.textContent = p.count
+                ? ('Selected: ' + p.count + ' litter(s) · Est. headcount: ' + p.qty + ' · Est. weighted avg age: ' + p.avgAge + ' days')
+                : '';
+        }
+
+        function updatePigMgmtAddBatchPreview() {
+            const el = document.getElementById('pig-mgmt-add-batch-preview');
+            if (!el) return;
+            const p = _pigMgmtWeightedPreviewFromCheckboxes('.pig-mgmt-add-batch-cb');
+            el.textContent = p.count
+                ? ('Adding: ' + p.count + ' litter(s) · Est. new headcount from selection: ' + p.qty + ' (batch age will be recalculated on save)')
+                : '';
+        }
+
+        async function submitPigMgmtNewBatch() {
+            const ids = Array.from(document.querySelectorAll('.pig-mgmt-new-batch-cb:checked')).map(function (cb) {
+                return parseInt(cb.value, 10);
+            });
+            const notes = (document.getElementById('pig-mgmt-new-batch-notes') && document.getElementById('pig-mgmt-new-batch-notes').value || '').trim();
+            if (ids.length < 2) {
+                showToast('Select at least two litters to create a batch', 'error');
+                return;
+            }
+            try {
+                const response = await fetch('/api/pig/register-batch-from-litters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ litter_ids: ids, notes: notes })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message || 'Batch created', 'success');
+                    loadPigs();
+                    loadLitters();
+                    loadBatches();
+                    if (typeof initPigMgmtBatchTools === 'function') initPigMgmtBatchTools();
+                    var nb = document.getElementById('pig-mgmt-new-batch-notes');
+                    if (nb) nb.value = '';
+                } else {
+                    showToast(result.message || 'Failed to create batch', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Failed to create batch', 'error');
+            }
+        }
+
+        async function submitPigMgmtAddLittersToBatch() {
+            const sel = document.getElementById('pig-mgmt-target-batch-select');
+            const batchPigId = sel && sel.value;
+            const ids = Array.from(document.querySelectorAll('.pig-mgmt-add-batch-cb:checked')).map(function (cb) {
+                return parseInt(cb.value, 10);
+            });
+            const notes = (document.getElementById('pig-mgmt-add-to-batch-notes') && document.getElementById('pig-mgmt-add-to-batch-notes').value || '').trim();
+            if (!batchPigId) {
+                showToast('Select a batch first', 'error');
+                return;
+            }
+            if (ids.length < 1) {
+                showToast('Select at least one litter to add', 'error');
+                return;
+            }
+            try {
+                const response = await fetch('/api/pig/add-litters-to-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ batch_pig_id: parseInt(batchPigId, 10), litter_ids: ids, notes: notes })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message || 'Litters added to batch', 'success');
+                    loadPigs();
+                    loadLitters();
+                    loadBatches();
+                    if (typeof initPigMgmtBatchTools === 'function') initPigMgmtBatchTools();
+                    var an = document.getElementById('pig-mgmt-add-to-batch-notes');
+                    if (an) an.value = '';
+                } else {
+                    showToast(result.message || 'Failed to add litters', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Failed to add litters to batch', 'error');
+            }
         }
 
         function searchBatches(searchTerm) {
@@ -1745,26 +2205,35 @@
             const tbody = document.getElementById('pigs-table-body');
             const tbodyMd = document.getElementById('pigs-table-body-md');
             const mobileCards = document.getElementById('pigs-mobile-cards');
+            const emptyMsg = (function () {
+                if (activePigDataTab === 'porkers') {
+                    return 'No pigs in the porker stage (113–140 days) match your filters.';
+                }
+                if (activePigDataTab === 'bacons') {
+                    return 'No pigs in the baconer stage (141–180 days) match your filters.';
+                }
+                return 'No pigs registered yet';
+            })();
             
             if (pigs.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                            No pigs registered yet
+                            ${emptyMsg}
                         </td>
                     </tr>
                 `;
                 tbodyMd.innerHTML = `
                     <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                            No pigs registered yet
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            ${emptyMsg}
                         </td>
                     </tr>
                 `;
                 mobileCards.innerHTML = `
                     <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                         <i class="fas fa-piggy-bank text-4xl mb-4"></i>
-                        <p>No pigs registered yet</p>
+                        <p>${emptyMsg}</p>
                     </div>
                 `;
                 return;
@@ -1793,7 +2262,7 @@
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        ${pig.farm_name}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(pig.age_days)}" title="Life stage from age in days">${formatPigLifeStageFromAgeDays(pig.age_days)}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex flex-wrap items-center gap-1">
@@ -1865,7 +2334,7 @@
                         </div>
                     </td>
                     <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        ${pig.farm_name}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(pig.age_days)}">${formatPigLifeStageFromAgeDays(pig.age_days)}</span>
                     </td>
                     <td class="px-3 py-4 whitespace-nowrap">
                         <div class="flex flex-wrap items-center gap-1">
@@ -1938,16 +2407,16 @@
                     
                     <div class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 divide-y divide-gray-200 dark:divide-gray-700">
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2">
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Farm</p>
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">${pig.farm_name || '-'}</p>
-                        </div>
-                        <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2">
                             <p class="text-xs text-gray-500 dark:text-gray-400">Gender</p>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">${pig.gender || '-'}</p>
                         </div>
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2">
                             <p class="text-xs text-gray-500 dark:text-gray-400">Age (days)</p>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">${pig.age_days ? pig.age_days + ' days' : 'Calculating...'}</p>
+                        </div>
+                        <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 items-center">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Stage</p>
+                            <p class="text-sm font-medium"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(pig.age_days)}">${formatPigLifeStageFromAgeDays(pig.age_days)}</span></p>
                         </div>
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2">
                             <p class="text-xs text-gray-500 dark:text-gray-400">Type</p>
@@ -2009,8 +2478,8 @@
             if (!tbody || !tbodyMd || !mobileCards) return;
 
             if (batches.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td></tr>';
-                tbodyMd.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td></tr>';
+                tbodyMd.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No batches registered yet</td></tr>';
                 mobileCards.innerHTML = '<div class="text-center py-8 text-gray-500 dark:text-gray-400"><i class="fas fa-boxes-stacked text-4xl mb-4"></i><p>No batches registered yet</p></div>';
                 return;
             }
@@ -2027,6 +2496,9 @@
                         </div>
                     </td>
                     <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${pig.age_days ?? '-'}</td>
+                    <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(pig.age_days)}" title="From batch average age (days)">${formatPigLifeStageFromAgeDays(pig.age_days)}</span>
+                    </td>
                     <td class="px-3 lg:px-6 py-4 text-sm text-gray-900 dark:text-white">${pig.breed || '-'}</td>
                     <td class="px-3 lg:px-6 py-4 whitespace-nowrap">
                         ${pig.status ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClasses(pig.status)}">${formatStatusLabel(pig.status)}</span>` : '<span class="text-sm text-gray-400 dark:text-gray-500">-</span>'}
@@ -2045,6 +2517,7 @@
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">${pig.tag_id}</td>
                     <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${pig.age_days ?? '-'}</td>
+                    <td class="px-3 py-4 text-sm text-gray-900 dark:text-white"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(pig.age_days)}" title="From batch average age">${formatPigLifeStageFromAgeDays(pig.age_days)}</span></td>
                     <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${pig.breed || '-'}</td>
                     <td class="px-3 py-4 whitespace-nowrap">
                         ${pig.status ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClasses(pig.status)}">${formatStatusLabel(pig.status)}</span>` : '<span class="text-sm text-gray-400 dark:text-gray-500">-</span>'}
@@ -2065,8 +2538,12 @@
                     </div>
                     <div class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 divide-y divide-gray-200 dark:divide-gray-700">
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm">
-                            <span class="text-gray-500 dark:text-gray-400">Age (days)</span>
+                            <span class="text-gray-500 dark:text-gray-400" title="Weighted average age">Avg. age (d)</span>
                             <span class="text-gray-900 dark:text-white">${pig.age_days ?? '-'} days</span>
+                        </div>
+                        <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm items-center">
+                            <span class="text-gray-500 dark:text-gray-400">Stage</span>
+                            <span class="inline-flex"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(pig.age_days)}" title="From average age">${formatPigLifeStageFromAgeDays(pig.age_days)}</span></span>
                         </div>
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm">
                             <span class="text-gray-500 dark:text-gray-400">Breed</span>
@@ -2107,7 +2584,7 @@
                     currentLittersData = [];
                     document.getElementById('litters-table-body').innerHTML = `
                         <tr>
-                            <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="10" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                 No litters registered yet
                             </td>
                         </tr>
@@ -2120,7 +2597,7 @@
                 currentLittersData = [];
                 document.getElementById('litters-table-body').innerHTML = `
                     <tr>
-                        <td colspan="8" class="px-6 py-4 text-center text-red-500">
+                        <td colspan="10" class="px-6 py-4 text-center text-red-500">
                             Error loading litters
                         </td>
                     </tr>
@@ -2137,15 +2614,15 @@
             if (litters.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                            No litters registered yet
-                        </td>
-                    </tr>
-                `;
+                            <td colspan="10" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                No litters registered yet
+                            </td>
+                        </tr>
+                    `;
                 if (tbodyMd) {
                     tbodyMd.innerHTML = `
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                 No litters registered yet
                             </td>
                         </tr>
@@ -2203,12 +2680,18 @@
                         ${weaningDate ? weaningDate.toLocaleDateString() : '-'}
                     </td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <span class="font-bold text-lg">${ageInDays}</span> 
+                        <span class="font-bold text-lg">${Number.isFinite(ageInDays) ? ageInDays : '—'}</span> 
                         <span class="text-xs text-gray-500 dark:text-gray-400">days</span>
+                    </td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(ageInDays)}" title="From litter age since farrowing">${formatPigLifeStageFromAgeDays(ageInDays)}</span>
                     </td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         <span class="font-bold text-lg">${litter.alive_piglets}</span>
                         ${litter.weaning_weight ? `<br><span class="text-xs text-gray-500 dark:text-gray-400">Weaned: ${litter.weaning_weight} kg</span>` : ''}
+                    </td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        ${(litter.male_piglets != null && litter.female_piglets != null) ? (litter.male_piglets + ' / ' + litter.female_piglets) : '—'}
                     </td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${weaningStatusColor} shadow-sm">
@@ -2272,7 +2755,8 @@
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td class="px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">${litter.litter_id}</td>
                         <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${litter.sow_tag_id || 'N/A'}</td>
-                        <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${ageInDays}d / ${litter.alive_piglets}</td>
+                        <td class="px-3 py-4 text-sm text-gray-900 dark:text-white">${Number.isFinite(ageInDays) ? ageInDays : '—'}d / ${litter.alive_piglets}${(litter.male_piglets != null && litter.female_piglets != null) ? ' (M' + litter.male_piglets + '/F' + litter.female_piglets + ')' : ''}</td>
+                        <td class="px-3 py-4 text-sm text-gray-900 dark:text-white"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(ageInDays)}">${formatPigLifeStageFromAgeDays(ageInDays)}</span></td>
                         <td class="px-3 py-4 text-sm">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${weaningStatusColor}">${weaningStatus}</span>
                         </td>
@@ -2335,11 +2819,19 @@
                         </div>
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm">
                             <span class="text-gray-500 dark:text-gray-400">Age</span>
-                            <span class="text-gray-900 dark:text-white font-bold">${ageInDays} days</span>
+                            <span class="text-gray-900 dark:text-white font-bold">${Number.isFinite(ageInDays) ? ageInDays + ' days' : '—'}</span>
+                        </div>
+                        <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm items-center">
+                            <span class="text-gray-500 dark:text-gray-400">Stage</span>
+                            <span class="inline-flex"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPigLifeStageBadgeClasses(ageInDays)}">${formatPigLifeStageFromAgeDays(ageInDays)}</span></span>
                         </div>
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm">
                             <span class="text-gray-500 dark:text-gray-400">Alive Piglets</span>
                             <span class="text-gray-900 dark:text-white font-bold">${litter.alive_piglets}</span>
+                        </div>
+                        <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm">
+                            <span class="text-gray-500 dark:text-gray-400">♂ / ♀</span>
+                            <span class="text-gray-900 dark:text-white font-bold">${(litter.male_piglets != null && litter.female_piglets != null) ? (litter.male_piglets + ' / ' + litter.female_piglets) : '—'}</span>
                         </div>
                         ${litter.weaning_weight ? `
                         <div class="grid grid-cols-[105px_1fr] gap-2 px-3 py-2 text-sm">
@@ -2473,7 +2965,9 @@
             document.getElementById('editLitterId').value = litter.id;
             document.getElementById('editLitterIdInput').value = litter.litter_id || '';
             document.getElementById('editFarrowingDateInput').value = litter.farrowing_date || '';
-            document.getElementById('editAlivePigletsInput').value = litter.alive_piglets || '';
+            document.getElementById('editAlivePigletsInput').value = litter.alive_piglets != null ? litter.alive_piglets : '';
+            document.getElementById('editMalePigletsInput').value = (litter.male_piglets != null && litter.male_piglets !== '') ? litter.male_piglets : '0';
+            document.getElementById('editFemalePigletsInput').value = (litter.female_piglets != null && litter.female_piglets !== '') ? litter.female_piglets : '0';
             document.getElementById('editLitterStatusSelect').value = litter.status || 'unweaned';
             
             // Set weaning date and weight if available
@@ -2487,36 +2981,52 @@
             // Toggle weaning fields based on current status
             toggleWeaningFields();
 
-            // Load sows for the dropdown and set the current sow
-            loadSowsForEditWithData(litter);
+            const src = (litter.litter_source || 'born').toLowerCase() === 'purchased' ? 'purchased' : 'born';
+            const hidSrc = document.getElementById('editLitterSource');
+            if (hidSrc) hidSrc.value = src;
+            const originEl = document.getElementById('editLitterOriginText');
+            if (originEl) {
+                originEl.textContent = src === 'purchased'
+                    ? 'Purchased litter — dam and sire breeds only (no linked sow/boar records).'
+                    : 'Born on farm — search and link sow and boar in the system.';
+            }
+            if (src === 'born') {
+                const sid = document.getElementById('editLitterSowId');
+                const bid = document.getElementById('editLitterBoarId');
+                const ssr = document.getElementById('editLitterSowSearch');
+                const bsr = document.getElementById('editLitterBoarSearch');
+                if (sid) sid.value = litter.sow_id != null && litter.sow_id !== '' ? String(litter.sow_id) : '';
+                if (bid) bid.value = litter.boar_id != null && litter.boar_id !== '' ? String(litter.boar_id) : '';
+                if (ssr) ssr.value = litter.sow_tag_id || '';
+                if (bsr) bsr.value = litter.boar_tag_id || '';
+                const sbt = document.getElementById('editLitterSowBreedText');
+                const bbt = document.getElementById('editLitterBoarBreedText');
+                if (sbt) sbt.value = '';
+                if (bbt) bbt.value = '';
+            } else {
+                const sbt = document.getElementById('editLitterSowBreedText');
+                const bbt = document.getElementById('editLitterBoarBreedText');
+                if (sbt) sbt.value = litter.sow_breed || '';
+                if (bbt) bbt.value = litter.boar_breed || '';
+                const sid = document.getElementById('editLitterSowId');
+                const bid = document.getElementById('editLitterBoarId');
+                const ssr = document.getElementById('editLitterSowSearch');
+                const bsr = document.getElementById('editLitterBoarSearch');
+                if (sid) sid.value = '';
+                if (bid) bid.value = '';
+                if (ssr) ssr.value = '';
+                if (bsr) bsr.value = '';
+            }
+            applyEditLitterSourceUI();
         }
 
-        // Load sows for edit dropdown with litter data
-        function loadSowsForEditWithData(litter) {
-            fetch('/api/pigs/sows')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const sowSelect = document.getElementById('editSowSelect');
-                    sowSelect.innerHTML = '<option value="">Select a sow</option>';
-                    
-                    data.sows.forEach(sow => {
-                        const option = document.createElement('option');
-                        option.value = sow.id;
-                        option.textContent = `${sow.tag_id} - ${sow.breed || 'Unknown Breed'}`;
-                        sowSelect.appendChild(option);
-                    });
-
-                    // Set the current sow as selected
-                    if (litter && litter.sow_id) {
-                        sowSelect.value = litter.sow_id;
-                        console.log('Setting sow to:', litter.sow_id);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error loading sows:', error);
-            });
+        function applyEditLitterSourceUI() {
+            const srcEl = document.getElementById('editLitterSource');
+            const src = (srcEl && srcEl.value) === 'purchased' ? 'purchased' : 'born';
+            const bBorn = document.getElementById('editLitterBornBlock');
+            const bPur = document.getElementById('editLitterPurchasedBlock');
+            if (bBorn) bBorn.classList.toggle('hidden', src === 'purchased');
+            if (bPur) bPur.classList.toggle('hidden', src === 'born');
         }
 
 
@@ -2589,18 +3099,40 @@
         function submitLitterEdit() {
             const form = document.getElementById('editLitterForm');
             const formData = new FormData(form);
+            const source = (formData.get('litter_source') || 'born').toLowerCase() === 'purchased' ? 'purchased' : 'born';
             
             // Validate required fields
             const litterId = formData.get('litter_id');
-            const sowId = formData.get('sow_id');
             const farrowingDate = formData.get('farrowing_date');
             const alivePiglets = formData.get('alive_piglets');
+            const malePiglets = parseInt(formData.get('male_piglets'), 10);
+            const femalePiglets = parseInt(formData.get('female_piglets'), 10);
             const status = formData.get('status');
             const weaningDate = formData.get('weaning_date');
             const weaningWeight = formData.get('weaning_weight');
             
-            if (!litterId || !sowId || !farrowingDate || !alivePiglets) {
+            if (!litterId || !farrowingDate || alivePiglets === null || alivePiglets === '') {
                 showToast('Please fill in all required fields', 'error');
+                return;
+            }
+            if (source === 'born') {
+                const sid = (document.getElementById('editLitterSowId') && document.getElementById('editLitterSowId').value) || '';
+                const bid = (document.getElementById('editLitterBoarId') && document.getElementById('editLitterBoarId').value) || '';
+                if (!sid || !bid) {
+                    showToast('Select a sow and a boar from the search results', 'error');
+                    return;
+                }
+            } else {
+                const sbt = (document.getElementById('editLitterSowBreedText') && document.getElementById('editLitterSowBreedText').value) || '';
+                const bbt = (document.getElementById('editLitterBoarBreedText') && document.getElementById('editLitterBoarBreedText').value) || '';
+                if (!String(sbt).trim() || !String(bbt).trim()) {
+                    showToast('Enter dam and sire breeds for this purchased litter', 'error');
+                    return;
+                }
+            }
+            const aliveN = parseInt(alivePiglets, 10);
+            if (Number.isNaN(malePiglets) || Number.isNaN(femalePiglets) || malePiglets + femalePiglets !== aliveN) {
+                showToast('Male + female must equal alive piglets', 'error');
                 return;
             }
             
@@ -2639,14 +3171,23 @@
 
             // Prepare data for API
             const data = {
+                litter_source: source,
                 litter_id: litterId,
-                sow_id: parseInt(sowId),
                 farrowing_date: farrowingDate,
                 weaning_date: status === 'weaned' ? weaningDate : null,
-                alive_piglets: parseInt(alivePiglets),
+                alive_piglets: aliveN,
+                male_piglets: malePiglets,
+                female_piglets: femalePiglets,
                 weaning_weight: status === 'weaned' ? parseFloat(weaningWeight) : null,
                 status: status
             };
+            if (source === 'born') {
+                data.sow_id = parseInt((document.getElementById('editLitterSowId').value || '0'), 10);
+                data.boar_id = parseInt((document.getElementById('editLitterBoarId').value || '0'), 10);
+            } else {
+                data.sow_breed = (document.getElementById('editLitterSowBreedText').value || '').trim();
+                data.boar_breed = (document.getElementById('editLitterBoarBreedText').value || '').trim();
+            }
 
             const currentLitterId = document.getElementById('editLitterId').value;
 
@@ -2688,6 +3229,16 @@
                 // Reset styles for next time
                 modalContent.style.transform = 'scale(0.95)';
                 modalContent.style.opacity = '0';
+                ['editLitterSowId', 'editLitterBoarId'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                ['editLitterSowSearch', 'editLitterBoarSearch', 'editLitterSowBreedText', 'editLitterBoarBreedText'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                var src = document.getElementById('editLitterSource');
+                if (src) src.value = 'born';
             }, 300);
         }
 
@@ -2732,7 +3283,6 @@
             console.log('Original tag ID:', originalTagId); // Debug log
             document.getElementById('editTagIdInput').value = originalTagId;
             
-            document.getElementById('editFarmSelect').value = pig.farm_id;
             document.getElementById('editPigTypeSelect').value = pig.pig_type;
             document.getElementById('editPigSourceSelect').value = pig.pig_source;
             document.getElementById('editBreedInput').value = pig.breed || '';
@@ -2940,12 +3490,11 @@
             const formData = new FormData(form);
             
             // Validate required fields
-            const farmId = formData.get('farm_id');
             const pigType = formData.get('pig_type');
             const pigSource = formData.get('pig_source');
             const birthDate = formData.get('birth_date');
             
-            if (!farmId || !pigType || !pigSource || !birthDate) {
+            if (!pigType || !pigSource || !birthDate) {
                 showToast('Please fill in all required fields including birth date', 'error');
                 return;
             }
@@ -3012,7 +3561,6 @@
             // Prepare data for API
             const data = {
                 tag_id: tagId,
-                farm_id: parseInt(farmId),
                 pig_type: pigType,
                 pig_source: pigSource,
                 breed: formData.get('breed') || null,
@@ -3116,7 +3664,6 @@
             // Set pig information
             document.getElementById('auditPigTagId').textContent = pig.tag_id;
             document.getElementById('auditPigTagIdInfo').textContent = pig.tag_id;
-            document.getElementById('auditPigFarm').textContent = pig.farm_name || 'Unknown';
             document.getElementById('auditPigType').textContent = pig.pig_type ? pig.pig_type.replace('_', ' ') : 'Unknown';
             document.getElementById('auditPigStatus').textContent = pig.status || 'Unknown';
 
@@ -3243,16 +3790,26 @@
             document.getElementById('litterSowTagIdInfo').textContent = breedingRecord.sow_tag_id;
             document.getElementById('litterSowBreed').textContent = breedingRecord.sow_breed || 'Unknown';
             document.getElementById('litterSowAge').textContent = breedingRecord.sow_age_days ? breedingRecord.sow_age_days + ' days' : 'Unknown';
-            document.getElementById('litterSowFarm').textContent = breedingRecord.sow_farm_name || 'Unknown';
 
             // Set breeding record information
             document.getElementById('litterMatingDate').textContent = breedingRecord.mating_date ? new Date(breedingRecord.mating_date).toLocaleDateString() : 'Unknown';
             document.getElementById('litterExpectedFarrowing').textContent = breedingRecord.expected_farrowing ? new Date(breedingRecord.expected_farrowing).toLocaleDateString() : 'Unknown';
             document.getElementById('litterBoarUsed').textContent = breedingRecord.boar_tag_id || 'Unknown';
 
-            // Set hidden fields
+            // Born on farm: default to linking this breeding cycle
+            var bornEl = document.getElementById('litterSourceBorn');
+            if (bornEl) bornEl.checked = true;
+            onLitterSourceChange();
+
             document.getElementById('litterSowId').value = breedingRecord.sow_id;
+            document.getElementById('litterSowSearch').value = breedingRecord.sow_tag_id || '';
+            document.getElementById('litterBoarId').value = breedingRecord.boar_id != null && breedingRecord.boar_id !== '' ? breedingRecord.boar_id : '';
+            document.getElementById('litterBoarSearch').value = breedingRecord.boar_tag_id || '';
             document.getElementById('litterBreedingRecordId').value = breedingRecord.id;
+            var sb = document.getElementById('litterSowBreedText');
+            var bb = document.getElementById('litterBoarBreedText');
+            if (sb) sb.value = '';
+            if (bb) bb.value = '';
 
             // Set default farrowing date to today
             const today = new Date().toISOString().split('T')[0];
@@ -3261,6 +3818,93 @@
             // Generate next litter ID
             generateNextLitterId();
         }
+
+        var _litterPigSearchTimers = {};
+        function onLitterSourceChange() {
+            const born = document.getElementById('litterSourceBorn') && document.getElementById('litterSourceBorn').checked;
+            const bornBlock = document.getElementById('litterBornBlock');
+            const purBlock = document.getElementById('litterPurchasedBlock');
+            const brPanel = document.getElementById('litterBreedingCyclePanel');
+            if (born) {
+                if (bornBlock) bornBlock.classList.remove('hidden');
+                if (purBlock) purBlock.classList.add('hidden');
+                if (brPanel) brPanel.classList.remove('hidden');
+            } else {
+                if (bornBlock) bornBlock.classList.add('hidden');
+                if (purBlock) purBlock.classList.remove('hidden');
+                if (brPanel) brPanel.classList.add('hidden');
+                var br = document.getElementById('litterBreedingRecordId');
+                if (br) br.value = '';
+            }
+            if (born && currentLitterData && currentLitterData.id) {
+                var br2 = document.getElementById('litterBreedingRecordId');
+                if (br2) br2.value = currentLitterData.id;
+            }
+            ['litterSowResults', 'litterBoarResults'].forEach(function (rid) {
+                var el = document.getElementById(rid);
+                if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
+            });
+        }
+        function litterPigSearchDebounced(inputId, resultId, hiddenId, gender) {
+            clearTimeout(_litterPigSearchTimers[inputId]);
+            _litterPigSearchTimers[inputId] = setTimeout(function () {
+                runLitterPigSearch(inputId, resultId, hiddenId, gender);
+            }, 220);
+        }
+        function runLitterPigSearch(inputId, resultId, hiddenId, gender) {
+            const inp = document.getElementById(inputId);
+            const box = document.getElementById(resultId);
+            if (!inp || !box) return;
+            const q = (inp.value || '').trim();
+            if (q.length < 1) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            fetch('/api/pigs/search?gender=' + encodeURIComponent(gender) + '&q=' + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success || !d.pigs || !d.pigs.length) {
+                        box.innerHTML = '<div class="px-3 py-2 text-gray-500">No matches</div>';
+                        box.classList.remove('hidden');
+                        return;
+                    }
+                    box.innerHTML = d.pigs.map(function (p) {
+                        const tag = (p.tag_id || '').replace(/'/g, "\\'");
+                        return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-0" onclick="selectLitterPig(' + p.id + ',\'' + tag + '\',\'' + inputId + '\',\'' + resultId + '\',\'' + hiddenId + '\')">' +
+                            '<span class="font-mono font-semibold">' + (p.tag_id || '') + '</span>' +
+                            '<span class="text-gray-500 text-xs ml-2">' + (p.breed || '') + '</span></button>';
+                    }).join('');
+                    box.classList.remove('hidden');
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="px-3 py-2 text-red-500">Search failed</div>';
+                    box.classList.remove('hidden');
+                });
+        }
+        function selectLitterPig(pigId, tag, inputId, resultId, hiddenId) {
+            document.getElementById(hiddenId).value = pigId;
+            document.getElementById(inputId).value = tag;
+            const box = document.getElementById(resultId);
+            if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+        }
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest) return;
+            const insideReg = e.target.closest('#litterSowSearch') || e.target.closest('#litterSowResults') ||
+                e.target.closest('#litterBoarSearch') || e.target.closest('#litterBoarResults');
+            const insideEdit = e.target.closest('#editLitterSowSearch') || e.target.closest('#editLitterSowResults') ||
+                e.target.closest('#editLitterBoarSearch') || e.target.closest('#editLitterBoarResults');
+            if (!insideReg && !insideEdit) {
+                var a = document.getElementById('litterSowResults');
+                var b = document.getElementById('litterBoarResults');
+                var c = document.getElementById('editLitterSowResults');
+                var d = document.getElementById('editLitterBoarResults');
+                if (a) { a.classList.add('hidden'); }
+                if (b) { b.classList.add('hidden'); }
+                if (c) { c.classList.add('hidden'); }
+                if (d) { d.classList.add('hidden'); }
+            }
+        });
 
         // Generate next available litter ID
         function generateNextLitterId() {
@@ -3280,11 +3924,18 @@
         function registerLitter() {
             const form = document.getElementById('litterRegistrationForm');
             const formData = new FormData(form);
+            const source = (formData.get('litter_source') || 'born').toLowerCase();
 
-            // Validate form
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
+            if (source === 'born') {
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+            } else {
+                if (!document.getElementById('litterFarrowingDate').value) {
+                    showToast('Farrowing / birth date is required', 'error');
+                    return;
+                }
             }
 
             // Validate alive piglets vs total piglets
@@ -3297,18 +3948,61 @@
                 return;
             }
 
-            // Prepare data
+            const malePiglets = parseInt(formData.get('male_piglets'), 10);
+            const femalePiglets = parseInt(formData.get('female_piglets'), 10);
+            if (Number.isNaN(malePiglets) || Number.isNaN(femalePiglets)) {
+                showToast('Enter valid male and female piglet counts', 'error');
+                return;
+            }
+            if (malePiglets + femalePiglets !== alivePiglets) {
+                showToast('Male + female must equal alive piglets', 'error');
+                return;
+            }
+
             const data = {
-                sow_id: formData.get('sow_id'),
-                breeding_record_id: formData.get('breeding_record_id'),
+                litter_source: source,
                 litter_id: formData.get('litter_id'),
                 farrowing_date: formData.get('farrowing_date'),
                 total_piglets: totalPiglets,
                 alive_piglets: alivePiglets,
+                male_piglets: malePiglets,
+                female_piglets: femalePiglets,
                 still_births: stillBirths,
                 avg_weight: formData.get('avg_weight') || null,
                 notes: formData.get('notes') || null
             };
+            if (source === 'born') {
+                const sid = (document.getElementById('litterSowId') && document.getElementById('litterSowId').value) || '';
+                const bid = (document.getElementById('litterBoarId') && document.getElementById('litterBoarId').value) || '';
+                if (!sid || !bid) {
+                    showToast('Select a sow and a boar from the search results', 'error');
+                    return;
+                }
+                data.sow_id = parseInt(sid, 10);
+                data.boar_id = parseInt(bid, 10);
+                const fridEl = document.getElementById('litterFarrowingRecordId');
+                const frid = (fridEl && fridEl.value) || '';
+                if (frid) {
+                    data.farrowing_record_id = parseInt(frid, 10);
+                }
+                const brid = (document.getElementById('litterBreedingRecordId') && document.getElementById('litterBreedingRecordId').value) || '';
+                if (brid) {
+                    data.breeding_record_id = parseInt(brid, 10);
+                }
+                if (!data.farrowing_record_id && !data.breeding_record_id) {
+                    showToast('A farrowing or breeding link is required for litters born on the farm. Open this form from a completed cycle.', 'error');
+                    return;
+                }
+            } else {
+                const sbr = (document.getElementById('litterSowBreedText') && document.getElementById('litterSowBreedText').value || '').trim();
+                const bbr = (document.getElementById('litterBoarBreedText') && document.getElementById('litterBoarBreedText').value || '').trim();
+                if (!sbr || !bbr) {
+                    showToast('Enter sow (dam) breed and boar (sire) breed', 'error');
+                    return;
+                }
+                data.sow_breed = sbr;
+                data.boar_breed = bbr;
+            }
 
             // Submit litter registration
             fetch('/api/litter/register', {
@@ -3390,6 +4084,21 @@
             document.getElementById('litterRegistrationModal').classList.add('hidden');
             currentLitterData = null;
             document.getElementById('litterRegistrationForm').reset();
+            var b0 = document.getElementById('litterSourceBorn');
+            if (b0) b0.checked = true;
+            ['litterSowId', 'litterBoarId', 'litterBreedingRecordId', 'litterFarrowingRecordId'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ['litterSowSearch', 'litterBoarSearch'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ['litterSowResults', 'litterBoarResults'].forEach(function (id) {
+                var box = document.getElementById(id);
+                if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+            });
+            onLitterSourceChange();
         }
 
         // Close postpone reason modal
@@ -3481,5 +4190,6 @@
             }, 3000);
         }
     </script>
+{% include 'includes/pig_registration_modal_pig_management_script.html' %}
 </body>
 </html>

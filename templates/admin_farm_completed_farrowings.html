@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Completed Farrowings - Pig Farm Management System</title>
+    <title>Completed Farrowings - Farm A Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
@@ -1811,12 +1811,38 @@
         function populateLitterForm(farrowingData) {
             document.getElementById('litterSowTagId').textContent = farrowingData.sow_tag_id;
             document.getElementById('litterSowTagIdInfo').textContent = farrowingData.sow_tag_id;
-            document.getElementById('litterFarrowingDate').value = farrowingData.farrowing_date;
-            document.getElementById('litterSowId').value = farrowingData.sow_id;
-            document.getElementById('litterFarrowingRecordId').value = farrowingData.farrowing_id;
+            const frId = farrowingData.farrowing_id || farrowingData.id;
+            window._cfLitterRestore = {
+                farrowing_id: frId,
+                sow_id: farrowingData.sow_id,
+                boar_id: farrowingData.boar_id
+            };
+            document.getElementById('litterFarrowingRecordId').value = frId || '';
+            if (document.getElementById('litterFarrowingDateInput')) {
+                document.getElementById('litterFarrowingDateInput').value = farrowingData.farrowing_date || '';
+            }
+            if (document.getElementById('litterSowId')) {
+                document.getElementById('litterSowId').value = farrowingData.sow_id != null ? farrowingData.sow_id : '';
+            }
+            if (document.getElementById('litterSowSearch')) {
+                document.getElementById('litterSowSearch').value = farrowingData.sow_tag_id || '';
+            }
+            if (document.getElementById('litterBoarId')) {
+                document.getElementById('litterBoarId').value = farrowingData.boar_id != null && farrowingData.boar_id !== '' ? farrowingData.boar_id : '';
+            }
+            if (document.getElementById('litterBoarSearch')) {
+                document.getElementById('litterBoarSearch').value = farrowingData.boar_tag_id || '';
+            }
+            const sbt = document.getElementById('litterSowBreedText');
+            const bbt = document.getElementById('litterBoarBreedText');
+            if (sbt) sbt.value = '';
+            if (bbt) bbt.value = '';
+            const bornEl = document.getElementById('litterSourceBorn');
+            if (bornEl) bornEl.checked = true;
+            onCfLitterSourceChange();
             
             // Check for weaning data
-            checkWeaningData(farrowingData.farrowing_id);
+            checkWeaningData(frId);
             
             // Generate next litter ID
             generateNextLitterId();
@@ -1846,6 +1872,80 @@
             }
         }
 
+        var _cfLitterPigSearchTimers = {};
+        function onCfLitterSourceChange() {
+            const born = document.getElementById('litterSourceBorn') && document.getElementById('litterSourceBorn').checked;
+            const bblk = document.getElementById('litterBornBlockCf');
+            const pblk = document.getElementById('litterPurchasedBlockCf');
+            const cpan = document.getElementById('litterBreedingCyclePanelCf');
+            if (born) {
+                if (bblk) bblk.classList.remove('hidden');
+                if (pblk) pblk.classList.add('hidden');
+                if (cpan) cpan.classList.remove('hidden');
+                if (window._cfLitterRestore && window._cfLitterRestore.farrowing_id) {
+                    const frin = document.getElementById('litterFarrowingRecordId');
+                    if (frin) frin.value = window._cfLitterRestore.farrowing_id;
+                }
+            } else {
+                if (bblk) bblk.classList.add('hidden');
+                if (pblk) pblk.classList.remove('hidden');
+                if (cpan) cpan.classList.add('hidden');
+                const frin = document.getElementById('litterFarrowingRecordId');
+                if (frin) frin.value = '';
+            }
+        }
+        function litterPigSearchDebouncedCf(inputId, resultId, hiddenId, gender) {
+            clearTimeout(_cfLitterPigSearchTimers[inputId]);
+            _cfLitterPigSearchTimers[inputId] = setTimeout(function () {
+                runLitterPigSearchCf(inputId, resultId, hiddenId, gender);
+            }, 220);
+        }
+        function runLitterPigSearchCf(inputId, resultId, hiddenId, gender) {
+            const inp = document.getElementById(inputId);
+            const box = document.getElementById(resultId);
+            if (!inp || !box) return;
+            const q = (inp.value || '').trim();
+            if (q.length < 1) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            fetch(apiUrl('/api/pigs/search?gender=' + encodeURIComponent(gender) + '&q=' + encodeURIComponent(q)))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success || !d.pigs || !d.pigs.length) {
+                        box.innerHTML = '<div class="px-3 py-2 text-gray-500">No matches</div>';
+                        box.classList.remove('hidden');
+                        return;
+                    }
+                    box.innerHTML = d.pigs.map(function (p) {
+                        const tag = (p.tag_id || '').replace(/'/g, "\\'");
+                        return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-600 last:border-0" onclick="selectLitterPigCf(' + p.id + ',\'' + tag + '\',\'' + inputId + '\',\'' + resultId + '\',\'' + hiddenId + '\')"><span class="font-mono font-semibold">' + (p.tag_id || '') + '</span><span class="text-gray-500 text-xs ml-2">' + (p.breed || '') + '</span></button>';
+                    }).join('');
+                    box.classList.remove('hidden');
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="px-3 py-2 text-red-500">Search failed</div>';
+                    box.classList.remove('hidden');
+                });
+        }
+        function selectLitterPigCf(pigId, tag, inputId, resultId, hiddenId) {
+            document.getElementById(hiddenId).value = pigId;
+            document.getElementById(inputId).value = tag;
+            const box = document.getElementById(resultId);
+            if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+        }
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest) return;
+            if (!e.target.closest('#litterSowSearch') && !e.target.closest('#litterSowResults') &&
+                !e.target.closest('#litterBoarSearch') && !e.target.closest('#litterBoarResults')) {
+                const a = document.getElementById('litterSowResults');
+                const b = document.getElementById('litterBoarResults');
+                if (a) a.classList.add('hidden');
+                if (b) b.classList.add('hidden');
+            }
+        });
+
         // Generate next available litter ID
         function generateNextLitterId() {
             fetch(apiUrl('/api/litter/next-id'))
@@ -1864,27 +1964,77 @@
         function registerLitter() {
             const form = document.getElementById('litterRegistrationForm');
             const formData = new FormData(form);
-            
-            // Validate required fields
-            const requiredFields = ['total_piglets', 'alive_piglets'];
-            for (const field of requiredFields) {
-                if (!formData.get(field)) {
-                    alert(`${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} is required`);
+            const source = (formData.get('litter_source') || 'born').toLowerCase();
+
+            if (source === 'born' && !form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            if (source === 'purchased') {
+                const fd = (document.getElementById('litterFarrowingDateInput') && document.getElementById('litterFarrowingDateInput').value) || '';
+                if (!fd) {
+                    alert('Farrowing / birth date is required');
                     return;
                 }
             }
 
+            const requiredFields = ['total_piglets', 'alive_piglets', 'male_piglets', 'female_piglets'];
+            for (const field of requiredFields) {
+                if (formData.get(field) === null || formData.get(field) === '') {
+                    alert(`${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} is required`);
+                    return;
+                }
+            }
+            const totalPiglets = parseInt(formData.get('total_piglets'), 10);
+            const alivePiglets = parseInt(formData.get('alive_piglets'), 10);
+            const malePiglets = parseInt(formData.get('male_piglets'), 10);
+            const femalePiglets = parseInt(formData.get('female_piglets'), 10);
+            if (malePiglets + femalePiglets !== alivePiglets) {
+                alert('Male + female must equal alive piglets');
+                return;
+            }
+
+            const farrowingDate = (document.getElementById('litterFarrowingDateInput') && document.getElementById('litterFarrowingDateInput').value) || formData.get('farrowing_date');
+            if (!farrowingDate) {
+                alert('Farrowing or birth date is required');
+                return;
+            }
+            const aw = formData.get('avg_weight');
             const litterData = {
+                litter_source: source,
                 litter_id: formData.get('litter_id'),
-                farrowing_record_id: formData.get('farrowing_record_id'),
-                sow_id: formData.get('sow_id'),
-                farrowing_date: formData.get('farrowing_date'),
-                total_piglets: parseInt(formData.get('total_piglets')),
-                alive_piglets: parseInt(formData.get('alive_piglets')),
-                still_births: parseInt(formData.get('still_births') || 0),
-                avg_weight: parseFloat(formData.get('avg_weight') || 0),
-                notes: formData.get('notes') || ''
+                farrowing_date: farrowingDate,
+                total_piglets: totalPiglets,
+                alive_piglets: alivePiglets,
+                male_piglets: malePiglets,
+                female_piglets: femalePiglets,
+                still_births: parseInt(formData.get('still_births') || 0, 10),
+                avg_weight: aw ? parseFloat(aw) : null,
+                notes: (formData.get('notes') || '').trim() || null
             };
+            if (source === 'born') {
+                const sid = (document.getElementById('litterSowId') && document.getElementById('litterSowId').value) || '';
+                const bid = (document.getElementById('litterBoarId') && document.getElementById('litterBoarId').value) || '';
+                if (!sid || !bid) {
+                    alert('Select a sow and a boar from the search results');
+                    return;
+                }
+                litterData.sow_id = parseInt(sid, 10);
+                litterData.boar_id = parseInt(bid, 10);
+                const frv = (document.getElementById('litterFarrowingRecordId') && document.getElementById('litterFarrowingRecordId').value) || '';
+                if (frv) {
+                    litterData.farrowing_record_id = parseInt(frv, 10);
+                }
+            } else {
+                const sbr = (document.getElementById('litterSowBreedText') && document.getElementById('litterSowBreedText').value || '').trim();
+                const bbr = (document.getElementById('litterBoarBreedText') && document.getElementById('litterBoarBreedText').value || '').trim();
+                if (!sbr || !bbr) {
+                    alert('Enter sow (dam) breed and boar (sire) breed');
+                    return;
+                }
+                litterData.sow_breed = sbr;
+                litterData.boar_breed = bbr;
+            }
 
             // Submit litter registration
             fetch(apiUrl('/api/litter/register'), {
@@ -1914,7 +2064,23 @@
         function closeLitterRegistrationModal() {
             document.getElementById('litter-registration-modal').classList.add('hidden');
             currentLitterData = null;
+            window._cfLitterRestore = null;
             document.getElementById('litterRegistrationForm').reset();
+            var b0 = document.getElementById('litterSourceBorn');
+            if (b0) b0.checked = true;
+            ['litterSowId', 'litterBoarId', 'litterFarrowingRecordId'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ['litterSowSearch', 'litterBoarSearch', 'litterSowBreedText', 'litterBoarBreedText'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ['litterSowResults', 'litterBoarResults'].forEach(function (id) {
+                var box = document.getElementById(id);
+                if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+            });
+            onCfLitterSourceChange();
         }
 
         // Show incomplete activities popup
@@ -2509,10 +2675,56 @@
                     </div>
 
                     <!-- Litter Registration Form -->
-                    <form id="litterRegistrationForm" class="space-y-4">
-                        <input type="hidden" id="litterSowId" name="sow_id">
-                        <input type="hidden" id="litterFarrowingRecordId" name="farrowing_record_id">
-                        <input type="hidden" id="litterFarrowingDate" name="farrowing_date">
+                    <form id="litterRegistrationForm" class="space-y-4" novalidate>
+                        <input type="hidden" id="litterSowId" value="">
+                        <input type="hidden" id="litterBoarId" value="">
+                        <input type="hidden" id="litterFarrowingRecordId" value="">
+
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Litter origin <span class="text-red-500">*</span></p>
+                            <div class="flex flex-wrap gap-4">
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="litter_source" id="litterSourceBorn" value="born" checked onchange="onCfLitterSourceChange()">
+                                    <span class="text-sm text-gray-800 dark:text-gray-200">Born on farm (sow and boar in system)</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="litter_source" id="litterSourcePurchased" value="purchased" onchange="onCfLitterSourceChange()">
+                                    <span class="text-sm text-gray-800 dark:text-gray-200">Purchased (parent breeds only)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="litterBornBlockCf" class="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-slate-800/40">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Search by tag or breed, then select sow and boar.</p>
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (female) <span class="text-red-500">*</span></label>
+                                <input type="text" id="litterSowSearch" autocomplete="off" placeholder="Type to search sows…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="litterPigSearchDebouncedCf('litterSowSearch','litterSowResults','litterSowId','female')">
+                                <div id="litterSowResults" class="hidden absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                            </div>
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (male) <span class="text-red-500">*</span></label>
+                                <input type="text" id="litterBoarSearch" autocomplete="off" placeholder="Type to search boars…" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" oninput="litterPigSearchDebouncedCf('litterBoarSearch','litterBoarResults','litterBoarId','male')">
+                                <div id="litterBoarResults" class="hidden absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg text-sm"></div>
+                            </div>
+                        </div>
+
+                        <div id="litterPurchasedBlockCf" class="hidden space-y-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+                            <p class="text-sm text-amber-800 dark:text-amber-200">Enter the dam and sire <strong>breeds</strong> for this purchased litter.</p>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sow (dam) breed <span class="text-red-500">*</span></label>
+                                <input type="text" id="litterSowBreedText" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Large White">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Boar (sire) breed <span class="text-red-500">*</span></label>
+                                <input type="text" id="litterBoarBreedText" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white" placeholder="e.g. Duroc">
+                            </div>
+                        </div>
+
+                        <div id="litterBreedingCyclePanelCf" class="p-3 bg-blue-50/80 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <h5 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Farrowing / litter date</h5>
+                            <label for="litterFarrowingDateInput" class="block text-sm text-gray-700 dark:text-gray-300 mb-1">Farrowing or birth date <span class="text-red-500">*</span></label>
+                            <input type="date" id="litterFarrowingDateInput" name="farrowing_date" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                        </div>
 
                         <!-- Litter ID -->
                         <div>
@@ -2538,6 +2750,17 @@
                             </label>
                             <input type="number" id="litterAlivePiglets" name="alive_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
                         </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Male piglets <span class="text-red-500">*</span></label>
+                                <input type="number" id="litterMalePiglets" name="male_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Female piglets <span class="text-red-500">*</span></label>
+                                <input type="number" id="litterFemalePiglets" name="female_piglets" min="0" max="20" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">Males + females must equal alive piglets.</p>
 
                         <!-- Still Births -->
                         <div>

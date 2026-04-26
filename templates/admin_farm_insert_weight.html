@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Litters & Pigs Overview - Pig Farm Management System</title>
+    <title>Litters & Pigs Overview - Farm A Management System</title>
 {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
@@ -101,7 +101,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                             {% for litter in litters %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 cursor-pointer" onclick="openLitterModal({{ litter.id }}, '{{ litter.litter_id }}', '{{ litter.sow_tag_id or 'N/A' }}', '{{ litter.sow_breed or 'Unknown' }}', '{{ litter.farm_name or 'N/A' }}', {{ litter.total_piglets or 0 }}, {{ litter.alive_piglets or 0 }}, '{{ litter.farrowing_date.strftime('%Y-%m-%d') if litter.farrowing_date else 'N/A' }}', '{{ litter.status }}')">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 cursor-pointer" onclick="openLitterModal({{ litter.id }}, '{{ litter.litter_id }}', '{{ litter.sow_tag_id or 'N/A' }}', '{{ litter.sow_breed or 'Unknown' }}', {{ litter.total_piglets or 0 }}, {{ litter.alive_piglets or 0 }}, '{{ litter.farrowing_date.strftime('%Y-%m-%d') if litter.farrowing_date else 'N/A' }}', '{{ litter.status }}')">
                                 <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                                     <div class="flex items-center">
                                         <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
@@ -174,14 +174,13 @@
                             <tr class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Gender</th>
-                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Farm</th>
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Age</th>
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                             {% for pig in pigs %}
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 cursor-pointer" onclick="openAnimalModal({{ pig.id }}, '{{ pig.tag_id }}', '{{ pig.name or 'Unnamed' }}', '{{ pig.breed or 'Unknown' }}', '{{ pig.gender or 'Unknown' }}', '{{ pig.farm_name or 'N/A' }}', {{ pig.age_days or 0 }})">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 cursor-pointer" onclick="openAnimalModal({{ pig.id }}, '{{ pig.tag_id }}', '{{ pig.name or 'Unnamed' }}', '{{ pig.breed or 'Unknown' }}', '{{ pig.gender or 'Unknown' }}', {{ pig.age_days or 0 }})">
                                 <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                                     <div class="flex items-center">
                                         <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
@@ -208,9 +207,6 @@
                                         Unknown
                                     </span>
                                     {% endif %}
-                                </td>
-                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-                                    <div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{{ pig.farm_name or 'N/A' }}</div>
                                 </td>
                                 <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                                     {% if pig.age_days %}
@@ -252,7 +248,7 @@
                             {% endfor %}
                             {% if not pigs %}
                             <tr>
-                                <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                     No pigs found
                                 </td>
                             </tr>
@@ -679,7 +675,7 @@
         }
 
         // Modal functionality
-        function openAnimalModal(animalId, tagId, name, breed, gender, farm, ageDays = 0) {
+        function openAnimalModal(animalId, tagId, name, breed, gender, ageDays = 0) {
             const modal = document.getElementById('animal-weight-modal');
             const modalName = document.getElementById('modal-animal-name');
             const modalDetails = document.getElementById('modal-animal-details');
@@ -687,7 +683,7 @@
             
             // Update modal content
             modalName.textContent = `${name} (${tagId})`;
-            modalDetails.textContent = `${breed} • ${gender} • ${farm}`;
+            modalDetails.textContent = `${breed} • ${gender}`;
             selectedAnimalId.value = animalId;
             
             // Debug: Log the animal ID being set
@@ -1146,7 +1142,7 @@
         });
 
         // Litter Modal functionality
-        function openLitterModal(litterId, litterTagId, sowTagId, sowBreed, farmName, totalPiglets, alivePiglets, farrowingDate, status) {
+        function openLitterModal(litterId, litterTagId, sowTagId, sowBreed, totalPiglets, alivePiglets, farrowingDate, status) {
             const modal = document.getElementById('litter-weight-modal');
             const modalName = document.getElementById('modal-litter-name');
             const modalDetails = document.getElementById('modal-litter-details');
@@ -1154,7 +1150,7 @@
             
             // Update modal content
             modalName.textContent = `Litter ${litterTagId}`;
-            modalDetails.textContent = `Sow: ${sowTagId} • ${sowBreed} • ${farmName} • ${alivePiglets}/${totalPiglets} piglets`;
+            modalDetails.textContent = `Sow: ${sowTagId} • ${sowBreed} • ${alivePiglets}/${totalPiglets} piglets`;
             selectedLitterId.value = litterId;
             
             // Debug: Log the litter ID being set
