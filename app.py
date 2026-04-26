@@ -723,7 +723,7 @@ def create_database_and_tables():
                 purchase_date DATE,
                 age_days INT,
                 registered_by INT NOT NULL,
-                status ENUM('active', 'sold', 'deceased', 'transferred', 'dead', 'slaughtered') DEFAULT 'active',
+                status ENUM('active', 'sold', 'deceased', 'transferred', 'dead', 'slaughtered', 'unavailable') DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (farm_id) REFERENCES farms(id),
@@ -755,11 +755,11 @@ def create_database_and_tables():
         """)
         print("Pig feeding records table checked/created successfully")
         
-        # Update pigs table status ENUM to include 'dead' and 'slaughtered'
+        # Update pigs table status ENUM to include 'dead', 'slaughtered', and 'unavailable'
         try:
             cursor.execute("""
                 ALTER TABLE pigs 
-                MODIFY COLUMN status ENUM('active', 'sold', 'deceased', 'transferred', 'dead', 'slaughtered') DEFAULT 'active'
+                MODIFY COLUMN status ENUM('active', 'sold', 'deceased', 'transferred', 'dead', 'slaughtered', 'unavailable') DEFAULT 'active'
             """)
             print("Pigs table status ENUM updated successfully")
         except Exception as e:
@@ -1299,7 +1299,7 @@ def create_database_and_tables():
                 avg_weight DECIMAL(5,2),
                 weaning_weight DECIMAL(5,2),
                 weaning_date DATE,
-                status ENUM('unweaned', 'weaned', 'sold', 'deceased', 'dead', 'slaughtered') DEFAULT 'unweaned',
+                status ENUM('unweaned', 'weaned', 'sold', 'deceased', 'dead', 'slaughtered', 'unavailable') DEFAULT 'unweaned',
                 notes TEXT,
                 created_by INT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1312,11 +1312,11 @@ def create_database_and_tables():
         """)
         print("Litters table checked/created successfully")
         
-        # Update litters table status ENUM to include 'dead' and 'slaughtered'
+        # Update litters table status ENUM to include 'dead', 'slaughtered', and 'unavailable'
         try:
             cursor.execute("""
                 ALTER TABLE litters 
-                MODIFY COLUMN status ENUM('unweaned', 'weaned', 'sold', 'deceased', 'dead', 'slaughtered') DEFAULT 'unweaned'
+                MODIFY COLUMN status ENUM('unweaned', 'weaned', 'sold', 'deceased', 'dead', 'slaughtered', 'unavailable') DEFAULT 'unweaned'
             """)
             print("Litters table status ENUM updated successfully")
         except Exception as e:
@@ -22254,7 +22254,7 @@ def record_animal_weigh_in():
             try:
                 cursor.execute("""
                     UPDATE pigs SET status = %s, updated_at = NOW()
-                    WHERE id = %s AND status NOT IN ('sold','deceased','slaughtered','transferred')
+                    WHERE id = %s AND status NOT IN ('sold','deceased','slaughtered','transferred','dead','unavailable')
                 """, (new_pig_status, animal_id))
             except Exception as upd_e:
                 # Don't fail the whole request if the pigs.status ENUM doesn't include sick/quarantine
@@ -23100,16 +23100,20 @@ def get_litter_details(litter_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get litter details with farrowing date + sow/boar + farm info
+        # Full litter row for management/edit UIs: include source, sex split, and
+        # parent breeds from litter columns when purchased (no linked pigs).
         cursor.execute("""
-            SELECT l.id, l.litter_id, l.farrowing_record_id,
+            SELECT l.id, l.litter_id, l.farrowing_record_id, l.litter_source,
                    l.farrowing_date, l.sow_id, l.boar_id,
                    l.total_piglets, l.alive_piglets, l.still_births,
+                   l.male_piglets, l.female_piglets,
                    l.avg_weight, l.weaning_weight, l.weaning_date,
                    l.status, l.notes,
                    l.created_at, l.updated_at,
-                   p.tag_id   AS sow_tag_id,   p.breed AS sow_breed,
-                   b.tag_id   AS boar_tag_id,  b.breed AS boar_breed,
+                   p.tag_id AS sow_tag_id,
+                   COALESCE(p.breed, l.sow_breed) AS sow_breed,
+                   b.tag_id AS boar_tag_id,
+                   COALESCE(b.breed, l.boar_breed) AS boar_breed,
                    f.farm_name, DATEDIFF(CURDATE(), l.farrowing_date) AS age_days,
                    e.full_name AS created_by_name
             FROM litters l
@@ -24360,6 +24364,31 @@ def get_vaccination_animals():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Slaughter Management API endpoints
+def _update_sow_unavailable_if_all_litters_depleted(cursor, litter_id):
+    """If every litter for the sow has no alive piglets, mark the sow unavailable."""
+    cursor.execute("SELECT sow_id FROM litters WHERE id = %s", (litter_id,))
+    row = cursor.fetchone()
+    if not row or not row.get('sow_id'):
+        return
+    sow_id = row['sow_id']
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS n,
+               COALESCE(SUM(CASE WHEN alive_piglets > 0 THEN 1 ELSE 0 END), 0) AS litters_with_alive
+        FROM litters WHERE sow_id = %s
+        """,
+        (sow_id,),
+    )
+    stats = cursor.fetchone()
+    if stats and stats['n'] and int(stats['litters_with_alive'] or 0) == 0:
+        cursor.execute(
+            """
+            UPDATE pigs SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP WHERE id = %s
+            """,
+            (sow_id,),
+        )
+
+
 @app.route('/api/slaughter/records', methods=['GET'])
 def get_slaughter_records():
     """Get all slaughter records"""
@@ -24484,12 +24513,12 @@ def create_slaughter_record():
         
         record_id = cursor.lastrowid
         
-        # Update pig status to slaughtered
+        # Mark animal unavailable when fully slaughtered (single pig/batch or entire litter cleared)
         if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
-            print(f"Updating pig {data['pig_id']} status to 'slaughtered'")
+            print(f"Updating pig {data['pig_id']} status to 'unavailable'")
             cursor.execute("""
                 UPDATE pigs 
-                SET status = 'slaughtered', updated_at = CURRENT_TIMESTAMP
+                SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """, (data['pig_id'],))
             print(f"Pig status update affected {cursor.rowcount} rows")
@@ -24521,12 +24550,12 @@ def create_slaughter_record():
             """, (data['litter_id'],))
             litter_info = cursor.fetchone()
             
-            # If no pigs left, update litter status to slaughtered
+            # If no pigs left, litter is fully processed — not selectable for further operations
             if litter_info and litter_info['alive_piglets'] <= 0:
-                print(f"Updating litter {data['litter_id']} status to 'slaughtered'")
+                print(f"Updating litter {data['litter_id']} status to 'unavailable'")
                 cursor.execute("""
                     UPDATE litters 
-                    SET status = 'slaughtered', updated_at = CURRENT_TIMESTAMP
+                    SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, (data['litter_id'],))
                 print(f"Litter status update affected {cursor.rowcount} rows")
@@ -24536,34 +24565,12 @@ def create_slaughter_record():
                 updated_litter = cursor.fetchone()
                 print(f"Litter {data['litter_id']} status after update: {updated_litter['status'] if updated_litter else 'NOT FOUND'}, alive_piglets: {updated_litter['alive_piglets'] if updated_litter else 'N/A'}")
                 
-                # Check if all litters from the parent sow are slaughtered
-                cursor.execute("""
-                    SELECT sow_id FROM litters WHERE id = %s
-                """, (data['litter_id'],))
-                sow_result = cursor.fetchone()
-                
-                if sow_result:
-                    sow_id = sow_result['sow_id']
-                    cursor.execute("""
-                        SELECT COUNT(*) as total_litters,
-                               SUM(CASE WHEN status = 'slaughtered' THEN 1 ELSE 0 END) as slaughtered_litters
-                        FROM litters 
-                        WHERE sow_id = %s
-                    """, (sow_id,))
-                    
-                    litter_stats = cursor.fetchone()
-                    if litter_stats and litter_stats['total_litters'] == litter_stats['slaughtered_litters']:
-                        # All litters are slaughtered, update sow status
-                        cursor.execute("""
-                            UPDATE pigs 
-                            SET status = 'slaughtered', updated_at = CURRENT_TIMESTAMP
-                            WHERE id = %s
-                        """, (sow_id,))
+                _update_sow_unavailable_if_all_litters_depleted(cursor, data['litter_id'])
         
         # Log activity
         if data['pig_type'] in ('grown_pig', 'batch'):
             log_activity(session['employee_id'], 'SLAUGHTER_RECORD', 
-                       f'Slaughter record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to slaughtered - ${total_revenue} revenue')
+                       f'Slaughter record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to unavailable - ${total_revenue} revenue')
         else:
             log_activity(session['employee_id'], 'SLAUGHTER_RECORD', 
                        f'Slaughter record created: Litter {data.get("litter_id")} - {pigs_count} pigs slaughtered - ${total_revenue} revenue')
@@ -24931,11 +24938,10 @@ def create_death_record():
         
         # Update pig/litter status
         if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
-            # Update pig status to dead
-            print(f"Updating pig {data['pig_id']} status to 'dead'")
+            print(f"Updating pig {data['pig_id']} status to 'unavailable'")
             cursor.execute("""
                 UPDATE pigs 
-                SET status = 'dead', updated_at = CURRENT_TIMESTAMP
+                SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """, (data['pig_id'],))
             print(f"Pig status update affected {cursor.rowcount} rows")
@@ -24967,49 +24973,25 @@ def create_death_record():
             """, (data['litter_id'],))
             litter_info = cursor.fetchone()
             
-            # If no pigs left, update litter status to dead
             if litter_info and litter_info['alive_piglets'] <= 0:
-                print(f"Updating litter {data['litter_id']} status to 'dead'")
+                print(f"Updating litter {data['litter_id']} status to 'unavailable'")
                 cursor.execute("""
                     UPDATE litters 
-                    SET status = 'dead', updated_at = CURRENT_TIMESTAMP
+                    SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, (data['litter_id'],))
                 print(f"Litter status update affected {cursor.rowcount} rows")
                 
-                # Verify the litter status update
                 cursor.execute("SELECT status, alive_piglets FROM litters WHERE id = %s", (data['litter_id'],))
                 updated_litter = cursor.fetchone()
                 print(f"Litter {data['litter_id']} status after update: {updated_litter['status'] if updated_litter else 'NOT FOUND'}, alive_piglets: {updated_litter['alive_piglets'] if updated_litter else 'N/A'}")
                 
-                # Check if all litters from the parent sow are dead
-                cursor.execute("""
-                    SELECT sow_id FROM litters WHERE id = %s
-                """, (data['litter_id'],))
-                sow_result = cursor.fetchone()
-                
-                if sow_result:
-                    sow_id = sow_result['sow_id']
-                    cursor.execute("""
-                        SELECT COUNT(*) as total_litters,
-                               SUM(CASE WHEN status = 'dead' THEN 1 ELSE 0 END) as dead_litters
-                        FROM litters 
-                        WHERE sow_id = %s
-                    """, (sow_id,))
-                    
-                    litter_stats = cursor.fetchone()
-                    if litter_stats and litter_stats['total_litters'] == litter_stats['dead_litters']:
-                        # All litters are dead, update sow status
-                        cursor.execute("""
-                            UPDATE pigs 
-                            SET status = 'dead', updated_at = CURRENT_TIMESTAMP
-                            WHERE id = %s
-                        """, (sow_id,))
+                _update_sow_unavailable_if_all_litters_depleted(cursor, data['litter_id'])
         
         # Log activity
         if data['pig_type'] in ('grown_pig', 'batch'):
             log_activity(session['employee_id'], 'DEATH_RECORD', 
-                       f'Death record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to dead - Cause: {data["cause_of_death"]}')
+                       f'Death record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to unavailable - Cause: {data["cause_of_death"]}')
         else:
             log_activity(session['employee_id'], 'DEATH_RECORD', 
                        f'Death record created: Litter {data.get("litter_id")} - {pigs_count} pigs marked as dead - Cause: {data["cause_of_death"]}')
@@ -25459,6 +25441,12 @@ def get_pig_death_details(pig_id):
         conn.close()
         
         if pig:
+            for key in ('birth_date', 'purchase_date'):
+                v = pig.get(key)
+                if v is not None and hasattr(v, 'strftime'):
+                    pig[key] = v.strftime('%Y-%m-%d')
+                elif v is not None:
+                    pig[key] = str(v)[:10]
             return jsonify({
                 'success': True,
                 'pig': pig
@@ -25491,6 +25479,11 @@ def get_litter_death_details(litter_id):
         conn.close()
         
         if litter:
+            v = litter.get('farrowing_date')
+            if v is not None and hasattr(v, 'strftime'):
+                litter['farrowing_date'] = v.strftime('%Y-%m-%d')
+            elif v is not None:
+                litter['farrowing_date'] = str(v)[:10]
             return jsonify({
                 'success': True,
                 'litter': litter
@@ -25673,11 +25666,10 @@ def create_sale_record():
         
         # Update pig/litter status
         if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
-            # Update pig status to sold
-            print(f"Updating pig {data['pig_id']} status to 'sold'")
+            print(f"Updating pig {data['pig_id']} status to 'unavailable'")
             cursor.execute("""
                 UPDATE pigs 
-                SET status = 'sold', updated_at = CURRENT_TIMESTAMP
+                SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """, (data['pig_id'],))
             print(f"Pig status update affected {cursor.rowcount} rows")
@@ -25709,20 +25701,20 @@ def create_sale_record():
             """, (data['litter_id'],))
             litter_info = cursor.fetchone()
             
-            # If no pigs left, update litter status to sold
             if litter_info and litter_info['alive_piglets'] <= 0:
-                print(f"Updating litter {data['litter_id']} status to 'sold'")
+                print(f"Updating litter {data['litter_id']} status to 'unavailable'")
                 cursor.execute("""
                     UPDATE litters 
-                    SET status = 'sold', updated_at = CURRENT_TIMESTAMP
+                    SET status = 'unavailable', updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, (data['litter_id'],))
                 print(f"Litter status update affected {cursor.rowcount} rows")
                 
-                # Verify the litter status update
                 cursor.execute("SELECT status, alive_piglets FROM litters WHERE id = %s", (data['litter_id'],))
                 updated_litter = cursor.fetchone()
                 print(f"Litter {data['litter_id']} status after update: {updated_litter['status'] if updated_litter else 'NOT FOUND'}, alive_piglets: {updated_litter['alive_piglets'] if updated_litter else 'N/A'}")
+                
+                _update_sow_unavailable_if_all_litters_depleted(cursor, data['litter_id'])
         
         b_phone = (data.get('buyer_contact') or '').strip()
         b_name = (data.get('buyer_name') or '').strip()
@@ -25745,7 +25737,7 @@ def create_sale_record():
         # Log activity
         if data['pig_type'] in ('grown_pig', 'batch'):
             log_activity(session['employee_id'], 'SALE_RECORD', 
-                       f'Sale record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to sold - Revenue: ${total_revenue}')
+                       f'Sale record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to unavailable - Revenue: ${total_revenue}')
         else:
             log_activity(session['employee_id'], 'SALE_RECORD', 
                        f'Sale record created: Litter {data.get("litter_id")} - {pigs_count} pigs sold - Revenue: ${total_revenue}')

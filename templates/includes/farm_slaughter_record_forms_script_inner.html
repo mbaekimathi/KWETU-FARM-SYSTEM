@@ -252,11 +252,30 @@
 
         function normalizeYmd(val) {
             if (val == null || val === '') return null;
+            if (val instanceof Date && !isNaN(val.getTime())) {
+                return toLocalYmd(val);
+            }
             const t = String(val).trim();
             if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.substring(0, 10);
             if (t.indexOf('T') !== -1) return t.split('T')[0].substring(0, 10);
-            if (t.indexOf(' ') !== -1) return t.split(' ')[0].substring(0, 10);
-            return t;
+            if (t.indexOf(' ') !== -1) {
+                const head = t.split(' ')[0].substring(0, 10);
+                if (/^\d{4}-\d{2}-\d{2}$/.test(head)) return head;
+            }
+            const parsed = Date.parse(t);
+            if (!isNaN(parsed)) return toLocalYmd(new Date(parsed));
+            return null;
+        }
+
+        function ensureSaleModalSaleDate() {
+            const saleBox = document.getElementById('saleModal');
+            const sd = saleBox ? saleBox.querySelector('#saleDate') : document.getElementById('saleDate');
+            if (!sd) return;
+            const today = toLocalYmd(new Date());
+            if (!String(sd.value || '').trim()) {
+                sd.value = today;
+            }
+            sd.defaultValue = sd.value || today;
         }
 
         function parseLocalYMD(ymd) {
@@ -373,9 +392,7 @@
             const endpoint = isPigOrBatchAnimalType(pigType) ? '/api/pigs/death-details' : '/api/litters/death-details';
             const saleBox = document.getElementById('saleModal');
             const saleInput = saleBox ? saleBox.querySelector('#saleDate') : document.getElementById('saleDate');
-            if (saleInput && !String(saleInput.value || '').trim()) {
-                saleInput.value = toLocalYmd(new Date());
-            }
+            ensureSaleModalSaleDate();
 
             if (listOriginYmd) {
                 saleOriginDateStr = listOriginYmd;
@@ -1281,11 +1298,15 @@
                     
                     let successMessage = 'Slaughter record saved successfully!\n';
                     if (isPigOrBatchAnimalType(pigType)) {
-                        successMessage += `✅ Pig / batch status updated to "slaughtered"\n`;
+                        successMessage += `✅ Pig / batch status set to "unavailable"\n`;
                     } else {
-                        const pigsCount = document.getElementById('pigsToSlaughter').value || '1';
-                        successMessage += `✅ ${pigsCount} pig(s) slaughtered from litter\n`;
-                        successMessage += `📊 Litter availability updated\n`;
+                        const pigsCount = parseInt(document.getElementById('pigsToSlaughter').value || '1', 10);
+                        if (slaughterLitterMaxAlive != null && pigsCount >= slaughterLitterMaxAlive) {
+                            successMessage += `✅ All piglets slaughtered; litter status set to "unavailable"\n`;
+                        } else {
+                            successMessage += `✅ ${pigsCount} pig(s) slaughtered from litter\n`;
+                            successMessage += `📊 Litter availability updated\n`;
+                        }
                     }
                     successMessage += `📋 Record ID: ${pigTag}\n`;
                     successMessage += `💰 Revenue: ${document.getElementById('totalRevenue').textContent}`;
@@ -1359,7 +1380,9 @@
         }
 
         function resetSaleForm() {
-            document.getElementById('saleForm').reset();
+            const saleFormEl = document.getElementById('saleForm');
+            if (saleFormEl) saleFormEl.reset();
+
             document.getElementById('salePigSelection').classList.add('hidden');
             document.getElementById('salePigsCount').classList.add('hidden');
             document.getElementById('selectedSalePig').classList.add('hidden');
@@ -1381,13 +1404,13 @@
             });
             clearSaleOriginPanel();
             
-            // Reset to today (local date for date inputs)
-            const today = toLocalYmd(new Date());
             const saleBox = document.getElementById('saleModal');
-            const sd = saleBox ? saleBox.querySelector('#saleDate') : document.getElementById('saleDate');
-            if (sd) sd.value = today;
             const sa = saleBox ? saleBox.querySelector('#saleAge') : document.getElementById('saleAge');
-            if (sa) sa.value = '';
+            if (sa) {
+                sa.value = '';
+                sa.defaultValue = '';
+            }
+            ensureSaleModalSaleDate();
             const sc = document.getElementById('saleCategoryPigCount');
             if (sc) sc.textContent = '—';
             hideBuyerPhoneSuggestions();
@@ -1396,9 +1419,10 @@
             const sbc = document.getElementById('buyerPhoneSuggestions');
             if (sbc) sbc.innerHTML = '';
             
-            // Clear total revenue
-            document.getElementById('totalSaleRevenue').textContent = formatFarmMoney(0);
-            document.getElementById('revenueBreakdown').textContent = '0 pigs × ' + formatFarmMoney(0);
+            const tre = document.getElementById('totalSaleRevenue');
+            if (tre) tre.textContent = formatFarmMoney(0);
+            const rb = document.getElementById('revenueBreakdown');
+            if (rb) rb.textContent = '0 pigs × ' + formatFarmMoney(0);
             syncSaleAgeHelp();
         }
 
@@ -1408,6 +1432,10 @@
                 resetSaleForm();
                 modal.classList.remove('hidden');
                 document.body.classList.add('overflow-hidden');
+                requestAnimationFrame(function () {
+                    ensureSaleModalSaleDate();
+                    recalculateSaleAgeFromForm();
+                });
                 const firstInput = modal.querySelector('input, select, textarea');
                 if (firstInput) {
                     setTimeout(() => firstInput.focus(), 100);
@@ -1580,10 +1608,15 @@
                 if (result.success) {
                     let successMessage = 'Death record saved successfully!\n';
                     if (isPigOrBatchAnimalType(pigType)) {
-                        successMessage += `✅ Pig / batch status updated to "dead"\n`;
+                        successMessage += `✅ Pig / batch status set to "unavailable"\n`;
                     } else {
-                        successMessage += `✅ ${pigsCount} pig(s) marked as dead from litter\n`;
-                        successMessage += `📊 Litter availability updated\n`;
+                        const n = parseInt(pigsCount, 10) || 0;
+                        if (deathLitterMaxAlive != null && n >= deathLitterMaxAlive) {
+                            successMessage += `✅ All piglets recorded dead; litter status set to "unavailable"\n`;
+                        } else {
+                            successMessage += `✅ ${pigsCount} pig(s) marked as dead from litter\n`;
+                            successMessage += `📊 Litter availability updated\n`;
+                        }
                     }
                     successMessage += `📋 Record ID: ${pigId}\n`;
                     successMessage += `⚖️ Weight: ${deathWeight}kg`;
@@ -1705,10 +1738,15 @@
                 if (result.success) {
                     let successMessage = 'Sale record saved successfully!\n';
                     if (isPigOrBatchAnimalType(pigType)) {
-                        successMessage += `✅ Pig / batch status updated to "sold"\n`;
+                        successMessage += `✅ Pig / batch status set to "unavailable"\n`;
                     } else {
-                        successMessage += `✅ ${pigsCount} pig(s) sold from litter\n`;
-                        successMessage += `📊 Litter availability updated\n`;
+                        const n = parseInt(pigsCount, 10) || 0;
+                        if (saleLitterMaxAlive != null && n >= saleLitterMaxAlive) {
+                            successMessage += `✅ All piglets sold; litter status set to "unavailable"\n`;
+                        } else {
+                            successMessage += `✅ ${pigsCount} pig(s) sold from litter\n`;
+                            successMessage += `📊 Litter availability updated\n`;
+                        }
                     }
                     successMessage += `📋 Record ID: ${pigId}\n`;
                     successMessage += `💰 Total Revenue: ${formatFarmMoney(formData.total_revenue)}`;
@@ -1802,10 +1840,14 @@
             deathDateForAgeEl.addEventListener('change', recalculateDeathAgeFromForm);
             deathDateForAgeEl.addEventListener('input', recalculateDeathAgeFromForm);
         }
-        const saleDateForAgeEl = document.querySelector('#saleModal #saleDate');
-        if (saleDateForAgeEl) {
-            saleDateForAgeEl.addEventListener('change', recalculateSaleAgeFromForm);
-            saleDateForAgeEl.addEventListener('input', recalculateSaleAgeFromForm);
+        const saleModalEl = document.getElementById('saleModal');
+        if (saleModalEl) {
+            saleModalEl.addEventListener('change', function (e) {
+                if (e.target && e.target.id === 'saleDate') recalculateSaleAgeFromForm();
+            });
+            saleModalEl.addEventListener('input', function (e) {
+                if (e.target && e.target.id === 'saleDate') recalculateSaleAgeFromForm();
+            });
         }
         const deathPigsCountField = document.getElementById('deathPigsCountInput');
         if (deathPigsCountField) {

@@ -2941,45 +2941,41 @@
             }
         }
 
-        // Edit litter function
-        function editLitter(litterId) {
-            // Find the litter data
-            const litter = currentLittersData.find(l => l.id == litterId || l.id === parseInt(litterId));
-            if (!litter) {
-                showToast('Litter not found', 'error');
-                return;
+        function toDateInputValue(raw) {
+            if (raw == null || raw === '') return '';
+            const s = String(raw).trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            const d = new Date(s);
+            if (Number.isNaN(d.getTime())) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function populateEditLitterForm(litter) {
+            if (!litter) return;
+            const msg = document.getElementById('litterIdValidationMessage');
+            if (msg) {
+                msg.textContent = '';
+                msg.classList.add('hidden');
             }
 
-            // Show modal with animation
-            const modal = document.getElementById('editLitterModal');
-            const modalContent = modal.querySelector('.bg-white, .dark\\:bg-gray-800');
-            modal.classList.remove('hidden');
-            
-            // Trigger animation after a small delay to ensure the modal is visible
-            setTimeout(() => {
-                modalContent.style.transform = 'scale(1)';
-                modalContent.style.opacity = '1';
-            }, 10);
-
-            // Then populate the form with current litter data
             document.getElementById('editLitterId').value = litter.id;
             document.getElementById('editLitterIdInput').value = litter.litter_id || '';
-            document.getElementById('editFarrowingDateInput').value = litter.farrowing_date || '';
+            document.getElementById('editFarrowingDateInput').value = toDateInputValue(litter.farrowing_date);
             document.getElementById('editAlivePigletsInput').value = litter.alive_piglets != null ? litter.alive_piglets : '';
             document.getElementById('editMalePigletsInput').value = (litter.male_piglets != null && litter.male_piglets !== '') ? litter.male_piglets : '0';
             document.getElementById('editFemalePigletsInput').value = (litter.female_piglets != null && litter.female_piglets !== '') ? litter.female_piglets : '0';
             document.getElementById('editLitterStatusSelect').value = litter.status || 'unweaned';
-            
-            // Set weaning date and weight if available
-            if (litter.weaning_date) {
-                document.getElementById('editWeaningDateInput').value = litter.weaning_date;
-            }
-            if (litter.weaning_weight) {
-                document.getElementById('editWeaningWeightInput').value = litter.weaning_weight;
-            }
 
-            // Toggle weaning fields based on current status
             toggleWeaningFields();
+            const st = (litter.status || '').toLowerCase();
+            if (st === 'weaned') {
+                document.getElementById('editWeaningDateInput').value = toDateInputValue(litter.weaning_date);
+                const ww = litter.weaning_weight;
+                document.getElementById('editWeaningWeightInput').value = (ww != null && ww !== '') ? String(ww) : '';
+            }
 
             const src = (litter.litter_source || 'born').toLowerCase() === 'purchased' ? 'purchased' : 'born';
             const hidSrc = document.getElementById('editLitterSource');
@@ -3018,6 +3014,49 @@
                 if (bsr) bsr.value = '';
             }
             applyEditLitterSourceUI();
+        }
+
+        // Edit litter: load authoritative row from API so source, sex split, and breeds match the database
+        function editLitter(litterId) {
+            const lid = parseInt(String(litterId), 10);
+            const openModal = () => {
+                const modal = document.getElementById('editLitterModal');
+                const modalContent = modal.querySelector('.bg-white, .dark\\:bg-gray-800');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modalContent.style.transform = 'scale(1)';
+                    modalContent.style.opacity = '1';
+                }, 10);
+            };
+
+            fetch(`/api/litter/${lid}/details`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.litter) {
+                        openModal();
+                        populateEditLitterForm(data.litter);
+                        return;
+                    }
+                    const cached = currentLittersData.find(l => l.id === lid || l.id == litterId);
+                    if (cached) {
+                        showToast(data.message || 'Loaded litter from list; refresh failed', 'warning');
+                        openModal();
+                        populateEditLitterForm(cached);
+                    } else {
+                        showToast(data.message || 'Litter not found', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading litter for edit:', error);
+                    const cached = currentLittersData.find(l => l.id === lid || l.id == litterId);
+                    if (cached) {
+                        showToast('Could not refresh details; showing list data', 'warning');
+                        openModal();
+                        populateEditLitterForm(cached);
+                    } else {
+                        showToast('Error loading litter', 'error');
+                    }
+                });
         }
 
         function applyEditLitterSourceUI() {
