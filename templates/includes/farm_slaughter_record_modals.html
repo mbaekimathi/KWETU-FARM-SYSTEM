@@ -27,6 +27,7 @@
                         <select id="pigTypeSelect" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-slate-700 dark:text-white transition-colors">
                             <option value="">Select Type</option>
                             <option value="grown_pig">Grown Pig</option>
+                            <option value="batch">Batch</option>
                             <option value="litter">Litter</option>
                         </select>
                     </div>
@@ -180,6 +181,7 @@
                         <select id="deathPigTypeSelect" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 dark:bg-gray-700 dark:text-white" onchange="handleDeathPigTypeChange()">
                             <option value="">Select Pig Type</option>
                             <option value="grown_pig">Grown Pig</option>
+                            <option value="batch">Batch</option>
                             <option value="litter">Litter</option>
                         </select>
                     </div>
@@ -300,7 +302,7 @@
                         <!-- Pig Type Selection -->
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Animal Type</label>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <label class="relative cursor-pointer">
                                     <input type="radio" name="salePigType" value="grown_pig" class="sr-only" onchange="handleSalePigTypeChange()">
                                     <div class="p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:border-green-400 transition-all duration-200 sale-pig-type-option">
@@ -309,6 +311,18 @@
                                             <div>
                                                 <div class="font-medium text-gray-900 dark:text-white">Grown Pig</div>
                                                 <div class="text-sm text-gray-500 dark:text-gray-400">Individual adult pig</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" name="salePigType" value="batch" class="sr-only" onchange="handleSalePigTypeChange()">
+                                    <div class="p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:border-green-400 transition-all duration-200 sale-pig-type-option">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-2xl">📦</span>
+                                            <div>
+                                                <div class="font-medium text-gray-900 dark:text-white">Batch</div>
+                                                <div class="text-sm text-gray-500 dark:text-gray-400">Combined batch (B-tag)</div>
                                             </div>
                                         </div>
                                     </div>
@@ -409,7 +423,7 @@
                                     <input type="date" id="saleDate" 
                                            class="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
                                 </div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5" id="saleAgeHelp">Age below uses the <strong>sale date</strong> (defaults to today). Farrowing date for litters; birth or purchase for grown pigs.</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5" id="saleAgeHelp">Age below uses the <strong>sale date</strong> (defaults to today). Farrowing for litters; birth or purchase for grown pigs and batches (B-tags).</p>
                             </div>
 
                             <!-- Age at sale (days) -->
@@ -418,6 +432,9 @@
                                 <input type="number" id="saleAge" min="0" readonly
                                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500 dark:bg-gray-600 dark:text-white transition-all duration-200"
                                        placeholder="—">
+                            </div>
+
+                            <div id="saleOriginSummary" class="hidden md:col-span-2 p-3 rounded-xl border text-sm text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-slate-600 bg-emerald-50/90 dark:bg-slate-800/60" role="status" aria-live="polite">
                             </div>
 
                             <!-- Buyer Contact (with live suggestions) -->

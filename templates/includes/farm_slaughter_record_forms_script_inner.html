@@ -3,6 +3,103 @@
             return FARM_CURRENCY + ' ' + parseFloat(amount || 0).toFixed(2);
         }
 
+        function isPigOrBatchAnimalType(pt) {
+            return pt === 'grown_pig' || pt === 'batch';
+        }
+        function pigsAvailableTypeQuery(pt) {
+            if (pt === 'grown_pig') return 'type=grown_pig&';
+            if (pt === 'batch') return 'type=batch&';
+            return '';
+        }
+
+        function getSelectedSalePigType() {
+            return document.querySelector('#saleForm input[name="salePigType"]:checked')?.value
+                || document.querySelector('#saleModal input[name="salePigType"]:checked')?.value
+                || null;
+        }
+
+        function clearSaleOriginPanel() {
+            const el = document.getElementById('saleOriginSummary');
+            if (!el) return;
+            el.classList.add('hidden');
+            el.innerHTML = '';
+        }
+
+        function setSaleOriginPanel(html) {
+            const el = document.getElementById('saleOriginSummary');
+            if (!el) return;
+            el.classList.remove('hidden');
+            el.innerHTML = html;
+        }
+
+        function renderSaleOriginFromListItem(pigType, item) {
+            if (!item) {
+                clearSaleOriginPanel();
+                return;
+            }
+            if (isPigOrBatchAnimalType(pigType)) {
+                const b = item.birth_date != null && item.birth_date !== '' ? normalizeYmd(item.birth_date) : null;
+                const pr = item.purchase_date != null && item.purchase_date !== '' ? normalizeYmd(item.purchase_date) : null;
+                const src = (item.pig_source || '').toString().toLowerCase();
+                const primary = src === 'purchased' ? (pr || b) : b;
+                let body = '<p class="font-semibold text-slate-800 dark:text-slate-100">Origin dates (from search)</p><ul class="mt-1.5 list-disc pl-4 space-y-0.5 text-xs sm:text-sm">';
+                body += '<li>Birth: ' + (b || '—') + '</li>';
+                body += '<li>Purchase: ' + (pr || '—') + '</li>';
+                body += '<li>Source: ' + (item.pig_source || '—') + '</li>';
+                body += '</ul>';
+                if (primary) {
+                    body += '<p class="text-xs mt-2 text-slate-600 dark:text-slate-300">Start date for age: <strong>' + primary + '</strong></p>';
+                } else {
+                    body += '<p class="text-xs mt-2 text-amber-700 dark:text-amber-300">No birth/purchase on this list row — open search result still loads full details from the server (or set dates on the pig record).</p>';
+                }
+                setSaleOriginPanel(body);
+                return;
+            }
+            if (pigType === 'litter' && item.farrowing_date) {
+                setSaleOriginPanel('<p class="font-semibold">Farrowing (from search)</p><p class="mt-1 text-sm">Start date: <strong>' + normalizeYmd(item.farrowing_date) + '</strong></p>');
+            } else if (pigType === 'litter') {
+                setSaleOriginPanel('<p class="text-amber-700 dark:text-amber-300 text-sm">Farrowing date not in search row — it will show after the server response.</p>');
+            }
+        }
+
+        function renderSaleOriginFromApi(pigType, data) {
+            if (!data || !data.success) {
+                return;
+            }
+            if (isPigOrBatchAnimalType(pigType) && data.pig) {
+                const p = data.pig;
+                const b = p.birth_date != null && p.birth_date !== '' ? normalizeYmd(p.birth_date) : null;
+                const pr = p.purchase_date != null && p.purchase_date !== '' ? normalizeYmd(p.purchase_date) : null;
+                const o = pickPigOriginYmd(p);
+                let body = '<p class="font-semibold text-slate-800 dark:text-slate-100">Origin dates (database — used for age)</p><ul class="mt-1.5 list-disc pl-4 space-y-0.5 text-xs sm:text-sm">';
+                body += '<li>Birth: ' + (b || '—') + '</li>';
+                body += '<li>Purchase: ' + (pr || '—') + '</li>';
+                body += '<li>Source: ' + (p.pig_source || '—') + '</li>';
+                if (p.age_days != null && p.age_days !== '') {
+                    body += '<li>Recorded age (days in DB): ' + p.age_days + '</li>';
+                }
+                body += '</ul>';
+                if (o) {
+                    body += '<p class="text-xs mt-2 text-slate-600 dark:text-slate-300">Age uses start date: <strong>' + o + '</strong></p>';
+                } else if (p.age_days != null && String(p.age_days) !== '' && !isNaN(parseInt(p.age_days, 10))) {
+                    body += '<p class="text-xs mt-2 text-amber-800 dark:text-amber-200">No birth or purchase in DB — using <strong>age in days</strong> and your sale date to estimate.</p>';
+                } else {
+                    body += '<p class="text-xs mt-2 text-red-600 dark:text-red-400">Cannot compute age: add <strong>birth or purchase</strong> (or age in days) on the pig in Pig Management.</p>';
+                }
+                setSaleOriginPanel(body);
+                return;
+            }
+            if (pigType === 'litter' && data.litter) {
+                const l = data.litter;
+                const f = l.farrowing_date ? normalizeYmd(l.farrowing_date) : null;
+                if (f) {
+                    setSaleOriginPanel('<p class="font-semibold">Farrowing (database)</p><p class="mt-1 text-sm">Start date: <strong>' + f + '</strong></p>');
+                } else {
+                    setSaleOriginPanel('<p class="text-red-600 text-sm">This litter has no farrowing date in the database — add it on the litter record.</p>');
+                }
+            }
+        }
+
         function afterSlaughterSaleDeathRecordSaved() {
             if (typeof refreshData === 'function') {
                 refreshData();
@@ -99,15 +196,15 @@
                 return;
             }
             
-            const base = pigType === 'grown_pig' ? '/api/pigs/available' : '/api/litters/available';
-            const typeParam = pigType === 'grown_pig' ? 'type=grown_pig&' : '';
+            const base = isPigOrBatchAnimalType(pigType) ? '/api/pigs/available' : '/api/litters/available';
+            const typeParam = pigsAvailableTypeQuery(pigType);
             const endpoint = `${base}?${typeParam}ignore_status=1&q=${encodeURIComponent(query)}`;
             
             fetch(endpoint)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        const items = data[pigType === 'grown_pig' ? 'pigs' : 'litters'] || [];
+                        const items = data[isPigOrBatchAnimalType(pigType) ? 'pigs' : 'litters'] || [];
                         displayDeathSearchResults(items, pigType);
                     }
                 })
@@ -124,8 +221,8 @@
             } else {
                 results.innerHTML = items.map(item => {
                     const id = pigType === 'grown_pig' ? item.id : item.id;
-                    const tag = pigType === 'grown_pig' ? item.tag_id : item.litter_id;
-                    const details = pigType === 'grown_pig' 
+                    const tag = isPigOrBatchAnimalType(pigType) ? item.tag_id : item.litter_id;
+                    const details = isPigOrBatchAnimalType(pigType)
                         ? `${item.breed} • ${item.gender} • ${item.status}`
                         : `${item.total_pigs} pigs • ${item.available_pigs} available • ${item.status}`;
                     const alive = pigType === 'litter' ? (item.available_pigs != null ? item.available_pigs : (item.alive_piglets || 0)) : 1;
@@ -228,11 +325,11 @@
         function syncSaleAgeHelp() {
             const el = document.getElementById('saleAgeHelp');
             if (!el) return;
-            const ptype = document.querySelector('input[name="salePigType"]:checked')?.value;
+            const ptype = getSelectedSalePigType();
             const pid = (document.getElementById('selectedSalePigId') && document.getElementById('selectedSalePigId').value) || '';
-            const a = 'Age = full calendar days from <strong>farrowing</strong> (litter) or <strong>birth or purchase</strong> (grown pig, depending on how the animal was added) to the <strong>sale date</strong>.';
+            const a = 'Age = full calendar days from <strong>farrowing</strong> (litter) or <strong>birth or purchase</strong> (grown pig or batch) to the <strong>sale date</strong>.';
             if (!ptype) {
-                el.innerHTML = a + ' <span class="text-amber-600 dark:text-amber-300">Choose an animal type in step 1.</span>';
+                el.innerHTML = a + ' <span class="text-amber-600 dark:text-amber-300">In step 1, click a card: <strong>Grown pig</strong>, <strong>Batch</strong>, or <strong>Litter</strong> (resets when you open this window). Then search and pick a row.</span>';
                 return;
             }
             if (!pid) {
@@ -273,7 +370,7 @@
         }
 
         function loadSaleAgeContext(id, pigType, listOriginYmd) {
-            const endpoint = pigType === 'grown_pig' ? '/api/pigs/death-details' : '/api/litters/death-details';
+            const endpoint = isPigOrBatchAnimalType(pigType) ? '/api/pigs/death-details' : '/api/litters/death-details';
             const saleBox = document.getElementById('saleModal');
             const saleInput = saleBox ? saleBox.querySelector('#saleDate') : document.getElementById('saleDate');
             if (saleInput && !String(saleInput.value || '').trim()) {
@@ -292,6 +389,7 @@
                             saleOriginDateStr = listOriginYmd;
                         } else {
                             saleOriginDateStr = null;
+                            clearSaleOriginPanel();
                         }
                         recalculateSaleAgeFromForm();
                         return null;
@@ -305,11 +403,12 @@
                             saleOriginDateStr = listOriginYmd;
                         } else {
                             saleOriginDateStr = null;
+                            clearSaleOriginPanel();
                         }
                         recalculateSaleAgeFromForm();
                         return;
                     }
-                    if (pigType === 'grown_pig') {
+                    if (isPigOrBatchAnimalType(pigType)) {
                         const p = data.pig;
                         saleOriginDateStr = pickPigOriginYmd(p);
                         if (!saleOriginDateStr && p) {
@@ -330,6 +429,7 @@
                     if (!saleOriginDateStr && listOriginYmd) {
                         saleOriginDateStr = listOriginYmd;
                     }
+                    renderSaleOriginFromApi(pigType, data);
                     recalculateSaleAgeFromForm();
                 })
                 .catch(err => {
@@ -341,13 +441,14 @@
                         saleOriginDateStr = null;
                         const ageIn = saleBox && saleBox.querySelector('#saleAge');
                         if (ageIn) ageIn.value = '';
+                        clearSaleOriginPanel();
                         syncSaleAgeHelp();
                     }
                 });
         }
 
         function loadDeathAgeContext(id, pigType) {
-            const endpoint = pigType === 'grown_pig' ? '/api/pigs/death-details' : '/api/litters/death-details';
+            const endpoint = isPigOrBatchAnimalType(pigType) ? '/api/pigs/death-details' : '/api/litters/death-details';
             const today = new Date().toISOString().split('T')[0];
             const deathInput = document.getElementById('deathDate');
             if (deathInput) {
@@ -362,7 +463,7 @@
                         recalculateDeathAgeFromForm();
                         return;
                     }
-                    if (pigType === 'grown_pig') {
+                    if (isPigOrBatchAnimalType(pigType)) {
                         deathOriginDateStr = pickPigOriginYmd(data.pig);
                     } else {
                         const l = data.litter;
@@ -421,20 +522,27 @@
         // Enhanced Sale Record Functions
         function handleSalePigTypeChange() {
             clearSalePigSelection();
-            const pigType = document.querySelector('input[name="salePigType"]:checked')?.value;
+            const pigType = getSelectedSalePigType();
             const pigSelection = document.getElementById('salePigSelection');
             const pigsCount = document.getElementById('salePigsCount');
             
             // Update visual selection
-            document.querySelectorAll('.sale-pig-type-option').forEach(option => {
+            document.querySelectorAll('#saleForm .sale-pig-type-option').forEach(function (option) {
                 option.classList.remove('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
                 option.classList.add('border-gray-200', 'dark:border-gray-600');
             });
             
             if (pigType) {
-                const selectedOption = document.querySelector(`input[name="salePigType"][value="${pigType}"]`).closest('label').querySelector('.sale-pig-type-option');
-                selectedOption.classList.add('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
-                selectedOption.classList.remove('border-gray-200', 'dark:border-gray-600');
+                const rIn = document.querySelector('#saleForm input[name="salePigType"][value="' + pigType + '"]');
+                if (!rIn || !rIn.closest) {
+                    syncSaleAgeHelp();
+                    return;
+                }
+                const selectedOption = rIn.closest('label').querySelector('.sale-pig-type-option');
+                if (selectedOption) {
+                    selectedOption.classList.add('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
+                    selectedOption.classList.remove('border-gray-200', 'dark:border-gray-600');
+                }
                 
                 pigSelection.classList.remove('hidden');
                 if (pigType === 'litter') {
@@ -478,7 +586,7 @@
         function runSalePigSearch() {
             const query = document.getElementById('salePigSearch').value;
             const results = document.getElementById('salePigSearchResults');
-            const pigType = document.querySelector('input[name="salePigType"]:checked')?.value;
+            const pigType = getSelectedSalePigType();
             
             if (query.length < 2) {
                 results.classList.add('hidden');
@@ -486,19 +594,19 @@
             }
             
             if (!pigType) {
-                alert('Please select an animal type first');
+                alert('Please select an animal type first (Grown pig, Batch, or Litter in step 1).');
                 return;
             }
             
-            const base = pigType === 'grown_pig' ? '/api/pigs/available' : '/api/litters/available';
-            const typeParam = pigType === 'grown_pig' ? 'type=grown_pig&' : '';
+            const base = isPigOrBatchAnimalType(pigType) ? '/api/pigs/available' : '/api/litters/available';
+            const typeParam = pigsAvailableTypeQuery(pigType);
             const endpoint = `${base}?${typeParam}ignore_status=1&q=${encodeURIComponent(query)}`;
             
             fetch(endpoint)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        const items = data[pigType === 'grown_pig' ? 'pigs' : 'litters'] || [];
+                        const items = data[isPigOrBatchAnimalType(pigType) ? 'pigs' : 'litters'] || [];
                         displaySaleSearchResults(items, pigType);
                     }
                 })
@@ -520,15 +628,15 @@
             const refSaleYmd = (saleYElA && String(saleYElA.value || '').trim()) ? normalizeYmd(saleYElA.value) : toLocalYmd(new Date());
             items.forEach((item) => {
                 const id = item.id;
-                const tag = pigType === 'grown_pig' ? item.tag_id : item.litter_id;
-                const details = pigType === 'grown_pig'
+                const tag = isPigOrBatchAnimalType(pigType) ? item.tag_id : item.litter_id;
+                const details = isPigOrBatchAnimalType(pigType)
                     ? (item.breed + ' • ' + item.gender + ' • ' + item.status)
                     : (item.total_pigs + ' pigs • ' + item.available_pigs + ' available • ' + item.status);
                 const alive = pigType === 'litter' ? (item.available_pigs != null ? item.available_pigs : (item.alive_piglets || 0)) : 1;
-                let listOriginYmd = pigType === 'grown_pig'
+                let listOriginYmd = isPigOrBatchAnimalType(pigType)
                     ? pickPigOriginYmd(item)
                     : (item.farrowing_date ? normalizeYmd(item.farrowing_date) : null);
-                if (pigType === 'grown_pig' && !listOriginYmd && item.age_days != null && String(item.age_days) !== '') {
+                if (isPigOrBatchAnimalType(pigType) && !listOriginYmd && item.age_days != null && String(item.age_days) !== '') {
                     const ad = parseInt(item.age_days, 10);
                     if (!isNaN(ad) && ad >= 0) {
                         const implied = ymdAddDays(refSaleYmd, -ad);
@@ -546,17 +654,18 @@
                 row.appendChild(title);
                 row.appendChild(sub);
                 row.addEventListener('click', function () {
-                    selectSalePig(id, String(tag), details, pigType, alive, listOriginYmd);
+                    selectSalePig(id, String(tag), details, pigType, alive, listOriginYmd, item);
                 });
                 results.appendChild(row);
             });
             results.classList.remove('hidden');
         }
 
-        function selectSalePig(id, tag, details, pigType, alivePigs, listOriginYmd) {
+        function selectSalePig(id, tag, details, pigType, alivePigs, listOriginYmd, listItem) {
             document.getElementById('selectedSalePigId').value = id;
             document.getElementById('selectedSalePigTag').textContent = tag;
             document.getElementById('selectedSalePigDetails').textContent = details;
+            renderSaleOriginFromListItem(pigType, listItem || null);
             
             document.getElementById('selectedSalePig').classList.remove('hidden');
             document.getElementById('salePigSearchResults').classList.add('hidden');
@@ -570,6 +679,8 @@
                     countEl.textContent = alive < 1
                         ? 'No live piglets available in this litter for sale.'
                         : `${alive} piglet(s) in this litter — number to sell below defaults to all ${alive}; change if you sell fewer.`;
+                } else if (pigType === 'batch') {
+                    countEl.textContent = 'Batch group (B-tag) — one sale line for this batch record.';
                 } else {
                     countEl.textContent = '1 adult pig in this selection (grown pig).';
                 }
@@ -602,6 +713,7 @@
             document.getElementById('selectedSalePig').classList.add('hidden');
             saleLitterMaxAlive = null;
             saleOriginDateStr = null;
+            clearSaleOriginPanel();
             const saleBox = document.getElementById('saleModal');
             const a = saleBox ? saleBox.querySelector('#saleAge') : document.getElementById('saleAge');
             if (a) a.value = '';
@@ -612,7 +724,7 @@
 
         function calculateSaleRevenue() {
             const salePrice = parseFloat(document.getElementById('salePrice').value) || 0;
-            const pigType = document.querySelector('input[name="salePigType"]:checked')?.value;
+            const pigType = getSelectedSalePigType();
             let pigsCount = 1;
             
             if (pigType === 'litter') {
@@ -910,7 +1022,7 @@
                         console.log(`Loaded ${availablePigs.length} ${type}s from database`);
                         
                         // Update placeholder based on type
-                        searchInput.placeholder = type === 'grown_pig' ? 'Type to search for pig tag ID...' : 'Type to search for litter ID...';
+                        searchInput.placeholder = type === 'litter' ? 'Type to search for litter ID...' : (type === 'batch' ? 'Type to search for batch tag (B...)' : 'Type to search for pig tag ID...');
                     } else {
                         console.error('Error loading pigs/litters:', data.message);
                         availablePigs = [];
@@ -938,10 +1050,10 @@
             }
 
             let filteredItems = [];
-            if (pigType === 'grown_pig') {
+            if (isPigOrBatchAnimalType(pigType)) {
                 filteredItems = availablePigs.filter(pig => 
                     pig.tag_id.toLowerCase().includes(query.toLowerCase()) ||
-                    pig.breed.toLowerCase().includes(query.toLowerCase())
+                    (pig.breed && pig.breed.toLowerCase().includes(query.toLowerCase()))
                 );
             } else if (pigType === 'litter') {
                 filteredItems = availablePigs.filter(litter => 
@@ -951,10 +1063,10 @@
             }
 
             if (filteredItems.length === 0) {
-                const itemType = pigType === 'grown_pig' ? 'pigs' : 'litters';
+                const itemType = isPigOrBatchAnimalType(pigType) ? 'pigs' : 'litters';
                 resultsDiv.innerHTML = `<div class="p-3 text-gray-500 dark:text-gray-400">No ${itemType} found</div>`;
             } else {
-                if (pigType === 'grown_pig') {
+                if (isPigOrBatchAnimalType(pigType)) {
                     resultsDiv.innerHTML = filteredItems.map(pig => `
                         <div class="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0" 
                              onclick="selectPig(${pig.id}, '${pig.tag_id}', '${pig.breed}', '${pig.gender}', ${pig.weight || 0})">
@@ -1131,7 +1243,7 @@
             // Prepare form data
             const formData = {
                 pig_type: pigType,
-                pig_id: pigType === 'grown_pig' ? selectedPigId : null,
+                pig_id: isPigOrBatchAnimalType(pigType) ? selectedPigId : null,
                 litter_id: pigType === 'litter' ? selectedPigId : null,
                 slaughter_date: slaughterDate,
                 live_weight: liveWeight,
@@ -1161,15 +1273,15 @@
                 
                 const result = await response.json();
                 
-                if (result.success) {
+                    if (result.success) {
                     // Show success message with status update info
                     const pigType = document.getElementById('pigTypeSelect').value;
                     const pigId = document.getElementById('selectedPigId').value;
                     const pigTag = document.getElementById('selectedPigTag').textContent;
                     
                     let successMessage = 'Slaughter record saved successfully!\n';
-                    if (pigType === 'grown_pig') {
-                        successMessage += `✅ Pig status updated to "slaughtered"\n`;
+                    if (isPigOrBatchAnimalType(pigType)) {
+                        successMessage += `✅ Pig / batch status updated to "slaughtered"\n`;
                     } else {
                         const pigsCount = document.getElementById('pigsToSlaughter').value || '1';
                         successMessage += `✅ ${pigsCount} pig(s) slaughtered from litter\n`;
@@ -1263,10 +1375,11 @@
             }
             
             // Reset visual selection
-            document.querySelectorAll('.sale-pig-type-option').forEach(option => {
+            document.querySelectorAll('#saleForm .sale-pig-type-option').forEach(function (option) {
                 option.classList.remove('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
                 option.classList.add('border-gray-200', 'dark:border-gray-600');
             });
+            clearSaleOriginPanel();
             
             // Reset to today (local date for date inputs)
             const today = toLocalYmd(new Date());
@@ -1443,7 +1556,7 @@
             
             const formData = {
                 pig_type: pigType,
-                pig_id: pigType === 'grown_pig' ? pigId : null,
+                pig_id: isPigOrBatchAnimalType(pigType) ? pigId : null,
                 litter_id: pigType === 'litter' ? pigId : null,
                 pigs_count: pigsCount,
                 death_date: deathDate,
@@ -1466,8 +1579,8 @@
                 
                 if (result.success) {
                     let successMessage = 'Death record saved successfully!\n';
-                    if (pigType === 'grown_pig') {
-                        successMessage += `✅ Pig status updated to "dead"\n`;
+                    if (isPigOrBatchAnimalType(pigType)) {
+                        successMessage += `✅ Pig / batch status updated to "dead"\n`;
                     } else {
                         successMessage += `✅ ${pigsCount} pig(s) marked as dead from litter\n`;
                         successMessage += `📊 Litter availability updated\n`;
@@ -1567,7 +1680,7 @@
             const saleCount = pigType === 'litter' ? parseInt(pigsCount, 10) : 1;
             const formData = {
                 pig_type: pigType,
-                pig_id: pigType === 'grown_pig' ? pigId : null,
+                pig_id: isPigOrBatchAnimalType(pigType) ? pigId : null,
                 litter_id: pigType === 'litter' ? pigId : null,
                 pigs_count: saleCount,
                 sale_date: saleDate,
@@ -1591,8 +1704,8 @@
                 
                 if (result.success) {
                     let successMessage = 'Sale record saved successfully!\n';
-                    if (pigType === 'grown_pig') {
-                        successMessage += `✅ Pig status updated to "sold"\n`;
+                    if (isPigOrBatchAnimalType(pigType)) {
+                        successMessage += `✅ Pig / batch status updated to "sold"\n`;
                     } else {
                         successMessage += `✅ ${pigsCount} pig(s) sold from litter\n`;
                         successMessage += `📊 Litter availability updated\n`;
@@ -1630,8 +1743,8 @@
             calculateSaleRevenue();
         });
         
-        // Add event listeners for radio button changes
-        document.querySelectorAll('input[name="salePigType"]').forEach(radio => {
+        // Add event listeners for radio button changes (sale form only; avoids duplicate name attrs elsewhere on the page)
+        document.querySelectorAll('#saleForm input[name="salePigType"]').forEach(function (radio) {
             radio.addEventListener('change', handleSalePigTypeChange);
         });
 

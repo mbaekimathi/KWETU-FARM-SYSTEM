@@ -31,12 +31,6 @@
                         <button onclick="refreshCurrentTab()" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
                             <i class="fas fa-sync-alt mr-2"></i>Refresh
                         </button>
-                        <a href="{% if user.role == 'manager' %}/manager/farm/chicken-{% else %}/admin/farm/chicken-{% endif %}feeding-management" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                            </svg>
-                            Back
-                        </a>
                     </div>
                 </div>
             </div>

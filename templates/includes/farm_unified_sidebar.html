@@ -3,7 +3,7 @@
      farm_sidebar_banner_title (required)
      farm_sidebar_banner_sub (optional)
      farm_sidebar_nav_partial — path to template fragment with nav rows only (inside scrollable area)
-   Optional: farm_sidebar_aria_label, farm_sidebar_no_main_links (true = hide Dashboard + nav partial, banner/footer unchanged)
+   Optional: farm_sidebar_aria_label, farm_sidebar_no_main_links (true = hide nav partial only; Dashboard always shown)
    Optional: farm_sidebar_slaughter_add_links (true = show add slaughter / death / sale links; use with no_main_links on view-production)
 #}
 {% set _nav = farm_sidebar_nav_partial|default('includes/farm_nav_farm_operations_hub.html') %}
@@ -19,13 +19,11 @@
             {% include 'includes/farm_chicken_sidebar_banner_inner.html' %}
 
             <nav class="farm-chicken-nav flex min-h-0 flex-1 flex-col" aria-label="{{ farm_sidebar_aria_label|default('Farm navigation') }}">
-                {% if not (farm_sidebar_no_main_links|default(false)) %}
                 <div class="shrink-0 border-b border-gray-200 px-4 pb-3 pt-1 dark:border-gray-700">
                     {% call navm.farm_flat_nav_row(_dash_href, 'Dashboard', _dash_active) %}
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     {% endcall %}
                 </div>
-                {% endif %}
 
                 <div class="scrollbar-thin flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-4">
                     {% if farm_sidebar_slaughter_add_links|default(false) %}

@@ -32,12 +32,6 @@
                         <button onclick="refreshCurrentTab()" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
                             <i class="fas fa-sync-alt mr-2"></i>Refresh
                         </button>
-                        <a href="{% if user.role == 'manager' %}/manager/farm/pig-{% else %}/admin/farm/pig-{% endif %}feeding-management" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                            </svg>
-                            Back
-                        </a>
                     </div>
                 </div>
             </div>
@@ -149,7 +143,8 @@
                                 </div>
                                 <div>
                                     <h3 class="text-xl font-bold text-gray-900 dark:text-white">Total Feed Requirements</h3>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Overall feed needs across all farms</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Total daily feed needs from active animals and feed settings (per meal × times per day)</p>
+                                    <p id="feed-req-as-of" class="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden" aria-live="polite"></p>
                                 </div>
                             </div>
                         </div>
@@ -474,15 +469,23 @@
         // Feeding Record Analytics (Pig)
         let feedingRecordChart = null;
         function getFeedingAnalyticsDateParams() {
-            if (!dateFilter) return {};
-            if (dateFilter.type === 'day') return { date_from: dateFilter.value, date_to: dateFilter.value };
-            if (dateFilter.type === 'month') {
-                const [y, m] = dateFilter.value.split('-').map(Number);
-                const lastDay = new Date(y, m, 0).getDate();
-                return { date_from: `${y}-${String(m).padStart(2,'0')}-01`, date_to: `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}` };
+            const p = {};
+            if (dateFilter) {
+                if (dateFilter.type === 'day') {
+                    p.date_from = dateFilter.value;
+                    p.date_to = dateFilter.value;
+                } else if (dateFilter.type === 'month') {
+                    const [y, m] = dateFilter.value.split('-').map(Number);
+                    const lastDay = new Date(y, m, 0).getDate();
+                    p.date_from = `${y}-${String(m).padStart(2, '0')}-01`;
+                    p.date_to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                } else if (dateFilter.type === 'range') {
+                    p.date_from = dateFilter.value.start;
+                    p.date_to = dateFilter.value.end;
+                }
             }
-            if (dateFilter.type === 'range') return { date_from: dateFilter.value.start, date_to: dateFilter.value.end };
-            return {};
+            if (typeof farmFilter === 'number' && farmFilter > 0) p.farm_id = farmFilter;
+            return p;
         }
         async function loadFeedingRecordAnalytics() {
             const contentDiv = document.getElementById('feeding-records-analytics-content');
@@ -538,9 +541,9 @@
                         </div>
                     </div>
                     ${daily.length > 0 ? `
-                    <div><h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Daily total fed (last 30 days)</h4>
+                    <div><h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Daily total fed (kg) — selected period</h4>
                     <div class="h-64"><canvas id="feedingRecordDailyChart"></canvas></div></div>
-                    ` : '<p class="text-sm text-gray-500 dark:text-gray-400">No daily data to chart. Record feeding to see trends.</p>'}
+                    ` : '<p class="text-sm text-gray-500 dark:text-gray-400">No daily data in this period. Record feeding or widen the date filter.</p>'}
                 `;
                 if (feedingRecordChart) { feedingRecordChart.destroy(); feedingRecordChart = null; }
                 if (daily.length > 0) {
@@ -772,6 +775,15 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    const asOfEl = document.getElementById('feed-req-as-of');
+                    if (asOfEl) {
+                        if (data.as_of) {
+                            asOfEl.textContent = 'Age and requirements as of ' + new Date(data.as_of + 'T12:00:00').toLocaleDateString() + (farmFilter ? ' · farm filter applies' : '');
+                            asOfEl.classList.remove('hidden');
+                        } else {
+                            asOfEl.classList.add('hidden');
+                        }
+                    }
                     // Display total requirements in table format
                     if (data.total_requirements && data.total_requirements.length > 0) {
                         totalRequirementsDiv.innerHTML = data.total_requirements.map(feed => `
@@ -797,7 +809,7 @@
                             </tr>
                         `).join('');
                     } else {
-                        totalRequirementsDiv.innerHTML = '<tr><td colspan="5" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-3xl mb-3 text-gray-400"></i><p class="text-sm font-medium">No feed requirements found</p><p class="text-xs mt-1">Ensure animals have ages and feed settings are configured</p></td></tr>';
+                        totalRequirementsDiv.innerHTML = '<tr><td colspan="4" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-3xl mb-3 text-gray-400"></i><p class="text-sm font-medium">No feed requirements found</p><p class="text-xs mt-1">Ensure animals have ages and feed settings are configured (with feed types linked to registered feeds)</p></td></tr>';
                     }
                     
                     // Display farm requirements in list format
@@ -857,7 +869,7 @@
                 }
             } catch (error) {
                 console.error('Error loading feed requirements:', error);
-                document.getElementById('total-requirements').innerHTML = '<div class="text-center py-4 text-red-500 dark:text-red-400">Error loading feed requirements</div>';
+                document.getElementById('total-requirements').innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-red-500 dark:text-red-400">Error loading feed requirements</td></tr>';
                 document.getElementById('farm-requirements').innerHTML = '<div class="text-center py-4 text-red-500 dark:text-red-400">Error loading farm requirements</div>';
             }
         }
@@ -880,9 +892,10 @@
             modal.classList.remove('hidden');
             
             // Fetch animals for this feed
+            const q = typeof getDateFilterQuery === 'function' ? getDateFilterQuery() : '';
             const url = type === 'farm'
-                ? `/api/feed/analytics/animals?farm_id=${farmId}&feed_id=${feedId}&animal_type=pig`
-                : `/api/feed/analytics/animals?feed_id=${feedId}&animal_type=pig`;
+                ? `/api/feed/analytics/animals?farm_id=${farmId}&feed_id=${feedId}&animal_type=pig${q}`
+                : `/api/feed/analytics/animals?feed_id=${feedId}&animal_type=pig${q}`;
             
             fetch(url)
                 .then(response => response.json())
@@ -1306,8 +1319,9 @@
                     if (dateFilter.type === 'day') {
                         analyticsUrl += `&start_date=${dateFilter.value}&end_date=${dateFilter.value}`;
                     } else if (dateFilter.type === 'month') {
-                        const [year, month] = dateFilter.value.split('-');
-                        analyticsUrl += `&start_date=${year}-${month}-01&end_date=${year}-${month}-31`;
+                        const [y, m] = dateFilter.value.split('-').map(Number);
+                        const lastDay = new Date(y, m, 0).getDate();
+                        analyticsUrl += `&start_date=${y}-${String(m).padStart(2, '0')}-01&end_date=${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
                     } else if (dateFilter.type === 'range') {
                         analyticsUrl += `&start_date=${dateFilter.value.start}&end_date=${dateFilter.value.end}`;
                     }

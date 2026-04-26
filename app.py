@@ -553,6 +553,18 @@ def _migration_001_sync_columns(cursor):
     except Exception:
         pass
 
+    # Slaughter / death / sale records: allow pig_type = batch (batch groups live in `pigs` like grown_pig)
+    for tbl in ('slaughter_records', 'dead_pigs', 'sale_records'):
+        if not db_migrations.ensure_table_exists(cursor, tbl):
+            continue
+        try:
+            cursor.execute(
+                f"ALTER TABLE {tbl} MODIFY COLUMN pig_type "
+                "ENUM('grown_pig', 'litter', 'batch') NOT NULL"
+            )
+        except Exception as e:
+            print(f"Note: {tbl} pig_type enum (batch) may already be applied: {e}")
+
 
 def _migration_002_cow_breeding_ai(cursor):
     """Allow artificial insemination: nullable sire on breeding/calf, method + AI breed on cow_breeding."""
@@ -9973,6 +9985,7 @@ def get_pig_feeding_analytics():
     try:
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
+        farm_id = request.args.get('farm_id', type=int)
         conn = get_db_connection()
         cursor = conn.cursor()
         where = "WHERE 1=1"
@@ -9983,6 +9996,9 @@ def get_pig_feeding_analytics():
         if date_to:
             where += " AND DATE(pfr.feeding_datetime) <= %s"
             params.append(date_to)
+        if farm_id:
+            where += " AND pfr.farm_id = %s"
+            params.append(farm_id)
         cursor.execute("""
             SELECT COALESCE(SUM(pfr.amount_kg), 0) as total_kg, COUNT(*) as records_count, COUNT(DISTINCT pfr.pig_id) as pigs_fed_count
             FROM pig_feeding_records pfr """ + where, params)
@@ -9996,14 +10012,22 @@ def get_pig_feeding_analytics():
             GROUP BY pfr.feed_id, f.id, f.feed_name ORDER BY total_kg DESC
         """, params)
         by_feed = [{'feed_id': r['feed_id'], 'feed_name': r['feed_name'], 'total_kg': round(float(r['total_kg'] or 0), 2), 'record_count': r['record_count'] or 0, 'pig_count': r['pig_count'] or 0} for r in cursor.fetchall()]
-        daily_where = "WHERE pfr.feeding_datetime >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
-        daily_params = []
-        if date_from:
-            daily_where += " AND DATE(pfr.feeding_datetime) >= %s"
-            daily_params.append(date_from)
-        if date_to:
-            daily_where += " AND DATE(pfr.feeding_datetime) <= %s"
-            daily_params.append(date_to)
+        # Daily series: if a range is set, use only that range; else last 30 days
+        if date_from and date_to:
+            daily_where = "WHERE DATE(pfr.feeding_datetime) >= %s AND DATE(pfr.feeding_datetime) <= %s"
+            daily_params = [date_from, date_to]
+        elif date_from:
+            daily_where = "WHERE DATE(pfr.feeding_datetime) >= %s"
+            daily_params = [date_from]
+        elif date_to:
+            daily_where = "WHERE DATE(pfr.feeding_datetime) <= %s"
+            daily_params = [date_to]
+        else:
+            daily_where = "WHERE pfr.feeding_datetime >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
+            daily_params = []
+        if farm_id:
+            daily_where += " AND pfr.farm_id = %s" if "WHERE" in daily_where else " WHERE pfr.farm_id = %s"
+            daily_params.append(farm_id)
         cursor.execute("""
             SELECT DATE(pfr.feeding_datetime) as d, SUM(pfr.amount_kg) as total_kg, COUNT(*) as cnt
             FROM pig_feeding_records pfr """ + daily_where + """ GROUP BY DATE(pfr.feeding_datetime) ORDER BY d ASC
@@ -10016,6 +10040,35 @@ def get_pig_feeding_analytics():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+def _analytics_as_of_date_from_request():
+    """Reference calendar date for feed requirements / animal list (day, month, or range end). Defaults to today."""
+    import calendar
+    as_of = date.today()
+    date_str = request.args.get('date')
+    month_str = request.args.get('month')
+    end_date = request.args.get('end_date')
+    if date_str:
+        try:
+            return date.fromisoformat(date_str[:10])
+        except ValueError:
+            return as_of
+    if month_str:
+        try:
+            parts = [p for p in month_str.split('-') if p]
+            if len(parts) >= 2:
+                y, m = int(parts[0]), int(parts[1])
+                last = calendar.monthrange(y, m)[1]
+                return date(y, m, last)
+        except (ValueError, TypeError, IndexError):
+            return as_of
+    if end_date:
+        try:
+            return date.fromisoformat(end_date[:10])
+        except ValueError:
+            return as_of
+    return as_of
 
 
 @app.route('/api/pig-feeding/consumption-forecast', methods=['GET'])
@@ -11694,8 +11747,12 @@ def get_feed_stock_analytics():
         feeds_sql = "SELECT id, feed_name, feed_type, unit_of_measure FROM feeds WHERE status = 'active'"
         feeds_params = []
         if animal_type:
-            feeds_sql += " AND COALESCE(animal_type, 'pig') = %s"
+            # Include feeds marked for this species and generic 'all' (and NULL legacy rows for pig)
+            feeds_sql += " AND (animal_type = %s OR animal_type = 'all'"
             feeds_params.append(animal_type)
+            if animal_type == 'pig':
+                feeds_sql += " OR animal_type IS NULL"
+            feeds_sql += ")"
         cursor.execute(feeds_sql, feeds_params or None)
         feeds = {row['id']: row for row in cursor.fetchall()}
         
@@ -12304,34 +12361,35 @@ def get_feed_requirements():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     try:
-        farm_id = request.args.get('farm_id', type=int)  # Optional filter by farm
+        filter_farm_id = request.args.get('farm_id', type=int)  # Optional filter by farm
         animal_type = request.args.get('animal_type', 'pig')  # Default to pig for backward compatibility
-        
+        as_of = _analytics_as_of_date_from_request()  # Aligns with UI date / month / range filters
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Get all active animals with their age and farm based on animal_type
         if animal_type == 'cow':
             query = """
-                SELECT 
+                SELECT
                     c.id,
                     c.ear_tag as tag_id,
                     NULL as farm_id,
                     'All Farms' as farm_name,
-                    CASE 
-                        WHEN c.birth_date IS NOT NULL THEN DATEDIFF(CURDATE(), c.birth_date)
+                    CASE
+                        WHEN c.birth_date IS NOT NULL THEN DATEDIFF(%s, c.birth_date)
                         WHEN c.age_days IS NOT NULL THEN c.age_days
-                        ELSE NULL 
+                        ELSE NULL
                     END as age_days,
                     c.status
                 FROM cows c
                 WHERE c.status = 'active'
             """
-            params = []
+            params = [as_of]
             query += " ORDER BY age_days"
         elif animal_type == 'chicken':
             query = """
-                SELECT 
+                SELECT
                     ch.id,
                     ch.chicken_id as tag_id,
                     NULL as farm_id,
@@ -12343,50 +12401,58 @@ def get_feed_requirements():
             """
             params = []
             query += " ORDER BY age_days"
-        else:  # Default to pig
+        else:  # Default to pig: age from birth or purchase (same as consumption forecast)
             query = """
-                SELECT 
+                SELECT
                     p.id,
                     p.tag_id,
                     p.farm_id,
                     f.farm_name,
-                    CASE 
-                        WHEN p.birth_date IS NOT NULL THEN DATEDIFF(CURDATE(), p.birth_date)
-                        ELSE NULL 
+                    CASE
+                        WHEN LOWER(COALESCE(p.pig_source, '')) = 'purchased' AND p.purchase_date IS NOT NULL
+                            THEN DATEDIFF(%s, p.purchase_date)
+                        WHEN p.birth_date IS NOT NULL
+                            THEN DATEDIFF(%s, p.birth_date)
+                        WHEN p.purchase_date IS NOT NULL
+                            THEN DATEDIFF(%s, p.purchase_date)
+                        ELSE p.age_days
                     END as age_days,
                     p.status
                 FROM pigs p
                 LEFT JOIN farms f ON p.farm_id = f.id
                 WHERE p.status = 'active'
             """
-            params = []
-            
-            if farm_id:
+            params = [as_of, as_of, as_of]
+            if filter_farm_id:
                 query += " AND p.farm_id = %s"
-                params.append(farm_id)
-            
+                params.append(filter_farm_id)
             query += " ORDER BY p.farm_id, age_days"
-        
+
         cursor.execute(query, params)
         animals = cursor.fetchall()
-        
-        # Get all active feed settings for the specified animal type
+
+        # Settings that apply to this species or "all"
         cursor.execute("""
-            SELECT id, age_group_name, start_age_days, end_age_days, feed_amount_grams, 
+            SELECT id, age_group_name, start_age_days, end_age_days, feed_amount_grams,
                    feeding_times_per_day, feed_type, animal_type
             FROM feed_settings
-            WHERE status = 'active' AND animal_type = %s
+            WHERE status = 'active' AND (animal_type = %s OR animal_type = 'all')
             ORDER BY start_age_days ASC
         """, (animal_type,))
         feed_settings = cursor.fetchall()
-        
-        # Get all feeds for name mapping
+
         cursor.execute("""
             SELECT id, feed_name, feed_type
             FROM feeds
-            WHERE status = 'active'
-        """)
-        feeds = {row['id']: {'name': row['feed_name'], 'type': row['feed_type']} for row in cursor.fetchall()}
+            WHERE status = 'active' AND (animal_type = %s OR animal_type = 'all' OR (animal_type IS NULL AND %s = 'pig'))
+        """, (animal_type, animal_type))
+        feed_rows = cursor.fetchall() or []
+        feeds = {row['id']: {'name': row['feed_name'], 'type': row['feed_type']} for row in feed_rows}
+        feeds_by_name = {
+            (row['feed_name'] or '').strip().lower(): row['id']
+            for row in feed_rows
+            if row.get('feed_name')
+        }
         
         # Calculate feed requirements
         feed_requirements = {}  # {farm_id: {feed_id: {'feed_name': str, 'total_grams': float, 'total_kg': float, 'animal_count': int}}}
@@ -12395,74 +12461,77 @@ def get_feed_requirements():
         for animal in animals:
             if animal['age_days'] is None:
                 continue
-            
-            age_days = animal['age_days']
-            farm_id = animal['farm_id']
+            try:
+                age_days = int(animal['age_days'])
+            except (TypeError, ValueError):
+                continue
+
+            anim_farm_id = animal['farm_id']
             farm_name = animal['farm_name'] or 'All Farms'
-            
-            # Find matching feed setting for this animal's age
+
             matching_setting = None
             for setting in feed_settings:
-                if setting['start_age_days'] <= age_days <= setting['end_age_days']:
+                if int(setting['start_age_days']) <= age_days <= int(setting['end_age_days']):
                     matching_setting = setting
                     break
-            
             if not matching_setting:
-                continue  # No feed setting for this age
-            
-            feed_amount_grams = float(matching_setting['feed_amount_grams'])
-            feed_type_id = matching_setting['feed_type']
-            
-            # If feed_type is a number (feed ID), use it; otherwise skip
-            if feed_type_id:
+                continue
+
+            try:
+                grams_per_meal = float(matching_setting['feed_amount_grams'] or 0)
+                times = int(matching_setting['feeding_times_per_day'] or 0)
+            except (TypeError, ValueError):
+                continue
+            if grams_per_meal <= 0 or times <= 0:
+                continue
+            # Daily need (g) matches /api/pig-feeding/consumption-forecast
+            daily_grams = grams_per_meal * times
+
+            ft = matching_setting.get('feed_type')
+            resolved_id = None
+            if ft is not None and str(ft).strip() != '':
                 try:
-                    feed_id = int(feed_type_id)
-                    if feed_id not in feeds:
-                        continue  # Feed not found
-                    
-                    feed_name = feeds[feed_id]['name']
-                    
-                    # Initialize farm requirements if needed (use 0 for NULL farm_id)
-                    farm_key = farm_id if farm_id is not None else 0
-                    if farm_key not in feed_requirements:
-                        feed_requirements[farm_key] = {
-                            'farm_id': farm_id,
-                            'farm_name': farm_name,
-                            'feeds': {}
-                        }
-                    
-                    # Initialize feed in farm if needed
-                    if feed_id not in feed_requirements[farm_key]['feeds']:
-                        feed_requirements[farm_key]['feeds'][feed_id] = {
-                            'feed_id': feed_id,
-                            'feed_name': feed_name,
-                            'feed_type': feeds[feed_id]['type'],
-                            'total_grams': 0,
-                            'total_kg': 0,
-                            'animal_count': 0
-                        }
-                    
-                    # Add to farm feed requirements
-                    feed_requirements[farm_key]['feeds'][feed_id]['total_grams'] += feed_amount_grams
-                    feed_requirements[farm_key]['feeds'][feed_id]['animal_count'] += 1
-                    
-                    # Add to total requirements
-                    if feed_id not in total_requirements:
-                        total_requirements[feed_id] = {
-                            'feed_id': feed_id,
-                            'feed_name': feed_name,
-                            'feed_type': feeds[feed_id]['type'],
-                            'total_grams': 0,
-                            'total_kg': 0,
-                            'animal_count': 0
-                        }
-                    
-                    total_requirements[feed_id]['total_grams'] += feed_amount_grams
-                    total_requirements[feed_id]['animal_count'] += 1
-                    
-                except (ValueError, TypeError):
-                    # feed_type is not a valid feed ID, skip
-                    continue
+                    resolved_id = int(str(ft).strip())
+                except ValueError:
+                    resolved_id = None
+                if resolved_id is not None and resolved_id not in feeds:
+                    resolved_id = feeds_by_name.get(str(ft).strip().lower())
+            if resolved_id is None or resolved_id not in feeds:
+                continue
+
+            feed_id = resolved_id
+            feed_name = feeds[feed_id]['name']
+
+            farm_key = anim_farm_id if anim_farm_id is not None else 0
+            if farm_key not in feed_requirements:
+                feed_requirements[farm_key] = {
+                    'farm_id': anim_farm_id,
+                    'farm_name': farm_name,
+                    'feeds': {}
+                }
+            if feed_id not in feed_requirements[farm_key]['feeds']:
+                feed_requirements[farm_key]['feeds'][feed_id] = {
+                    'feed_id': feed_id,
+                    'feed_name': feed_name,
+                    'feed_type': feeds[feed_id]['type'],
+                    'total_grams': 0,
+                    'total_kg': 0,
+                    'animal_count': 0
+                }
+            feed_requirements[farm_key]['feeds'][feed_id]['total_grams'] += daily_grams
+            feed_requirements[farm_key]['feeds'][feed_id]['animal_count'] += 1
+
+            if feed_id not in total_requirements:
+                total_requirements[feed_id] = {
+                    'feed_id': feed_id,
+                    'feed_name': feed_name,
+                    'feed_type': feeds[feed_id]['type'],
+                    'total_grams': 0,
+                    'total_kg': 0,
+                    'animal_count': 0
+                }
+            total_requirements[feed_id]['total_grams'] += daily_grams
+            total_requirements[feed_id]['animal_count'] += 1
         
         # Convert grams to KG and format results
         for farm_key in feed_requirements:
@@ -12487,6 +12556,7 @@ def get_feed_requirements():
         
         return jsonify({
             'success': True,
+            'as_of': as_of.isoformat(),
             'total_requirements': total_results,
             'farm_requirements': farm_results
         })
@@ -12507,62 +12577,61 @@ def get_feed_animals():
         farm_id = request.args.get('farm_id', type=int)
         feed_id = request.args.get('feed_id', type=int)
         animal_type = request.args.get('animal_type', 'pig')  # Default to pig for backward compatibility
-        
+        as_of = _analytics_as_of_date_from_request()
+
         if not feed_id:
             return jsonify({'success': False, 'message': 'Feed ID is required'}), 400
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Get feed settings for this feed
+
         cursor.execute("""
             SELECT id, start_age_days, end_age_days, feed_amount_grams
             FROM feed_settings
-            WHERE feed_type = %s AND status = 'active' AND animal_type = %s
-        """, (str(feed_id), animal_type))
+            WHERE status = 'active' AND (animal_type = %s OR animal_type = 'all')
+            AND (feed_type = %s OR feed_type = %s)
+        """, (animal_type, str(feed_id), str(int(feed_id))))
         feed_settings = cursor.fetchall()
-        
+
         if not feed_settings:
             cursor.close()
             conn.close()
             return jsonify({'success': True, 'animals': []})
-        
-        # Build age range conditions based on animal type
+
         if animal_type == 'cow':
             age_conditions = []
             for setting in feed_settings:
-                age_conditions.append(f"(COALESCE(DATEDIFF(CURDATE(), c.birth_date), c.age_days) BETWEEN {setting['start_age_days']} AND {setting['end_age_days']})")
+                age_conditions.append(
+                    f"(COALESCE(DATEDIFF(%s, c.birth_date), c.age_days) "
+                    f"BETWEEN {int(setting['start_age_days'])} AND {int(setting['end_age_days'])})"
+                )
             age_condition = " OR ".join(age_conditions)
         elif animal_type == 'chicken':
             age_conditions = []
             for setting in feed_settings:
-                age_conditions.append(f"(ch.age_days BETWEEN {setting['start_age_days']} AND {setting['end_age_days']})")
+                age_conditions.append(
+                    f"(ch.age_days BETWEEN {int(setting['start_age_days'])} AND {int(setting['end_age_days'])})"
+                )
             age_condition = " OR ".join(age_conditions)
-        else:  # Default to pig
-            age_conditions = []
-            for setting in feed_settings:
-                age_conditions.append(f"(DATEDIFF(CURDATE(), p.birth_date) BETWEEN {setting['start_age_days']} AND {setting['end_age_days']})")
-            age_condition = " OR ".join(age_conditions)
-        
-        # Get animals matching the age ranges based on animal type
+
         if animal_type == 'cow':
             query = f"""
-                SELECT 
+                SELECT
                     c.id,
                     c.ear_tag as tag_id,
                     NULL as farm_id,
                     'All Farms' as farm_name,
-                    COALESCE(DATEDIFF(CURDATE(), c.birth_date), c.age_days) as age_days
+                    COALESCE(DATEDIFF(%s, c.birth_date), c.age_days) as age_days
                 FROM cows c
                 WHERE c.status = 'active'
                 AND (c.birth_date IS NOT NULL OR c.age_days IS NOT NULL)
                 AND ({age_condition})
             """
-            params = []
+            params = [as_of] * (1 + len(feed_settings))
             query += " ORDER BY c.ear_tag ASC"
         elif animal_type == 'chicken':
             query = f"""
-                SELECT 
+                SELECT
                     ch.id,
                     ch.chicken_id as tag_id,
                     NULL as farm_id,
@@ -12575,28 +12644,39 @@ def get_feed_animals():
             """
             params = []
             query += " ORDER BY ch.chicken_id ASC"
-        else:  # Default to pig
+        else:
+            n_set = len(feed_settings)
+            case_sql = (
+                "(CASE "
+                "WHEN LOWER(COALESCE(p.pig_source,'')) = 'purchased' AND p.purchase_date IS NOT NULL "
+                "THEN DATEDIFF(%s, p.purchase_date) "
+                "WHEN p.birth_date IS NOT NULL THEN DATEDIFF(%s, p.birth_date) "
+                "WHEN p.purchase_date IS NOT NULL THEN DATEDIFF(%s, p.purchase_date) "
+                "ELSE p.age_days END)"
+            )
+            or_parts = [
+                f"({case_sql} BETWEEN {int(s['start_age_days'])} AND {int(s['end_age_days'])})"
+                for s in feed_settings
+            ]
+            age_condition = " OR ".join(or_parts)
             query = f"""
-                SELECT 
+                SELECT
                     p.id,
                     p.tag_id,
                     p.farm_id,
                     f.farm_name,
-                    DATEDIFF(CURDATE(), p.birth_date) as age_days
+                    {case_sql} as age_days
                 FROM pigs p
                 LEFT JOIN farms f ON p.farm_id = f.id
                 WHERE p.status = 'active'
-                AND p.birth_date IS NOT NULL
                 AND ({age_condition})
             """
-            params = []
-            
+            params = [as_of, as_of, as_of] * (1 + n_set)
             if farm_id:
                 query += " AND p.farm_id = %s"
                 params.append(farm_id)
-            
             query += " ORDER BY p.tag_id ASC"
-        
+
         cursor.execute(query, params)
         animals = cursor.fetchall()
         
@@ -14424,10 +14504,12 @@ def get_pigs_list():
         
         # All pigs: no WHERE on status, breeding_status, or purpose
         cursor.execute("""
-            SELECT p.*, f.farm_name, e.full_name as registered_by_name 
-            FROM pigs p 
-            LEFT JOIN farms f ON p.farm_id = f.id 
-            LEFT JOIN employees e ON p.registered_by = e.id 
+            SELECT p.*, f.farm_name, e.full_name as registered_by_name,
+                   (SELECT MAX(w.weighing_date) FROM weight_records w
+                    WHERE w.animal_id = p.id) AS last_weighing_date
+            FROM pigs p
+            LEFT JOIN farms f ON p.farm_id = f.id
+            LEFT JOIN employees e ON p.registered_by = e.id
             ORDER BY p.tag_id DESC, p.created_at DESC
         """)
         pigs = cursor.fetchall()
@@ -21140,9 +21222,11 @@ def get_all_litters():
         
         # No WHERE on l.status or pig columns — full litter list for management UIs
         cursor.execute("""
-            SELECT l.*, 
+            SELECT l.*,
                    p.tag_id as sow_tag_id, p.breed as sow_breed,
-                   f.farm_name as farm_name
+                   f.farm_name as farm_name,
+                   (SELECT MAX(w.weighing_date) FROM weight_records w
+                    WHERE w.litter_id = l.id) AS last_weighing_date
             FROM litters l
             LEFT JOIN pigs p ON l.sow_id = p.id
             LEFT JOIN farms f ON p.farm_id = f.id
@@ -23533,7 +23617,10 @@ def create_slaughter_record():
                 return jsonify({'success': False, 'message': 'litter_id is required for litter slaughter'}), 400
             if raw_pc < 1:
                 return jsonify({'success': False, 'message': 'Number of pigs must be at least 1'}), 400
-        elif data['pig_type'] != 'grown_pig':
+        elif data['pig_type'] in ('grown_pig', 'batch'):
+            if not data.get('pig_id'):
+                return jsonify({'success': False, 'message': 'pig_id is required for this animal type'}), 400
+        else:
             return jsonify({'success': False, 'message': 'Invalid pig_type'}), 400
 
         conn = get_db_connection()
@@ -23584,7 +23671,7 @@ def create_slaughter_record():
         record_id = cursor.lastrowid
         
         # Update pig status to slaughtered
-        if data['pig_type'] == 'grown_pig' and data.get('pig_id'):
+        if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
             print(f"Updating pig {data['pig_id']} status to 'slaughtered'")
             cursor.execute("""
                 UPDATE pigs 
@@ -23660,9 +23747,9 @@ def create_slaughter_record():
                         """, (sow_id,))
         
         # Log activity
-        if data['pig_type'] == 'grown_pig':
+        if data['pig_type'] in ('grown_pig', 'batch'):
             log_activity(session['employee_id'], 'SLAUGHTER_RECORD', 
-                       f'Slaughter record created: Pig {data.get("pig_id")} - Status changed to slaughtered - ${total_revenue} revenue')
+                       f'Slaughter record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to slaughtered - ${total_revenue} revenue')
         else:
             log_activity(session['employee_id'], 'SLAUGHTER_RECORD', 
                        f'Slaughter record created: Litter {data.get("litter_id")} - {pigs_count} pigs slaughtered - ${total_revenue} revenue')
@@ -23670,7 +23757,7 @@ def create_slaughter_record():
         conn.commit()
         
         # Final verification after commit
-        if data['pig_type'] == 'grown_pig' and data.get('pig_id'):
+        if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
             cursor.execute("SELECT status FROM pigs WHERE id = %s", (data['pig_id'],))
             final_pig = cursor.fetchone()
             print(f"FINAL: Pig {data['pig_id']} status after commit: {final_pig['status'] if final_pig else 'NOT FOUND'}")
@@ -23976,7 +24063,10 @@ def create_death_record():
                 return jsonify({'success': False, 'message': 'litter_id is required for litter death'}), 400
             if raw_pc < 1:
                 return jsonify({'success': False, 'message': 'Number of pigs must be at least 1'}), 400
-        elif data['pig_type'] != 'grown_pig':
+        elif data['pig_type'] in ('grown_pig', 'batch'):
+            if not data.get('pig_id'):
+                return jsonify({'success': False, 'message': 'pig_id is required for this animal type'}), 400
+        else:
             return jsonify({'success': False, 'message': 'Invalid pig_type'}), 400
 
         conn = get_db_connection()
@@ -24026,7 +24116,7 @@ def create_death_record():
         record_id = cursor.lastrowid
         
         # Update pig/litter status
-        if data['pig_type'] == 'grown_pig' and data.get('pig_id'):
+        if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
             # Update pig status to dead
             print(f"Updating pig {data['pig_id']} status to 'dead'")
             cursor.execute("""
@@ -24103,9 +24193,9 @@ def create_death_record():
                         """, (sow_id,))
         
         # Log activity
-        if data['pig_type'] == 'grown_pig':
+        if data['pig_type'] in ('grown_pig', 'batch'):
             log_activity(session['employee_id'], 'DEATH_RECORD', 
-                       f'Death record created: Pig {data.get("pig_id")} - Status changed to dead - Cause: {data["cause_of_death"]}')
+                       f'Death record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to dead - Cause: {data["cause_of_death"]}')
         else:
             log_activity(session['employee_id'], 'DEATH_RECORD', 
                        f'Death record created: Litter {data.get("litter_id")} - {pigs_count} pigs marked as dead - Cause: {data["cause_of_death"]}')
@@ -24113,7 +24203,7 @@ def create_death_record():
         conn.commit()
         
         # Final verification after commit
-        if data['pig_type'] == 'grown_pig' and data.get('pig_id'):
+        if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
             cursor.execute("SELECT status FROM pigs WHERE id = %s", (data['pig_id'],))
             final_pig = cursor.fetchone()
             print(f"FINAL: Pig {data['pig_id']} status after commit: {final_pig['status'] if final_pig else 'NOT FOUND'}")
@@ -24391,8 +24481,8 @@ def get_available_pigs():
         q_filter = q_param if len(q_param) >= 2 else None
         strict_status = (request.args.get('ignore_status') or '').lower() not in ('1', 'true', 'yes', 'on')
         
-        if pig_type == 'grown_pig':
-            # Grown: slaughter = active only. Sale/death = any status (ignore_status=1).
+        if pig_type in ('grown_pig', 'batch'):
+            # Grown pig or batch (both are rows in `pigs`). Slaughter = active only unless ignore_status=1.
             sql = """
                 SELECT p.id, p.tag_id, p.breed, p.gender, p.status, p.created_at,
                        p.pig_source, p.birth_date, p.purchase_date, p.age_days,
@@ -24404,7 +24494,7 @@ def get_available_pigs():
                     FROM weight_records 
                     WHERE animal_id IS NOT NULL
                 ) w ON p.id = w.animal_id AND w.rn = 1
-                WHERE p.pig_type = 'grown_pig'
+                WHERE p.pig_type = %s
             """
             if strict_status:
                 sql += " AND p.status = 'active' "
@@ -24412,10 +24502,10 @@ def get_available_pigs():
                 like = f"%{q_filter}%"
                 sql += " AND (p.tag_id LIKE %s OR COALESCE(p.breed, '') LIKE %s) "
                 sql += " ORDER BY p.tag_id ASC LIMIT 100"
-                cursor.execute(sql, (like, like))
+                cursor.execute(sql, (pig_type, like, like))
             else:
                 sql += " ORDER BY p.tag_id ASC"
-                cursor.execute(sql)
+                cursor.execute(sql, (pig_type,))
             pigs = cursor.fetchall()
             
             cursor.close()
@@ -24685,7 +24775,10 @@ def create_sale_record():
                 return jsonify({'success': False, 'message': 'litter_id is required for litter sale'}), 400
             if raw_pc < 1:
                 return jsonify({'success': False, 'message': 'Number of pigs must be at least 1'}), 400
-        elif data['pig_type'] != 'grown_pig':
+        elif data['pig_type'] in ('grown_pig', 'batch'):
+            if not data.get('pig_id'):
+                return jsonify({'success': False, 'message': 'pig_id is required for this animal type'}), 400
+        else:
             return jsonify({'success': False, 'message': 'Invalid pig_type'}), 400
 
         conn = get_db_connection()
@@ -24738,7 +24831,7 @@ def create_sale_record():
         record_id = cursor.lastrowid
         
         # Update pig/litter status
-        if data['pig_type'] == 'grown_pig' and data.get('pig_id'):
+        if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
             # Update pig status to sold
             print(f"Updating pig {data['pig_id']} status to 'sold'")
             cursor.execute("""
@@ -24809,9 +24902,9 @@ def create_sale_record():
                 print(f"Note: could not save sale buyer contact: {sb_ex}")
         
         # Log activity
-        if data['pig_type'] == 'grown_pig':
+        if data['pig_type'] in ('grown_pig', 'batch'):
             log_activity(session['employee_id'], 'SALE_RECORD', 
-                       f'Sale record created: Pig {data.get("pig_id")} - Status changed to sold - Revenue: ${total_revenue}')
+                       f'Sale record created: Pig {data.get("pig_id")} ({data["pig_type"]}) - Status changed to sold - Revenue: ${total_revenue}')
         else:
             log_activity(session['employee_id'], 'SALE_RECORD', 
                        f'Sale record created: Litter {data.get("litter_id")} - {pigs_count} pigs sold - Revenue: ${total_revenue}')
@@ -24819,7 +24912,7 @@ def create_sale_record():
         conn.commit()
         
         # Final verification after commit
-        if data['pig_type'] == 'grown_pig' and data.get('pig_id'):
+        if data['pig_type'] in ('grown_pig', 'batch') and data.get('pig_id'):
             cursor.execute("SELECT status FROM pigs WHERE id = %s", (data['pig_id'],))
             final_pig = cursor.fetchone()
             print(f"FINAL: Pig {data['pig_id']} status after commit: {final_pig['status'] if final_pig else 'NOT FOUND'}")

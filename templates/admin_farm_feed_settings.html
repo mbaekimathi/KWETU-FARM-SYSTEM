@@ -32,12 +32,6 @@
                         <button onclick="openAddSettingModal()" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-gray-600 to-slate-600 text-white rounded-xl hover:from-gray-700 hover:to-slate-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
                             <i class="fas fa-plus mr-2"></i>Add Age Group
                         </button>
-                        <a href="{% if user.role == 'manager' %}/manager/farm/pig-{% else %}/admin/farm/pig-{% endif %}feeding-management" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                            </svg>
-                            Back
-                        </a>
                     </div>
                 </div>
             </div>
@@ -118,9 +112,9 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Feed Amount (grams) <span class="text-red-500">*</span>
+                                Feed Amount (kg) <span class="text-red-500">*</span>
                             </label>
-                            <input type="number" name="feed_amount_grams" id="setting-feed-amount" required step="0.01" min="0.01" class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all duration-200" placeholder="500">
+                            <input type="number" name="feed_amount_kg" id="setting-feed-amount" required step="0.001" min="0.001" class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all duration-200" placeholder="0.5">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -336,7 +330,7 @@
                                                 <i class="fas fa-weight text-green-500"></i>
                                                 <div>
                                                     <div class="text-xs text-gray-500 dark:text-gray-400">Feed Amount</div>
-                                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">${setting.feed_amount_grams} g</div>
+                                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">${parseFloat(((parseFloat(setting.feed_amount_grams) || 0) / 1000).toFixed(3))} kg</div>
                                                 </div>
                                             </div>
                                             <div class="flex items-center space-x-2">
@@ -474,7 +468,7 @@
                         document.getElementById('setting-age-group-name').value = setting.age_group_name;
                         document.getElementById('setting-start-age').value = setting.start_age_days;
                         document.getElementById('setting-end-age').value = setting.end_age_days;
-                        document.getElementById('setting-feed-amount').value = setting.feed_amount_grams;
+                        document.getElementById('setting-feed-amount').value = parseFloat(setting.feed_amount_grams) / 1000;
                         document.getElementById('setting-feeding-times').value = setting.feeding_times_per_day;
                         
                         // Update feeding times inputs
@@ -552,12 +546,13 @@
                 }
             }
             
+            const feedAmountKg = parseFloat(formData.get('feed_amount_kg'));
             const settingData = {
                 animal_type: 'pig', // Always set to pig for this farm
                 age_group_name: formData.get('age_group_name'),
                 start_age_days: parseInt(formData.get('start_age_days')),
                 end_age_days: parseInt(formData.get('end_age_days')),
-                feed_amount_grams: parseFloat(formData.get('feed_amount_grams')),
+                feed_amount_grams: feedAmountKg * 1000,
                 feeding_times_per_day: timesPerDay,
                 feeding_times: feedingTimes,
                 feed_type: formData.get('feed_type') || null,
@@ -565,7 +560,7 @@
             };
             
             // Validation
-            if (!settingData.age_group_name || !settingData.start_age_days || !settingData.end_age_days || !settingData.feed_amount_grams) {
+            if (!settingData.age_group_name || !settingData.start_age_days || !settingData.end_age_days || !Number.isFinite(feedAmountKg) || feedAmountKg <= 0) {
                 alert('Please fill in all required fields');
                 return;
             }

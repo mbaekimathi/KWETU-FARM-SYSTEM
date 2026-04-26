@@ -45,11 +45,6 @@
                                 <span class="hidden sm:inline">Refresh</span>
                                 <span class="sm:hidden">↻</span>
                             </button>
-                            <a href="{% if user.role == 'manager' %}/manager/farm/health-management{% else %}/admin/farm/health-management{% endif %}" class="inline-flex items-center px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl font-semibold btn-mobile touch-feedback">
-                                <i class="fas fa-arrow-left mr-2"></i>
-                                <span class="hidden sm:inline">Back to Health Management</span>
-                                <span class="sm:hidden">Back</span>
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -273,10 +268,7 @@
                                         <i class="fas fa-calendar mr-2 text-orange-500"></i>Age
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        <i class="fas fa-weight mr-2 text-purple-500"></i>Current Weight
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        <i class="fas fa-chart-line mr-2 text-indigo-500"></i>Expected Weight
+                                        <i class="fas fa-calendar-check mr-2 text-purple-500"></i>Last weighed
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                         <i class="fas fa-cog mr-2 text-gray-500"></i>Actions
@@ -286,7 +278,7 @@
                             <tbody id="animals-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 <!-- Animals will be loaded here dynamically -->
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
+                                    <td colspan="5" class="px-6 py-12 text-center">
                                         <div class="flex items-center justify-center">
                                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
                                             <p class="text-sm text-gray-600 dark:text-gray-400">Loading animals...</p>
@@ -1107,7 +1099,7 @@
             const tbody = document.getElementById('animals-table-body');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex items-center justify-center">
                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
                             <p class="text-sm text-gray-600 dark:text-gray-400">Loading pigs...</p>
@@ -1124,7 +1116,7 @@
                 if (data.success) {
                     const individuals = (data.pigs || []).filter(pig => pig.pig_type !== 'batch');
                     currentAnimals = individuals;
-                    await renderAnimalsTable(individuals);
+                    renderAnimalsTable(individuals);
                     loadAnalyticsData();
                 } else {
                     showError('Failed to load pigs: ' + data.error);
@@ -1145,7 +1137,7 @@
             const tbody = document.getElementById('animals-table-body');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex items-center justify-center">
                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                             <p class="text-sm text-gray-600 dark:text-gray-400">Loading litters...</p>
@@ -1161,7 +1153,7 @@
                 
                 if (data.success) {
                     currentAnimals = data.litters;
-                    await renderLittersTable(data.litters);
+                    renderLittersTable(data.litters);
                     loadAnalyticsData();
                 } else {
                     showError('Failed to load litters: ' + data.error);
@@ -1182,7 +1174,7 @@
             const tbody = document.getElementById('animals-table-body');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex items-center justify-center">
                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
                             <p class="text-sm text-gray-600 dark:text-gray-400">Loading batches...</p>
@@ -1200,7 +1192,7 @@
                     // Filter for batches only
                     const batches = data.pigs.filter(pig => pig.pig_type === 'batch');
                     currentAnimals = batches;
-                    await renderAnimalsTable(batches);
+                    renderAnimalsTable(batches);
                     loadAnalyticsData();
                 } else {
                     showError('Failed to load batches: ' + data.error);
@@ -1235,13 +1227,13 @@
         }
 
         // Render animals table
-        async function renderAnimalsTable(animals) {
+        function renderAnimalsTable(animals) {
             const tbody = document.getElementById('animals-table-body');
 
             if (!animals || animals.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
+                        <td colspan="5" class="px-6 py-12 text-center">
                             <div class="text-center">
                                 <i class="fas fa-piggy-bank text-gray-400 text-4xl mb-4"></i>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">No animals found</p>
@@ -1252,56 +1244,21 @@
                 return;
             }
 
-            // Ensure weight categories are loaded before computing expected weights
-            if (!weightCategories || weightCategories.length === 0) {
-                await loadWeightCategories();
-            }
-
             tbody.innerHTML = animals.map(animal => {
                 const ageDays = resolveAgeDays(animal);
                 const originIso = resolveOriginIso(animal);
-                const expectedWeight = calculateExpectedWeight(ageDays != null ? ageDays : 0);
-                const rawCurrent = animal.current_weight;
-                const hasRecord  = rawCurrent != null && rawCurrent !== '' && Number(rawCurrent) > 0;
-                const currentWeight = hasRecord ? Number(rawCurrent) : 0;
-
                 const ageLabel   = ageDays != null ? `${ageDays} days` : '—';
                 const originLbl  = originIso
                     ? new Date(originIso + 'T00:00:00Z').toLocaleDateString()
                     : 'Unknown';
                 const originNoun = (animal.pig_source || '').toLowerCase() === 'purchased' ? 'Purchased' : 'Born';
 
-                let expectedDisplay;
-                let expectedClass;
-                if (!weightCategories || weightCategories.length === 0) {
-                    expectedDisplay = 'No categories'; expectedClass = 'text-gray-500';
-                } else if (ageDays == null) {
-                    expectedDisplay = '—'; expectedClass = 'text-gray-500';
-                } else if (expectedWeight.status === 'out-of-range') {
-                    expectedDisplay = 'Out of range'; expectedClass = 'text-orange-600';
-                } else if (expectedWeight.status === 'no-data') {
-                    expectedDisplay = '—'; expectedClass = 'text-gray-500';
-                } else {
-                    expectedDisplay = `${expectedWeight.weight} kg`;
-                    expectedClass = 'text-green-600';
-                }
-
-                // Current-weight column: fall back to the default (expected) value when no
-                // weigh-in record exists, so the user still sees the schedule-based reference.
-                let currentMain, currentSub, currentMainClass;
-                if (hasRecord) {
-                    currentMain = `${currentWeight} kg`;
-                    currentSub  = 'Current';
-                    currentMainClass = '';
-                } else if (expectedDisplay && expectedDisplay.endsWith('kg')) {
-                    currentMain = expectedDisplay;
-                    currentSub  = 'No records — using default schedule';
-                    currentMainClass = 'text-amber-600 dark:text-amber-400';
-                } else {
-                    currentMain = 'Not recorded';
-                    currentSub  = 'No default available';
-                    currentMainClass = 'text-gray-400';
-                }
+                const lastIso = toIsoDate(animal.last_weighing_date);
+                const lastMain = lastIso
+                    ? new Date(lastIso + 'T00:00:00Z').toLocaleDateString()
+                    : '—';
+                const lastSub = lastIso ? 'Last weigh-in' : 'Never weighed';
+                const lastMainClass = lastIso ? 'text-gray-900 dark:text-white' : 'text-gray-400';
 
                 return `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" onclick="viewAnimalDetails(${animal.id}, '${animal.pig_type}')">
@@ -1327,14 +1284,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                             <div class="flex flex-col">
-                                <span class="font-medium ${currentMainClass}">${currentMain}</span>
-                                <span class="text-xs text-gray-500">${currentSub}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                            <div class="flex flex-col">
-                                <span class="font-medium ${expectedClass}">${expectedDisplay}</span>
-                                <span class="text-xs text-gray-500">${expectedWeight.category || ''}</span>
+                                <span class="font-medium ${lastMainClass}">${lastMain}</span>
+                                <span class="text-xs text-gray-500">${lastSub}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1353,13 +1304,13 @@
         }
 
         // Render litters table
-        async function renderLittersTable(litters) {
+        function renderLittersTable(litters) {
             const tbody = document.getElementById('animals-table-body');
 
             if (!litters || litters.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
+                        <td colspan="5" class="px-6 py-12 text-center">
                             <div class="text-center">
                                 <i class="fas fa-baby text-gray-400 text-4xl mb-4"></i>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">No litters found</p>
@@ -1370,50 +1321,18 @@
                 return;
             }
 
-            // Ensure weight categories are loaded so expected-weight column renders on first click too
-            if (!weightCategories || weightCategories.length === 0) {
-                await loadWeightCategories();
-            }
-
             tbody.innerHTML = litters.map(litter => {
                 const farrowIso = toIsoDate(litter.farrowing_date);
                 const ageDays = farrowIso
                     ? Math.floor((new Date() - new Date(farrowIso + 'T00:00:00Z')) / (1000 * 60 * 60 * 24))
                     : null;
-                const expectedWeight = calculateExpectedWeight(ageDays != null ? ageDays : 0);
 
-                let expectedDisplay, expectedClass;
-                if (!weightCategories || weightCategories.length === 0) {
-                    expectedDisplay = 'No categories'; expectedClass = 'text-gray-500';
-                } else if (ageDays == null) {
-                    expectedDisplay = '—'; expectedClass = 'text-gray-500';
-                } else if (expectedWeight.status === 'out-of-range') {
-                    expectedDisplay = 'Out of range'; expectedClass = 'text-orange-600';
-                } else if (expectedWeight.status === 'no-data') {
-                    expectedDisplay = '—'; expectedClass = 'text-gray-500';
-                } else {
-                    expectedDisplay = `${expectedWeight.weight} kg`;
-                    expectedClass = 'text-green-600';
-                }
-
-                // Current-weight column for the litter: fall back to the default (expected)
-                // piglet weight when no weigh-in average has been recorded yet.
-                const rawAvg = litter.avg_weight;
-                const hasAvg = rawAvg != null && rawAvg !== '' && Number(rawAvg) > 0;
-                let currentMain, currentSub, currentMainClass;
-                if (hasAvg) {
-                    currentMain = `${Number(rawAvg)} kg`;
-                    currentSub  = 'Average';
-                    currentMainClass = '';
-                } else if (expectedDisplay && expectedDisplay.endsWith('kg')) {
-                    currentMain = expectedDisplay;
-                    currentSub  = 'No records — using default schedule';
-                    currentMainClass = 'text-amber-600 dark:text-amber-400';
-                } else {
-                    currentMain = 'Not recorded';
-                    currentSub  = 'No default available';
-                    currentMainClass = 'text-gray-400';
-                }
+                const lastIso = toIsoDate(litter.last_weighing_date);
+                const lastMain = lastIso
+                    ? new Date(lastIso + 'T00:00:00Z').toLocaleDateString()
+                    : '—';
+                const lastSub = lastIso ? 'Last weigh-in' : 'Never weighed';
+                const lastMainClass = lastIso ? 'text-gray-900 dark:text-white' : 'text-gray-400';
 
                 return `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" onclick="viewLitterDetails(${litter.id})">
@@ -1439,14 +1358,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                             <div class="flex flex-col">
-                                <span class="font-medium ${currentMainClass}">${currentMain}</span>
-                                <span class="text-xs text-gray-500">${currentSub}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                            <div class="flex flex-col">
-                                <span class="font-medium ${expectedClass}">${expectedDisplay}</span>
-                                <span class="text-xs text-gray-500">${expectedWeight.category || ''}</span>
+                                <span class="font-medium ${lastMainClass}">${lastMain}</span>
+                                <span class="text-xs text-gray-500">${lastSub}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -2097,7 +2010,7 @@
             const tbody = document.getElementById('animals-table-body');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center space-y-4">
                             <div class="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
                                 <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
