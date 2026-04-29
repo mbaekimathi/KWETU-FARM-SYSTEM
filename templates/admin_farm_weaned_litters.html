@@ -19,35 +19,22 @@
 <main class="md:ml-64 pt-20 min-h-screen">
     <div class="p-4 sm:p-6 lg:p-8 space-y-6">
         <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Litters</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Weaned Litters</h1>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                All litter records, separated by status: unweaned and weaned.
+                This page shows only litter records that are marked as weaned. Open any litter to view complete weight, health, and medication progress.
             </p>
         </section>
 
-        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Unweaned Litters</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 dark:bg-gray-700/40">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Litter ID</th>
-                            <th class="px-4 py-3 text-left">Sow</th>
-                            <th class="px-4 py-3 text-left">Farrowing Date</th>
-                            <th class="px-4 py-3 text-left">Total Piglets</th>
-                            <th class="px-4 py-3 text-left">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="unweaned-litters-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
-                </table>
+        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4">
+            <div class="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-700/60 rounded-xl p-1">
+                <button id="tab-raw-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white">Raw Data</button>
+                <button id="tab-analytics-btn" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">Analytics</button>
             </div>
         </section>
 
-        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        <section id="raw-data-tab" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Weaned Litters</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Weaned Litters (Raw Data)</h2>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -58,80 +45,211 @@
                             <th class="px-4 py-3 text-left">Farrowing Date</th>
                             <th class="px-4 py-3 text-left">Total Piglets</th>
                             <th class="px-4 py-3 text-left">Status</th>
+                            <th class="px-4 py-3 text-left">Action</th>
                         </tr>
                     </thead>
                     <tbody id="weaned-litters-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
                 </table>
             </div>
         </section>
+
+        <section id="analytics-tab" class="hidden space-y-6">
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                <label for="analytics-litter-select" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Select Weaned Litter</label>
+                <select id="analytics-litter-select" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></select>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Weight Progress</h3>
+                    <div class="relative h-72"><canvas id="weaned-weight-chart"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Health Progress (Survival)</h3>
+                    <div class="relative h-72"><canvas id="weaned-health-chart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Medication/Care Progress</h3>
+                <div class="relative h-72"><canvas id="weaned-medication-chart"></canvas></div>
+            </div>
+        </section>
     </div>
 </main>
 
 <script>
+let weanedLittersCache = [];
+let charts = {};
+
+function switchTab(tabName) {
+    const rawBtn = document.getElementById('tab-raw-btn');
+    const analyticsBtn = document.getElementById('tab-analytics-btn');
+    const rawTab = document.getElementById('raw-data-tab');
+    const analyticsTab = document.getElementById('analytics-tab');
+
+    const rawActive = tabName === 'raw';
+    rawTab.classList.toggle('hidden', !rawActive);
+    analyticsTab.classList.toggle('hidden', rawActive);
+
+    rawBtn.className = rawActive
+        ? 'px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white'
+        : 'px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600';
+    analyticsBtn.className = rawActive
+        ? 'px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+        : 'px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white';
+}
+
+function destroyChart(key) {
+    if (charts[key]) {
+        try { charts[key].destroy(); } catch (_) {}
+        charts[key] = null;
+    }
+}
+
+async function renderLitterAnalyticsById(selectedId) {
+    const litter = weanedLittersCache.find((l) => Number(l.id) === Number(selectedId));
+    if (!litter) return;
+
+    // Weight progress
+    let weights = [];
+    try {
+        const weightsRes = await fetch(`/api/litter/${litter.id}/weights`);
+        const weightsData = await weightsRes.json();
+        weights = (weightsData && weightsData.success) ? (weightsData.weights || []) : [];
+    } catch (_) {}
+
+    const weightLabels = weights.map((w) => {
+        const d = new Date(w.weighing_date);
+        return Number.isNaN(d.getTime()) ? (w.weighing_date || '-') : d.toLocaleDateString();
+    });
+    const weightValues = weights.map((w) => Number(w.weight || 0));
+    destroyChart('weight');
+    charts.weight = new Chart(document.getElementById('weaned-weight-chart'), {
+        type: 'line',
+        data: {
+            labels: weightLabels.length ? weightLabels : ['No data'],
+            datasets: [{
+                label: 'Average Weight (kg)',
+                data: weightValues.length ? weightValues : [0],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.15)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Health progress
+    const total = Number(litter.total_piglets || 0);
+    const alive = Number(litter.alive_piglets || 0);
+    const still = Number(litter.still_births || 0);
+    const lost = Math.max(0, total - alive - still);
+    destroyChart('health');
+    charts.health = new Chart(document.getElementById('weaned-health-chart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Alive', 'Still Births', 'Lost After Birth'],
+            datasets: [{ data: [alive, still, lost], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Medication/Care progress (from farrowing activities)
+    let activities = [];
+    try {
+        const actRes = await fetch(`/api/litter/${litter.litter_id}/activities`);
+        const actData = await actRes.json();
+        activities = (actData && actData.success) ? (actData.activities || []) : [];
+    } catch (_) {}
+    const completed = activities.filter((a) => (a.status || '').toLowerCase() === 'completed').length;
+    const pending = Math.max(0, activities.length - completed);
+    destroyChart('medication');
+    charts.medication = new Chart(document.getElementById('weaned-medication-chart'), {
+        type: 'bar',
+        data: {
+            labels: ['Completed', 'Pending'],
+            datasets: [{
+                label: 'Activities',
+                data: [completed, pending],
+                backgroundColor: ['#22c55e', '#f59e0b']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function populateAnalyticsSelector() {
+    const select = document.getElementById('analytics-litter-select');
+    select.innerHTML = '';
+    weanedLittersCache.forEach((row) => {
+        const option = document.createElement('option');
+        option.value = row.id;
+        option.textContent = `${row.litter_id || row.id} • Sow ${row.sow_tag_id || '-'} • ${row.farrowing_date || '-'}`;
+        select.appendChild(option);
+    });
+    if (weanedLittersCache.length) {
+        renderLitterAnalyticsById(weanedLittersCache[0].id);
+    }
+}
+
 async function loadLittersData() {
     try {
-        const [unweanedRes, weanedRes] = await Promise.all([
-            fetch('/api/farrowing/active-litters'),
-            fetch('/api/farrowing/weaned-litters')
-        ]);
-
-        const unweanedData = await unweanedRes.json();
+        const weanedRes = await fetch('/api/farrowing/weaned-litters');
         const weanedData = await weanedRes.json();
+        weanedLittersCache = (weanedData.litters || []).slice();
 
-        const unweanedBody = document.getElementById('unweaned-litters-body');
         const weanedBody = document.getElementById('weaned-litters-body');
-        unweanedBody.innerHTML = '';
         weanedBody.innerHTML = '';
 
-        const unweanedLitters = (unweanedData.litters || []).sort((a, b) => {
-            const ad = new Date(a.farrowing_date || 0);
-            const bd = new Date(b.farrowing_date || 0);
-            return bd - ad;
-        });
-
-        if (!unweanedLitters.length) {
-            unweanedBody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-gray-500 dark:text-gray-400">No unweaned litters found.</td></tr>';
-        } else {
-            unweanedLitters.forEach((row) => {
-                unweanedBody.insertAdjacentHTML('beforeend', `
-                    <tr>
-                        <td class="px-4 py-3">${row.litter_id || '-'}</td>
-                        <td class="px-4 py-3">${row.sow_tag_id || '-'}</td>
-                        <td class="px-4 py-3">${row.farrowing_date || '-'}</td>
-                        <td class="px-4 py-3">${row.total_piglets ?? '-'}</td>
-                        <td class="px-4 py-3 capitalize">${row.status || '-'}</td>
-                    </tr>
-                `);
-            });
-        }
-
-        const weanedLitters = (weanedData.litters || []).sort((a, b) => {
+        const weanedLitters = weanedLittersCache.sort((a, b) => {
             const ad = new Date(a.weaning_date || a.farrowing_date || 0);
             const bd = new Date(b.weaning_date || b.farrowing_date || 0);
             return bd - ad;
         });
 
         if (!weanedLitters.length) {
-            weanedBody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-gray-500 dark:text-gray-400">No weaned litters found.</td></tr>';
+            weanedBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-gray-500 dark:text-gray-400">No weaned litters found.</td></tr>';
         } else {
             weanedLitters.forEach((row) => {
+                const prefix = '{{ "/manager" if user.role == "manager" else "/admin" }}';
+                const litterRef = row.litter_id || row.id;
                 weanedBody.insertAdjacentHTML('beforeend', `
-                    <tr>
-                        <td class="px-4 py-3">${row.litter_id || '-'}</td>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${row.litter_id || '-'}</td>
                         <td class="px-4 py-3">${row.sow_tag_id || '-'}</td>
                         <td class="px-4 py-3">${row.farrowing_date || '-'}</td>
                         <td class="px-4 py-3">${row.total_piglets ?? '-'}</td>
                         <td class="px-4 py-3 capitalize">${row.status || '-'}</td>
+                        <td class="px-4 py-3">
+                            <a href="${prefix}/farm/litter-details/${litterRef}"
+                               class="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors">
+                                <i class="fas fa-chart-line mr-1.5"></i>
+                                View Progress
+                            </a>
+                        </td>
                     </tr>
                 `);
             });
         }
+        populateAnalyticsSelector();
     } catch (err) {
         console.error('Failed to load litters page data', err);
     }
 }
 
-document.addEventListener('DOMContentLoaded', loadLittersData);
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('tab-raw-btn').addEventListener('click', () => switchTab('raw'));
+    document.getElementById('tab-analytics-btn').addEventListener('click', () => switchTab('analytics'));
+    document.getElementById('analytics-litter-select').addEventListener('change', function () {
+        renderLitterAnalyticsById(this.value);
+    });
+    switchTab('raw');
+    loadLittersData();
+});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% include 'includes/farm_shell_footer.html' %}\n</body>
 </html>
