@@ -3,6 +3,7 @@
 {% set _base = '/manager/farm/' if _user_role == 'manager' else '/admin/farm/' %}
 {% set _path = request.path.rstrip('/') %}
 {% set _hub_href = _base ~ 'cow-management' %}
+{% set _settings_href = _base ~ 'cow-settings' %}
 {% set _register_href = _base ~ 'register-cows' %}
 {% set _health_href = _base ~ 'cow-health' %}
 {% set _breeding_href = _base ~ 'cow-breeding' %}
@@ -57,6 +58,16 @@
                     </div>
                     <div class="min-w-0 flex-1">
                         <span class="farm-nav-link-modern__text block text-sm font-semibold">Feeding Management</span>
+                    </div>
+                    <i class="fas fa-chevron-right ml-2 shrink-0 text-xs text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-500"></i>
+                </a>
+
+                <a href="{{ _settings_href }}" class="farm-nav-link-modern group {% if _path == _settings_href.rstrip('/') %}is-active{% endif %}">
+                    <div class="farm-nav-link-modern__icon bg-slate-500/20 text-slate-300">
+                        <i class="fas fa-cog text-sm"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="farm-nav-link-modern__text block text-sm font-semibold">Cow Settings</span>
                     </div>
                     <i class="fas fa-chevron-right ml-2 shrink-0 text-xs text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-500"></i>
                 </a>

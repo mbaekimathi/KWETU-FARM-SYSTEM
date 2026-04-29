@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>HR Authorization - Farm A Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.filename && (e.filename.includes('screen-shader.js') || e.filename.includes('night-mode.js'))) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    {% include 'includes/farm_chrome_bundle.html' %}
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden">
+    {% include 'includes/farm_shell_header.html' %}
+
+    {% set farm_sidebar_banner_title = 'Human Resource' %}
+    {% set farm_sidebar_banner_sub = 'HR Control Center' %}
+    {% set farm_sidebar_nav_partial = 'includes/farm_nav_admin_main_hub.html' %}
+    {% include 'includes/farm_unified_sidebar.html' %}
+
+    <div class="pt-16 md:pl-64 min-h-screen">
+        <main class="pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-6 sm:pt-8">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Human Resource Authorization</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Browse roles and open an employee's permissions page.</p>
+                </div>
+                <a href="{{ '/manager/human-resource' if user.role == 'manager' else '/admin/human-resource' }}"
+                   class="inline-flex items-center px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600">
+                    Back to HR
+                </a>
+            </div>
+
+            <div id="roles-container" class="space-y-5"></div>
+        </main>
+    </div>
+
+    {% include 'includes/farm_shell_footer.html' %}
+
+    <script>
+        const basePath = '{{ "/manager" if user.role == "manager" else "/admin" }}';
+        const knownRoles = ['administrator', 'manager', 'employee', 'vet', 'it'];
+
+        function roleLabel(role) {
+            return role.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+        }
+
+        function renderAvatar(employee) {
+            if (employee.profile_image) {
+                return `<img src="/static/uploads/employees/${employee.profile_image}" alt="${employee.full_name}" class="w-11 h-11 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm">`;
+            }
+
+            const initial = (employee.full_name || '?').trim().charAt(0).toUpperCase();
+            return `
+                <div class="w-11 h-11 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold shadow-sm">
+                    ${initial}
+                </div>
+            `;
+        }
+
+        function roleBadgeClass(role) {
+            const key = (role || '').toLowerCase();
+            if (key === 'administrator') return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
+            if (key === 'manager') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+            if (key === 'vet') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+            if (key === 'it') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+            return 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+        }
+
+        async function loadRolesAndEmployees() {
+            const container = document.getElementById('roles-container');
+            container.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6">
+                    <p class="text-gray-600 dark:text-gray-300">Loading roles...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/api/hr/employees');
+                const data = await response.json();
+
+                if (!data.success) {
+                    container.innerHTML = '<p class="text-red-600">Failed to load employees.</p>';
+                    return;
+                }
+
+                const grouped = {};
+                data.employees.forEach((employee) => {
+                    const roleKey = employee.role || 'unassigned';
+                    if (!grouped[roleKey]) grouped[roleKey] = [];
+                    grouped[roleKey].push(employee);
+                });
+
+                const roleOrder = [...new Set([...knownRoles, ...Object.keys(grouped)])];
+                container.innerHTML = '';
+
+                roleOrder.forEach((role) => {
+                    const employees = grouped[role] || [];
+                    const roleCard = document.createElement('section');
+                    roleCard.className = 'bg-white/95 dark:bg-gray-800/95 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm hover:shadow-md transition-shadow';
+
+                    roleCard.innerHTML = `
+                        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-t-2xl flex items-center justify-between">
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">${roleLabel(role)}</h2>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${roleBadgeClass(role)}">${employees.length} employee(s)</span>
+                        </div>
+                        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                            ${employees.length ? employees.map((employee) => `
+                                <a href="${basePath}/human-resource/authorization/${employee.id}"
+                                   class="block px-5 py-3 hover:bg-blue-50/80 dark:hover:bg-gray-700/70 transition-colors">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            ${renderAvatar(employee)}
+                                            <div class="min-w-0">
+                                                <div class="font-semibold text-gray-900 dark:text-white truncate">${employee.full_name}</div>
+                                                <div class="text-sm text-gray-600 dark:text-gray-400 truncate">${employee.employee_code} • ${employee.email}</div>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-medium px-2 py-1 rounded-full ${roleBadgeClass(employee.role)}">
+                                            ${roleLabel(employee.role || 'unassigned')}
+                                        </span>
+                                    </div>
+                                </a>
+                            `).join('') : `
+                                <div class="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">No employees in this role.</div>
+                            `}
+                        </div>
+                    `;
+
+                    container.appendChild(roleCard);
+                });
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-xl shadow-sm p-6">
+                        <p class="text-red-600 dark:text-red-400">An error occurred while loading employees.</p>
+                    </div>
+                `;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadRolesAndEmployees);
+    </script>
+</body>
+</html>

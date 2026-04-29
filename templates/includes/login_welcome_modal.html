@@ -65,8 +65,11 @@
                 var chip = p.urgency_label
                     ? '<span class="' + urgencyClasses(p.urgency) + '">' + esc(p.urgency_label) + '</span>'
                     : '';
+                var summaryHtml = p.target_url
+                    ? '<a href="' + esc(p.target_url) + '" class="farm-ai-w-item__link" title="Open animal details">' + esc(p.summary) + '</a>'
+                    : '<span class="farm-ai-w-item__txt">' + esc(p.summary) + '</span>';
                 return '<li class="farm-ai-w-item">'
-                    + '<span class="farm-ai-w-item__txt">' + esc(p.summary) + '</span>' + chip + '</li>';
+                    + summaryHtml + chip + '</li>';
             }).join('');
             var urgent = cat.highest_priority === 'critical'
                 ? '<span class="farm-ai-w-urgent-flag">Urgent</span>'
@@ -106,6 +109,16 @@
             })
             .catch(function() { /* silent */ });
     }
+    window.farmAiraReloadBriefing = function() {
+        return fetch('/api/session/welcome-preview', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data || data.success === false) return false;
+                pushToAira(buildWelcomeHtml(data));
+                return true;
+            })
+            .catch(function() { return false; });
+    };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
     else run();
 })();

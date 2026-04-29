@@ -139,6 +139,11 @@
         <div id="farm-ai-chat-title" class="farm-ai-chat-panel__title">Aira</div>
         <div id="farm-ai-chat-subtitle" class="farm-ai-chat-panel__subtitle">Trusted intelligence for your farm</div>
       </div>
+      <button type="button" class="farm-ai-chat-panel__action" id="farm-ai-chat-briefing-btn" aria-label="Show latest notifications" title="Show latest notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3A6 6 0 006 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+      </button>
       <button type="button" class="farm-ai-chat-panel__close" id="farm-ai-chat-close" aria-label="Close chat">&times;</button>
     </div>
     <div id="farm-ai-chat-panel-body" class="farm-ai-chat-panel__body">
@@ -159,6 +164,71 @@
   var _farmAiOpenPanel = null;
 
   function qs(id) { return document.getElementById(id); }
+  function esc(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function urgencyClasses(u) {
+    var map = {
+      overdue: 'farm-ai-w-chip farm-ai-w-chip--overdue',
+      due_today: 'farm-ai-w-chip farm-ai-w-chip--due-today',
+      due_soon: 'farm-ai-w-chip farm-ai-w-chip--due-soon',
+      upcoming: 'farm-ai-w-chip farm-ai-w-chip--upcoming',
+      now: 'farm-ai-w-chip farm-ai-w-chip--now'
+    };
+    return map[u] || map.upcoming;
+  }
+  function buildBreakdown(uc) {
+    if (!uc) return '';
+    var parts = [];
+    if (uc.now) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--now">' + uc.now + ' now</span>');
+    if (uc.overdue) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--overdue">' + uc.overdue + ' overdue</span>');
+    if (uc.due_today) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--due-today">' + uc.due_today + ' due today</span>');
+    if (uc.due_soon) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--due-soon">' + uc.due_soon + ' due soon</span>');
+    if (uc.upcoming) parts.push('<span class="farm-ai-w-breakdown farm-ai-w-breakdown--upcoming">' + uc.upcoming + ' upcoming</span>');
+    return parts.length ? parts.join(' · ') : '';
+  }
+  function renderFallbackBriefing(data) {
+    var cats = (data && data.categories) || [];
+    if (!cats.length) {
+      return '<div class="farm-ai-chat-bubble farm-ai-chat-bubble--bot"><div class="farm-ai-chat-bubble__label">Aira</div><p class="farm-ai-chat-bubble__text">No current notifications right now.</p></div>';
+    }
+    var sections = cats.map(function (cat) {
+      var breakdown = buildBreakdown(cat.urgency_breakdown);
+      var items = (cat.previews || []).map(function (p) {
+        var txt = esc(p.summary || '');
+        var chip = p.urgency_label
+          ? '<span class="' + urgencyClasses(p.urgency) + '">' + esc(p.urgency_label) + '</span>'
+          : '';
+        if (p.target_url) txt = '<a href="' + esc(p.target_url) + '" class="farm-ai-w-item__link">' + txt + '</a>';
+        else txt = '<span class="farm-ai-w-item__txt">' + txt + '</span>';
+        return '<li class="farm-ai-w-item">' + txt + chip + '</li>';
+      }).join('');
+      return '<section class="farm-ai-w-section"><div class="farm-ai-w-section__head"><h3 class="farm-ai-w-section__title">'
+        + esc(cat.category_label || cat.type || 'Activity')
+        + '</h3><span class="farm-ai-w-section__count">' + esc(String(cat.count || 0)) + ' items</span></div>'
+        + (breakdown ? '<p class="farm-ai-w-section__breakdown">' + breakdown + '</p>' : '')
+        + '<ul class="farm-ai-w-list">' + items + '</ul></section>';
+    }).join('');
+    return '<div class="farm-ai-chat-bubble farm-ai-chat-bubble--bot"><div class="farm-ai-chat-bubble__label">Aira</div><p class="farm-ai-chat-bubble__text">Latest notifications with urgency</p></div><div class="farm-ai-w-wrap">' + sections + '</div>';
+  }
+  function loadLatestBriefing() {
+    if (typeof window.farmAiraReloadBriefing === 'function') {
+      window.farmAiraReloadBriefing();
+      return;
+    }
+    fetch('/api/session/welcome-preview', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (typeof window.farmAiraShowLoginWelcome !== 'function') return;
+        window.farmAiraShowLoginWelcome(renderFallbackBriefing(data || {}));
+      })
+      .catch(function () { /* silent */ });
+  }
 
   function resetLoginWelcomeUi() {
     var welcomeEl = qs('farm-ai-login-welcome');
@@ -230,6 +300,11 @@
     if (t.closest && t.closest('#farm-ai-chat-close')) {
       e.preventDefault();
       closePanel();
+      return;
+    }
+    if (t.closest && t.closest('#farm-ai-chat-briefing-btn')) {
+      e.preventDefault();
+      loadLatestBriefing();
       return;
     }
     if (!panel.classList.contains('farm-ai-chat-panel--hidden') && !root.contains(t)) {

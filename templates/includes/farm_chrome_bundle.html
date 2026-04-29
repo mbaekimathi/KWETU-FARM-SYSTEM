@@ -304,6 +304,139 @@
     syncSidebarForViewport();
   }
 
+  function ensurePermissionDeniedModal() {
+    if (document.getElementById('permission-denied-modal')) return;
+    var modal = document.createElement('div');
+    modal.id = 'permission-denied-modal';
+    modal.className = 'hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4';
+    modal.innerHTML = `
+      <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 text-white">
+          <div class="text-center">
+            <h3 class="text-lg font-semibold">Access Restricted</h3>
+            <p class="text-xs text-indigo-100 mt-1">Permission required for this action</p>
+          </div>
+        </div>
+        <div class="px-6 py-5">
+          <div class="flex justify-center mb-5">
+            <div class="permission-padlock-shell">
+              <div class="permission-padlock-body">
+                <span class="permission-padlock-emoji" aria-hidden="true">🔒</span>
+              </div>
+            </div>
+          </div>
+          <p id="permission-denied-message" class="text-sm text-slate-700 dark:text-slate-200">
+            You do not have enough permissions for this action.
+          </p>
+          <div class="mt-5 flex justify-end">
+            <button type="button" id="permission-denied-close" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium">
+              Okay
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    var style = document.createElement('style');
+    style.textContent = `
+      @keyframes permissionPadlockPulse {
+        0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 10px 25px rgba(79,70,229,.25); }
+        50% { transform: translateY(-3px) scale(1.04); box-shadow: 0 16px 30px rgba(79,70,229,.35); }
+      }
+      .permission-padlock-shell {
+        width: 108px;
+        height: 108px;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: permissionPadlockPulse 1100ms ease-in-out infinite;
+      }
+      .permission-padlock-body {
+        width: 84px;
+        height: 84px;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(2px);
+      }
+      .permission-padlock-emoji {
+        font-size: 2.8rem;
+        line-height: 1;
+        filter: drop-shadow(0 2px 2px rgba(15, 23, 42, 0.25));
+      }
+    `;
+    document.head.appendChild(style);
+
+    var close = function () { modal.classList.add('hidden'); };
+    var closeBtn = document.getElementById('permission-denied-close');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+  }
+
+  function showPermissionDeniedModal(message) {
+    ensurePermissionDeniedModal();
+    var modal = document.getElementById('permission-denied-modal');
+    var messageNode = document.getElementById('permission-denied-message');
+    if (messageNode && message) {
+      messageNode.textContent = message;
+    }
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+  }
+
+  function setupPermissionDeniedFetchGuard() {
+    if (window.__farmPermissionFetchGuardBound) return;
+    window.__farmPermissionFetchGuardBound = true;
+    var originalFetch = window.fetch.bind(window);
+    window.fetch = function () {
+      return originalFetch.apply(null, arguments).then(function (response) {
+        try {
+          var contentType = response.headers.get('content-type') || '';
+          if (response.status === 403 && contentType.indexOf('application/json') !== -1) {
+            response.clone().json().then(function (data) {
+              if (data && data.code === 'PERMISSION_DENIED') {
+                showPermissionDeniedModal(
+                  data.message || 'You do not have enough permissions for this action.'
+                );
+              }
+            }).catch(function () {});
+          }
+        } catch (e) {}
+        return response;
+      });
+    };
+  }
+
+  function setupPermissionDeniedAlertGuard() {
+    if (window.__farmPermissionAlertGuardBound) return;
+    window.__farmPermissionAlertGuardBound = true;
+    var originalAlert = window.alert ? window.alert.bind(window) : null;
+    if (!originalAlert) return;
+
+    window.alert = function (message) {
+      var text = String(message || '');
+      var normalized = text.toLowerCase();
+      if (
+        normalized.indexOf('permission denied') !== -1 ||
+        normalized.indexOf('not have permission') !== -1 ||
+        normalized.indexOf('not authorized') !== -1 ||
+        normalized.indexOf('not enough permissions') !== -1
+      ) {
+        showPermissionDeniedModal('You do not have enough permissions for this action.');
+        return;
+      }
+      originalAlert(message);
+    };
+  }
+
   document.addEventListener('click', function (e) {
     var el = e.target && e.target.closest && e.target.closest('[data-farm-api-logout]');
     if (!el) return;
@@ -322,6 +455,8 @@
     setupUserDropdown();
     setupSidebarBack();
     setupSidebarToggle();
+    setupPermissionDeniedFetchGuard();
+    setupPermissionDeniedAlertGuard();
     setupClock();
     syncThemeIcons();
   });

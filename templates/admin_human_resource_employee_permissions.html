@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Employee Permissions - Farm A Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.filename && (e.filename.includes('screen-shader.js') || e.filename.includes('night-mode.js'))) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    {% include 'includes/farm_chrome_bundle.html' %}
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden">
+    {% include 'includes/farm_shell_header.html' %}
+
+    {% set farm_sidebar_banner_title = 'Human Resource' %}
+    {% set farm_sidebar_banner_sub = 'HR Control Center' %}
+    {% set farm_sidebar_nav_partial = 'includes/farm_nav_admin_main_hub.html' %}
+    {% include 'includes/farm_unified_sidebar.html' %}
+
+    <div class="pt-16 md:pl-64 min-h-screen">
+        <main class="pb-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto pt-6 sm:pt-8">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Employee Permissions</h1>
+                    <p id="employee-meta" class="text-sm text-gray-600 dark:text-gray-400 mt-1">Loading employee details...</p>
+                </div>
+                <a href="{{ '/manager/human-resource/authorization' if user.role == 'manager' else '/admin/human-resource/authorization' }}"
+                   class="inline-flex items-center px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600">
+                    Back to Authorization
+                </a>
+            </div>
+
+            {% if request.args.get('newly_approved') == '1' %}
+            <div class="mb-6 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5 text-amber-600 dark:text-amber-300">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                            New user approved successfully
+                        </p>
+                        <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                            All permissions are OFF by default. Enable only the actions this user should be allowed to perform.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm p-5 sm:p-6">
+                <div id="employee-profile-card" class="mb-5 hidden bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-gray-700 dark:to-gray-700/70 border border-indigo-100 dark:border-gray-600 rounded-xl p-4">
+                    <div class="flex items-center gap-3">
+                        <div id="employee-avatar"></div>
+                        <div class="min-w-0">
+                            <p id="employee-name" class="font-semibold text-gray-900 dark:text-white truncate"></p>
+                            <p id="employee-code-role" class="text-sm text-gray-600 dark:text-gray-300 truncate"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                        <input type="checkbox" id="perm-create" class="h-4 w-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">Create Records</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                        <input type="checkbox" id="perm-insert" class="h-4 w-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">Insert Records</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                        <input type="checkbox" id="perm-edit" class="h-4 w-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">Edit Records</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                        <input type="checkbox" id="perm-suspend" class="h-4 w-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">Suspend Records</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                        <input type="checkbox" id="perm-delete" class="h-4 w-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">Delete Records</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                        <input type="checkbox" id="perm-generate" class="h-4 w-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-800 dark:text-gray-200">Generate Outputs</span>
+                    </label>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">Detailed Activities By Animal</h3>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                        Assign granular permissions per animal so users in the same role can still have different allowed activities.
+                    </p>
+                    <div id="activity-matrix" class="space-y-4"></div>
+                </div>
+
+                <div class="mt-6 flex items-center gap-3">
+                    <button id="save-btn" type="button"
+                            class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium">
+                        Save Permissions
+                    </button>
+                    <span id="save-status" class="text-sm text-gray-600 dark:text-gray-400"></span>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    {% include 'includes/farm_shell_footer.html' %}
+
+    <script>
+        const targetEmployeeId = Number('{{ target_employee_id }}');
+        const animals = ['pig', 'cow', 'chicken'];
+        const MODULE_LAYOUT = {
+            pig: [
+                {
+                    name: 'Animal Management',
+                    items: [
+                        { key: 'register', label: 'Register Animal' },
+                        { key: 'insert', label: 'Insert Animal Record' },
+                        { key: 'edit', label: 'Edit Animal' },
+                        { key: 'delete', label: 'Delete Animal' },
+                        { key: 'view', label: 'View Animal Records' },
+                        { key: 'id_generate', label: 'Generate Animal ID/Tag' }
+                    ]
+                },
+                {
+                    name: 'Breeding Management',
+                    items: [
+                        { key: 'breeding_register', label: 'Register Breeding' },
+                        { key: 'farrowing_register', label: 'Register Farrowing' },
+                        { key: 'breeding_manage', label: 'Manage Breeding Records' }
+                    ]
+                },
+                {
+                    name: 'Feeding & Health',
+                    items: [
+                        { key: 'feeding_record', label: 'Record Feeding' },
+                        { key: 'vaccination_manage', label: 'Manage Vaccination' },
+                        { key: 'health_manage', label: 'Manage Health' },
+                        { key: 'weight_manage', label: 'Manage Weight' }
+                    ]
+                },
+                {
+                    name: 'Insights & Audit',
+                    items: [
+                        { key: 'analytics_view', label: 'View Analytics' },
+                        { key: 'audit_view', label: 'View Audit/History' }
+                    ]
+                }
+            ],
+            cow: [
+                {
+                    name: 'Animal Management',
+                    items: [
+                        { key: 'register', label: 'Register Animal' },
+                        { key: 'insert', label: 'Insert Animal Record' },
+                        { key: 'edit', label: 'Edit Animal' },
+                        { key: 'delete', label: 'Delete Animal' },
+                        { key: 'view', label: 'View Animal Records' },
+                        { key: 'id_generate', label: 'Generate Animal ID/Tag' }
+                    ]
+                },
+                {
+                    name: 'Breeding Management',
+                    items: [
+                        { key: 'breeding_register', label: 'Register Breeding' },
+                        { key: 'breeding_manage', label: 'Manage Breeding Records' }
+                    ]
+                },
+                {
+                    name: 'Production, Feeding & Health',
+                    items: [
+                        { key: 'production_record', label: 'Record Production' },
+                        { key: 'feeding_record', label: 'Record Feeding' },
+                        { key: 'vaccination_manage', label: 'Manage Vaccination' },
+                        { key: 'health_manage', label: 'Manage Health' },
+                        { key: 'weight_manage', label: 'Manage Weight' }
+                    ]
+                },
+                {
+                    name: 'Insights & Audit',
+                    items: [
+                        { key: 'analytics_view', label: 'View Analytics' },
+                        { key: 'audit_view', label: 'View Audit/History' }
+                    ]
+                }
+            ],
+            chicken: [
+                {
+                    name: 'Animal Management',
+                    items: [
+                        { key: 'register', label: 'Register Animal' },
+                        { key: 'insert', label: 'Insert Animal Record' },
+                        { key: 'edit', label: 'Edit Animal' },
+                        { key: 'delete', label: 'Delete Animal' },
+                        { key: 'view', label: 'View Animal Records' },
+                        { key: 'id_generate', label: 'Generate Animal ID/Tag' }
+                    ]
+                },
+                {
+                    name: 'Production, Feeding & Health',
+                    items: [
+                        { key: 'production_record', label: 'Record Production' },
+                        { key: 'feeding_record', label: 'Record Feeding' },
+                        { key: 'vaccination_manage', label: 'Manage Vaccination' },
+                        { key: 'health_manage', label: 'Manage Health' },
+                        { key: 'weight_manage', label: 'Manage Weight' }
+                    ]
+                },
+                {
+                    name: 'Insights & Audit',
+                    items: [
+                        { key: 'analytics_view', label: 'View Analytics' },
+                        { key: 'audit_view', label: 'View Audit/History' }
+                    ]
+                }
+            ]
+        };
+        const animalTheme = {
+            pig: {
+                card: 'border-rose-200 dark:border-rose-900/40',
+                header: 'bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-900/25 dark:to-pink-900/20',
+                title: 'text-rose-800 dark:text-rose-300',
+                moduleCard: 'border-rose-100 dark:border-rose-900/30',
+                chip: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+            },
+            cow: {
+                card: 'border-emerald-200 dark:border-emerald-900/40',
+                header: 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/25 dark:to-teal-900/20',
+                title: 'text-emerald-800 dark:text-emerald-300',
+                moduleCard: 'border-emerald-100 dark:border-emerald-900/30',
+                chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+            },
+            chicken: {
+                card: 'border-amber-200 dark:border-amber-900/40',
+                header: 'bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/25 dark:to-yellow-900/20',
+                title: 'text-amber-800 dark:text-amber-300',
+                moduleCard: 'border-amber-100 dark:border-amber-900/30',
+                chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+            }
+        };
+
+        function titleCase(text) {
+            return String(text || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        }
+
+        function renderActivityMatrix() {
+            const container = document.getElementById('activity-matrix');
+            container.innerHTML = animals.map((animal) => `
+                <section class="border rounded-xl overflow-hidden ${animalTheme[animal].card}">
+                    <div class="px-4 py-3 ${animalTheme[animal].header}">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-semibold ${animalTheme[animal].title}">${titleCase(animal)} Permissions</h4>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${animalTheme[animal].chip}">${titleCase(animal)} Theme</span>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        ${(MODULE_LAYOUT[animal] || []).map((module) => `
+                            <div class="border rounded-xl p-3 ${animalTheme[animal].moduleCard}">
+                                <h5 class="text-sm font-semibold ${animalTheme[animal].title} mb-3">${module.name}</h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    ${module.items.map((activity) => `
+                                        <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/60 transition-colors">
+                                            <input type="checkbox" id="act-${animal}-${activity.key}" class="h-4 w-4 text-blue-600 rounded" checked>
+                                            <span class="text-sm text-gray-800 dark:text-gray-200">${activity.label}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+            `).join('');
+        }
+
+        function allActivityKeysForAnimal(animal) {
+            const modules = MODULE_LAYOUT[animal] || [];
+            return modules.flatMap((module) => module.items.map((item) => item.key));
+        }
+
+        const globalToDetailedMap = {
+            create: ['register', 'breeding_register', 'farrowing_register', 'production_record'],
+            insert: ['insert'],
+            edit: ['edit', 'breeding_manage', 'health_manage', 'weight_manage', 'vaccination_manage'],
+            suspend: ['health_manage'],
+            delete: ['delete'],
+            generate: ['id_generate', 'analytics_view', 'audit_view']
+        };
+
+        function setDetailedByGlobal(globalKey, checked) {
+            const keys = globalToDetailedMap[globalKey] || [];
+            animals.forEach((animal) => {
+                keys.forEach((key) => {
+                    const el = document.getElementById(`act-${animal}-${key}`);
+                    if (el) el.checked = checked;
+                });
+            });
+        }
+
+        function syncGlobalWithDetailed(globalKey) {
+            const keys = globalToDetailedMap[globalKey] || [];
+            const master = document.getElementById(`perm-${globalKey}`);
+            if (!master || keys.length === 0) return;
+            const detailBoxes = [];
+            animals.forEach((animal) => {
+                keys.forEach((key) => {
+                    const el = document.getElementById(`act-${animal}-${key}`);
+                    if (el) detailBoxes.push(el);
+                });
+            });
+            if (!detailBoxes.length) return;
+            master.checked = detailBoxes.every((box) => box.checked);
+        }
+
+        function readActivityMatrix() {
+            const result = {};
+            animals.forEach((animal) => {
+                result[animal] = {};
+                allActivityKeysForAnimal(animal).forEach((key) => {
+                    const el = document.getElementById(`act-${animal}-${key}`);
+                    result[animal][key] = !!(el && el.checked);
+                });
+            });
+            return result;
+        }
+
+        function applyActivityPermissions(data) {
+            animals.forEach((animal) => {
+                allActivityKeysForAnimal(animal).forEach((key) => {
+                    const el = document.getElementById(`act-${animal}-${key}`);
+                    if (!el) return;
+                    const value = data?.[animal]?.[key];
+                    el.checked = value !== false;
+                });
+            });
+        }
+
+        function applyPermissions(permissions) {
+            document.getElementById('perm-create').checked = !!permissions.create;
+            document.getElementById('perm-insert').checked = !!permissions.insert;
+            document.getElementById('perm-edit').checked = !!permissions.edit;
+            document.getElementById('perm-suspend').checked = !!permissions.suspend;
+            document.getElementById('perm-delete').checked = !!permissions.delete;
+            document.getElementById('perm-generate').checked = !!permissions.generate;
+        }
+
+        function renderAvatar(employee) {
+            if (employee.profile_image) {
+                return `<img src="/static/uploads/employees/${employee.profile_image}" alt="${employee.full_name}" class="w-12 h-12 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm">`;
+            }
+            const initial = (employee.full_name || '?').trim().charAt(0).toUpperCase();
+            return `
+                <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold shadow-sm">
+                    ${initial}
+                </div>
+            `;
+        }
+
+        function setStatus(message, isError = false) {
+            const node = document.getElementById('save-status');
+            node.textContent = message;
+            node.className = isError ? 'text-sm text-red-600 dark:text-red-400' : 'text-sm text-gray-600 dark:text-gray-400';
+        }
+
+        async function loadEmployee() {
+            try {
+                const response = await fetch('/api/hr/employees');
+                const data = await response.json();
+                if (!data.success) {
+                    setStatus('Failed to load employee.', true);
+                    return;
+                }
+
+                const employee = data.employees.find((emp) => Number(emp.id) === targetEmployeeId);
+                if (!employee) {
+                    setStatus('Employee not found.', true);
+                    return;
+                }
+
+                const avatar = document.getElementById('employee-avatar');
+                const card = document.getElementById('employee-profile-card');
+                avatar.innerHTML = renderAvatar(employee);
+                document.getElementById('employee-name').textContent = employee.full_name;
+                document.getElementById('employee-code-role').textContent = `${employee.employee_code} • ${employee.role}`;
+                card.classList.remove('hidden');
+
+                document.getElementById('employee-meta').textContent =
+                    `${employee.full_name} (${employee.employee_code}) - ${employee.role}`;
+
+                const permResponse = await fetch(`/api/hr/employee-permissions/${targetEmployeeId}`);
+                const permData = await permResponse.json();
+                if (permData.success && permData.permissions) {
+                    applyPermissions(permData.permissions);
+                }
+
+                const activityResponse = await fetch(`/api/hr/employee-activity-permissions/${targetEmployeeId}`);
+                const activityData = await activityResponse.json();
+                if (activityData.success && activityData.activity_permissions) {
+                    applyActivityPermissions(activityData.activity_permissions);
+                }
+            } catch (error) {
+                setStatus('An error occurred while loading employee.', true);
+            }
+        }
+
+        async function savePermissions() {
+            const payload = {
+                employee_id: targetEmployeeId,
+                permissions: {
+                    create: document.getElementById('perm-create').checked,
+                    insert: document.getElementById('perm-insert').checked,
+                    edit: document.getElementById('perm-edit').checked,
+                    suspend: document.getElementById('perm-suspend').checked,
+                    delete: document.getElementById('perm-delete').checked,
+                    generate: document.getElementById('perm-generate').checked
+                }
+            };
+
+            setStatus('Saving...');
+            try {
+                const response = await fetch('/api/hr/update-permissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    setStatus(data.error || 'Failed to save permissions.', true);
+                    return;
+                }
+
+                const activityPayload = {
+                    employee_id: targetEmployeeId,
+                    activity_permissions: readActivityMatrix()
+                };
+
+                const activityResponse = await fetch('/api/hr/update-activity-permissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(activityPayload)
+                });
+                const activityData = await activityResponse.json();
+                if (activityData.success) {
+                    setStatus('Permissions saved successfully.');
+                } else {
+                    setStatus(activityData.error || 'Failed to save activity permissions.', true);
+                }
+            } catch (error) {
+                setStatus('An error occurred while saving permissions.', true);
+            }
+        }
+
+        document.getElementById('save-btn').addEventListener('click', savePermissions);
+        document.addEventListener('DOMContentLoaded', function () {
+            renderActivityMatrix();
+            loadEmployee();
+
+            // Master/global permission checkboxes control grouped detailed permissions.
+            ['create', 'insert', 'edit', 'suspend', 'delete', 'generate'].forEach((key) => {
+                const globalEl = document.getElementById(`perm-${key}`);
+                if (!globalEl) return;
+                globalEl.addEventListener('change', function () {
+                    setDetailedByGlobal(key, globalEl.checked);
+                });
+            });
+
+            // Keep master/global checkbox state in sync if user toggles detailed boxes manually.
+            document.getElementById('activity-matrix').addEventListener('change', function (e) {
+                const target = e.target;
+                if (!target || target.tagName !== 'INPUT' || target.type !== 'checkbox') return;
+                ['create', 'insert', 'edit', 'suspend', 'delete', 'generate'].forEach((key) => {
+                    syncGlobalWithDetailed(key);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

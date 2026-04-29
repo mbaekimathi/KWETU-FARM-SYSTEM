@@ -234,6 +234,7 @@
                                 <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Employee</th>
                                 <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Code</th>
                                 <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">Role</th>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">Registered</th>
                                 <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -664,6 +665,9 @@
                             ${employee.role.charAt(0).toUpperCase() + employee.role.slice(1)}
                         </span>
                     </td>
+                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                        ${formatRegisteredDate(employee.created_at)}
+                    </td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}">
                             ${employee.status.charAt(0).toUpperCase() + employee.status.slice(1).replace('_', ' ')}
@@ -682,6 +686,9 @@
                                     Activate
                                 </button>`
                             }
+                            <button onclick="deleteEmployee(${employee.id})" class="text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-xs sm:text-sm">
+                                Delete
+                            </button>
                         </div>
                     </td>
                 `;
@@ -797,7 +804,8 @@
 
         // Permission Modal
         function openPermissionModal() {
-            document.getElementById('permission-modal').classList.remove('hidden');
+            const basePath = '{{ "/manager" if user.role == "manager" else "/admin" }}';
+            window.location.href = `${basePath}/human-resource/authorization`;
         }
 
         function closePermissionModal() {
@@ -812,6 +820,17 @@
         function closeFinanceModal() {
             document.getElementById('finance-modal').classList.add('hidden');
             document.getElementById('finance-form').reset();
+        }
+
+        function formatRegisteredDate(value) {
+            if (!value) return 'N/A';
+            const parsedDate = new Date(value);
+            if (Number.isNaN(parsedDate.getTime())) return 'N/A';
+            return parsedDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
         }
 
         // API Functions
@@ -833,6 +852,10 @@
                 
                 if (data.success) {
                     alert(data.message);
+                    if (action === 'approve' && data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                        return;
+                    }
                     loadEmployees();
                     closeApprovalModal();
                 } else {
@@ -868,6 +891,39 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while updating status.');
+            }
+        }
+
+        async function deleteEmployee(employeeId) {
+            const employee = employeesData.find(emp => emp.id === employeeId);
+            const employeeName = employee ? employee.full_name : `ID ${employeeId}`;
+            const confirmed = confirm(`Delete ${employeeName} from the system? This action cannot be undone.`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/hr/delete-employee', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        employee_id: employeeId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                    loadEmployees();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while deleting employee.');
             }
         }
 

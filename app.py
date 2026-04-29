@@ -16,6 +16,7 @@ import hashlib
 import secrets
 import socket
 import subprocess
+import json
 
 import base64
 import re
@@ -125,6 +126,428 @@ def get_current_employee_profile_image():
         return build_profile_image_url(row.get("profile_image"))
     except Exception:
         return None
+
+
+ACTION_PERMISSION_KEYS = ("create", "insert", "edit", "suspend", "delete", "generate")
+ANIMAL_PERMISSION_KEYS = ("register", "vaccination")
+ANIMALS = ("pig", "cow", "chicken")
+ANIMAL_ACTIVITY_KEYS = (
+    "register",
+    "insert",
+    "view",
+    "edit",
+    "delete",
+    "feeding_record",
+    "vaccination_manage",
+    "production_record",
+    "breeding_manage",
+    "health_manage",
+    "weight_manage",
+    "analytics_view",
+    "id_generate",
+    "audit_view",
+    "breeding_register",
+    "farrowing_register",
+)
+
+
+def _default_action_permissions():
+    """Default action permissions if no explicit row exists."""
+    return {key: True for key in ACTION_PERMISSION_KEYS}
+
+
+def _load_employee_action_permissions(employee_id):
+    """Return action permissions for an employee."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT can_create, can_insert, can_edit, can_suspend, can_delete, can_generate
+            FROM employee_permissions
+            WHERE employee_id = %s
+            LIMIT 1
+            """,
+            (employee_id,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not row:
+            return _default_action_permissions()
+        return {
+            "create": bool(row.get("can_create")),
+            "insert": bool(row.get("can_insert")),
+            "edit": bool(row.get("can_edit")),
+            "suspend": bool(row.get("can_suspend")),
+            "delete": bool(row.get("can_delete")),
+            "generate": bool(row.get("can_generate")),
+        }
+    except Exception:
+        return _default_action_permissions()
+
+
+def _map_request_to_action_permission(path, method):
+    """Infer required action permission from request path/method."""
+    method = (method or "").upper()
+    p = (path or "").lower()
+
+    if method == "DELETE" or "delete" in p or "remove" in p:
+        return "delete"
+    if method in ("PUT", "PATCH"):
+        return "edit"
+    if "suspend" in p:
+        return "suspend"
+    if "generate" in p:
+        return "generate"
+    if "insert" in p:
+        return "insert"
+    if "edit" in p or "update" in p or "save" in p or "modify" in p:
+        return "edit"
+    if method == "POST" and any(token in p for token in ("create", "register", "add", "new")):
+        return "create"
+    # Most API POSTs are mutations. If not explicitly create/insert/delete/generate/suspend,
+    # treat them as edit-level actions so denied users cannot bypass via custom endpoint names.
+    if method == "POST" and p.startswith("/api/"):
+        return "edit"
+    return None
+
+
+def _permission_denied_response(action):
+    payload = {
+        "success": False,
+        "error": "Permission denied",
+        "code": "PERMISSION_DENIED",
+        "action": action,
+        "message": f"You do not have permission to {action} records."
+    }
+    if request.path.startswith("/api/"):
+        return jsonify(payload), 403
+    flash(payload["message"], "error")
+    return redirect(request.referrer or url_for("employee_dashboard"))
+
+
+def _load_employee_animal_permissions(employee_id):
+    """Return per-animal permissions for register/vaccination actions."""
+    default_result = {
+        animal: {"register": True, "vaccination": True}
+        for animal in ANIMALS
+    }
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT animal, can_register, can_vaccination
+            FROM employee_animal_permissions
+            WHERE employee_id = %s
+            """,
+            (employee_id,),
+        )
+        rows = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+        for row in rows:
+            animal = (row.get("animal") or "").lower()
+            if animal not in default_result:
+                continue
+            default_result[animal] = {
+                "register": bool(row.get("can_register")),
+                "vaccination": bool(row.get("can_vaccination")),
+            }
+        return default_result
+    except Exception:
+        return default_result
+
+
+def _default_animal_activity_permissions():
+    return {
+        animal: {key: True for key in ANIMAL_ACTIVITY_KEYS}
+        for animal in ANIMALS
+    }
+
+
+def _load_employee_activity_permissions(employee_id):
+    """Return detailed per-animal activity permissions."""
+    result = _default_animal_activity_permissions()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT animal, permission_key, is_allowed
+            FROM employee_activity_permissions
+            WHERE employee_id = %s
+            """,
+            (employee_id,),
+        )
+        rows = cursor.fetchall() or []
+        cursor.close()
+        conn.close()
+        for row in rows:
+            animal = (row.get("animal") or "").lower()
+            key = (row.get("permission_key") or "").lower()
+            if animal not in result or key not in result[animal]:
+                continue
+            result[animal][key] = bool(row.get("is_allowed"))
+        return result
+    except Exception:
+        return result
+
+
+def _map_request_to_animal_permission(path):
+    """Infer animal/module permission from endpoint path."""
+    p = (path or "").lower()
+    animal = None
+    if "pig" in p:
+        animal = "pig"
+    elif "cow" in p:
+        animal = "cow"
+    elif "chicken" in p:
+        animal = "chicken"
+
+    if not animal:
+        return None, None
+
+    if "vaccination" in p or "vaccinations" in p:
+        return animal, "vaccination"
+    if "register" in p:
+        return animal, "register"
+    return animal, None
+
+
+def _detect_animal_from_path(path):
+    p = (path or "").lower()
+    if "farrowing" in p:
+        return "pig"
+    if "pig" in p:
+        return "pig"
+    if "cow" in p:
+        return "cow"
+    if "chicken" in p:
+        return "chicken"
+    return None
+
+
+def _normalize_animal_value(value):
+    v = (value or "").strip().lower()
+    if v in ("pig", "pigs"):
+        return "pig"
+    if v in ("cow", "cows", "cattle"):
+        return "cow"
+    if v in ("chicken", "chickens", "poultry"):
+        return "chicken"
+    return None
+
+
+def _extract_request_animal():
+    """Resolve animal from path, query, json, or form payload."""
+    from_path = _detect_animal_from_path(request.path or "")
+    if from_path:
+        return from_path
+
+    for key in ("animal_type", "animal", "module", "species"):
+        qv = _normalize_animal_value(request.args.get(key))
+        if qv:
+            return qv
+
+    payload = {}
+    try:
+        payload = request.get_json(silent=True) or {}
+    except Exception:
+        payload = {}
+    if isinstance(payload, dict):
+        for key in ("animal_type", "animal", "module", "species"):
+            jv = _normalize_animal_value(payload.get(key))
+            if jv:
+                return jv
+
+    for key in ("animal_type", "animal", "module", "species"):
+        fv = _normalize_animal_value(request.form.get(key))
+        if fv:
+            return fv
+    return None
+
+
+def _explicit_activity_mapping(path, method):
+    """Exact endpoint mapping for critical modules (feed/vaccination/farrowing/breeding)."""
+    p = (path or "").lower()
+    method = (method or "").upper()
+    animal = _extract_request_animal()
+
+    # Farrowing endpoints are pig-domain by definition.
+    if p.startswith("/api/farrowing/"):
+        animal = animal or "pig"
+        if "/audit" in p:
+            return animal, "audit_view"
+        if method == "GET":
+            return animal, "view"
+        if "complete" in p or "mark-sow-available" in p:
+            return animal, "farrowing_register"
+        if method in ("PUT", "PATCH"):
+            return animal, "edit"
+        if method == "DELETE":
+            return animal, "delete"
+        if method == "POST":
+            return animal, "insert"
+
+    if p.startswith("/api/feed/"):
+        if not animal:
+            return None, None
+        if method == "GET":
+            if "analytics" in p or "stats" in p:
+                return animal, "analytics_view"
+            if "audit-trail" in p:
+                return animal, "audit_view"
+            return animal, "view"
+        if method == "POST":
+            if "/delete" in p:
+                return animal, "delete"
+            if "/update" in p:
+                return animal, "edit"
+            if "/register" in p or "/settings/create" in p or "/stock/transaction" in p or "/process-feeding" in p:
+                return animal, "feeding_record"
+            return animal, "insert"
+        if method in ("PUT", "PATCH"):
+            return animal, "edit"
+        if method == "DELETE":
+            return animal, "delete"
+
+    if p.startswith("/api/vaccination/") or p.startswith("/api/cow-vaccination/"):
+        if not animal:
+            animal = "cow" if p.startswith("/api/cow-vaccination/") else _extract_request_animal()
+        if not animal:
+            return None, None
+        if method == "GET":
+            return animal, "view"
+        if method in ("POST", "PUT", "PATCH", "DELETE"):
+            return animal, "vaccination_manage"
+
+    if p.startswith("/api/breeding/") or p.startswith("/api/cow-breeding/"):
+        if not animal:
+            animal = "cow" if p.startswith("/api/cow-breeding/") else "pig"
+        if "register-farrowing" in p:
+            return animal, "farrowing_register"
+        if p.endswith("/register"):
+            return animal, "breeding_register"
+        if method == "GET":
+            if "analytics" in p or "statistics" in p:
+                return animal, "analytics_view"
+            return animal, "view"
+        if method in ("PUT", "PATCH"):
+            return animal, "edit"
+        if method == "DELETE":
+            return animal, "delete"
+        if method == "POST":
+            return animal, "insert"
+
+    return None, None
+
+
+def _map_request_to_activity_permission(path, method):
+    """Infer detailed per-animal activity permission from request path/method."""
+    p = (path or "").lower()
+    method = (method or "").upper()
+    explicit_animal, explicit_key = _explicit_activity_mapping(path, method)
+    if explicit_animal and explicit_key:
+        return explicit_animal, explicit_key
+
+    animal = _extract_request_animal()
+    if not animal:
+        return None, None
+
+    if "analytics" in p:
+        return animal, "analytics_view"
+    if "generate" in p or "next-id" in p:
+        return animal, "id_generate"
+    if "audit" in p or "history" in p:
+        return animal, "audit_view"
+    if "register-farrowing" in p:
+        return animal, "farrowing_register"
+    if "breeding/register" in p or "cow-breeding/register" in p:
+        return animal, "breeding_register"
+    if "breeding" in p:
+        if method == "POST":
+            return animal, "insert"
+        return animal, "breeding_manage"
+    if "farrowing" in p:
+        if method == "POST":
+            return animal, "insert"
+        return animal, "breeding_manage"
+    if "weight" in p:
+        return animal, "weight_manage" if method in ("POST", "PUT", "PATCH", "DELETE") else "view"
+    if "feeding" in p:
+        return animal, "feeding_record" if method in ("POST", "PUT", "PATCH", "DELETE") else "view"
+    if "vaccination" in p or "medication" in p:
+        return animal, "vaccination_manage"
+    if "health" in p or "stage" in p:
+        return animal, "health_manage"
+    if "production" in p:
+        return animal, "production_record" if method in ("POST", "PUT", "PATCH", "DELETE") else "view"
+    if method == "DELETE" or "delete" in p:
+        return animal, "delete"
+    if method in ("PUT", "PATCH") or any(token in p for token in ("edit", "update", "modify", "save")):
+        return animal, "edit"
+    if "register" in p or "add-" in p:
+        return animal, "register"
+    if method == "GET":
+        return animal, "view"
+    if method == "POST":
+        return animal, "edit"
+    return animal, None
+
+
+def _permission_denied_module_response(action, animal):
+    message = f"You do not have permission to {action} in the {animal} module."
+    payload = {
+        "success": False,
+        "error": "Permission denied",
+        "code": "PERMISSION_DENIED",
+        "action": action,
+        "animal": animal,
+        "message": message,
+    }
+    if request.path.startswith("/api/"):
+        return jsonify(payload), 403
+    flash(message, "error")
+    return redirect(request.referrer or url_for("employee_dashboard"))
+
+
+@app.before_request
+def enforce_action_permissions():
+    """
+    Global action-permission gate.
+    Applies to authenticated users and infers action from requested endpoint path.
+    """
+    path = request.path or ""
+    if path.startswith("/static/"):
+        return None
+    if path in ("/api/login", "/api/signup", "/api/check-employee-code", "/api/logout"):
+        return None
+    if "employee_id" not in session:
+        return None
+    action = _map_request_to_action_permission(path, request.method)
+    if not action:
+        return None
+
+    # HR permission management endpoints should only require edit action.
+    if path.startswith("/api/hr/update-permissions") or path.startswith("/api/hr/employee-permissions"):
+        action = "edit"
+
+    perms = _load_employee_action_permissions(session.get("employee_id"))
+    if perms.get(action, True):
+        animal, animal_action = _map_request_to_animal_permission(path)
+        if animal and animal_action in ANIMAL_PERMISSION_KEYS:
+            animal_perms = _load_employee_animal_permissions(session.get("employee_id"))
+            if not animal_perms.get(animal, {}).get(animal_action, True):
+                return _permission_denied_module_response(animal_action, animal)
+        activity_animal, activity_key = _map_request_to_activity_permission(path, request.method)
+        if activity_animal and activity_key:
+            activity_perms = _load_employee_activity_permissions(session.get("employee_id"))
+            if not activity_perms.get(activity_animal, {}).get(activity_key, True):
+                return _permission_denied_module_response(activity_key, activity_animal)
+        return None
+    return _permission_denied_response(action)
 
 
 def _webauthn_rp_id():
@@ -700,6 +1123,59 @@ def create_database_and_tables():
             )
         """)
         print("Employees table checked/created successfully")
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS employee_permissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT NOT NULL UNIQUE,
+                can_create BOOLEAN DEFAULT TRUE,
+                can_insert BOOLEAN DEFAULT TRUE,
+                can_edit BOOLEAN DEFAULT TRUE,
+                can_suspend BOOLEAN DEFAULT TRUE,
+                can_delete BOOLEAN DEFAULT TRUE,
+                can_generate BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            )
+            """
+        )
+        print("Employee permissions table checked/created successfully")
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS employee_animal_permissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT NOT NULL,
+                animal ENUM('pig', 'cow', 'chicken') NOT NULL,
+                can_register BOOLEAN DEFAULT TRUE,
+                can_vaccination BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_employee_animal (employee_id, animal),
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            )
+            """
+        )
+        print("Employee animal permissions table checked/created successfully")
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS employee_activity_permissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT NOT NULL,
+                animal ENUM('pig', 'cow', 'chicken') NOT NULL,
+                permission_key VARCHAR(64) NOT NULL,
+                is_allowed BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_employee_animal_activity (employee_id, animal, permission_key),
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            )
+            """
+        )
+        print("Employee activity permissions table checked/created successfully")
         
         # Create activity_log table
         cursor.execute("""
@@ -4151,6 +4627,40 @@ def admin_human_resource():
     
     return render_template('admin_human_resource.html', user=user_data)
 
+@app.route('/admin/human-resource/authorization')
+def admin_human_resource_authorization():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_human_resource_authorization.html', user=user_data)
+
+@app.route('/admin/human-resource/authorization/<int:employee_id>')
+def admin_human_resource_employee_permissions(employee_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template(
+        'admin_human_resource_employee_permissions.html',
+        user=user_data,
+        target_employee_id=employee_id
+    )
+
 @app.route('/admin/farm-management')
 def admin_farm_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -4226,6 +4736,40 @@ def manager_human_resource():
     }
     
     return render_template('admin_human_resource.html', user=user_data)
+
+@app.route('/manager/human-resource/authorization')
+def manager_human_resource_authorization():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_human_resource_authorization.html', user=user_data)
+
+@app.route('/manager/human-resource/authorization/<int:employee_id>')
+def manager_human_resource_employee_permissions(employee_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template(
+        'admin_human_resource_employee_permissions.html',
+        user=user_data,
+        target_employee_id=employee_id
+    )
 
 @app.route('/manager/farm-management')
 def manager_farm_management():
@@ -4349,7 +4893,23 @@ def admin_farm_pig_management():
     
     return render_template('admin_farm_pig_management.html', user=user_data)
 
+@app.route('/admin/farm/pig-settings')
+def admin_farm_pig_settings():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_pig_settings.html', user=user_data)
+
 @app.route('/admin/farm/cow-management')
+@app.route('/admin/farm/cow-settings')
 def admin_farm_cow_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
@@ -4366,6 +4926,7 @@ def admin_farm_cow_management():
     return render_template('admin_farm_cow_management.html', user=user_data)
 
 @app.route('/admin/farm/chicken-management')
+@app.route('/admin/farm/chicken-settings')
 def admin_farm_chicken_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
@@ -4518,7 +5079,23 @@ def manager_farm_pig_management():
     
     return render_template('admin_farm_pig_management.html', user=user_data)
 
+@app.route('/manager/farm/pig-settings')
+def manager_farm_pig_settings():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+
+    return render_template('admin_farm_pig_settings.html', user=user_data)
+
 @app.route('/manager/farm/cow-management')
+@app.route('/manager/farm/cow-settings')
 def manager_farm_cow_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
@@ -4535,6 +5112,7 @@ def manager_farm_cow_management():
     return render_template('admin_farm_cow_management.html', user=user_data)
 
 @app.route('/manager/farm/chicken-management')
+@app.route('/manager/farm/chicken-settings')
 def manager_farm_chicken_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return redirect(url_for('employee_login'))
@@ -13252,6 +13830,47 @@ def _welcome_preview_line(notif):
     return str(t)
 
 
+def _welcome_detail_url(notif, role):
+    """Best-effort deep link for a specific notification item."""
+    prefix = "/manager" if role == "manager" else "/admin"
+    t = notif.get("type")
+
+    def _as_int_or_none(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    if t in ("vaccination", "weight"):
+        pig_id = _as_int_or_none(notif.get("pig_id"))
+        if pig_id is not None:
+            return f"{prefix}/farm/animal-details/{pig_id}"
+    if t == "farrowing":
+        sow_id = _as_int_or_none(notif.get("sow_id"))
+        if sow_id is not None:
+            return f"{prefix}/farm/animal-details/{sow_id}"
+        return f"{prefix}/farm/breeding-records"
+    if t == "weaning":
+        litter_id = notif.get("litter_id")
+        if litter_id:
+            return f"{prefix}/farm/litter-details/{str(litter_id)}"
+        return f"{prefix}/farm/completed-farrowings"
+    if t in ("cow_vaccination", "cow_weight", "cow_calving"):
+        cow_id = _as_int_or_none(notif.get("cow_id") or notif.get("dam_id"))
+        if cow_id is not None:
+            return f"{prefix}/farm/cow/{cow_id}"
+    if t == "chicken_flock":
+        return f"{prefix}/farm/chicken-flock-management"
+    if t == "cow_feeding":
+        return f"{prefix}/farm/cow-feeding-management"
+    if t == "chicken_feeding":
+        return f"{prefix}/farm/chicken-feeding-management"
+    if t == "feeding":
+        return f"{prefix}/farm/pig-feeding-management"
+
+    return f"{prefix}/dashboard"
+
+
 WELCOME_CATEGORY_LABELS = {
     'feeding': 'Pig feeding',
     'chicken_feeding': 'Chicken feeding',
@@ -13267,7 +13886,7 @@ WELCOME_CATEGORY_LABELS = {
 }
 
 
-def _welcome_enrich_groups(grouped):
+def _welcome_enrich_groups(grouped, role):
     """Add human-readable category_label, urgency_breakdown, and short previews per group."""
     out = []
     for g in grouped:
@@ -13283,6 +13902,7 @@ def _welcome_enrich_groups(grouped):
                 'summary': _welcome_preview_line(item),
                 'urgency': item.get('urgency'),
                 'urgency_label': item.get('urgency_label'),
+                'target_url': _welcome_detail_url(item, role),
             })
         ge['urgency_breakdown'] = uc
         ge['previews'] = previews
@@ -13368,11 +13988,61 @@ def api_session_welcome():
     for n in all_notifications:
         _apply_welcome_urgency(n)
     grouped = _group_feed_notifications(all_notifications)
-    categories = _welcome_enrich_groups(grouped)
+    categories = _welcome_enrich_groups(grouped, session.get('employee_role'))
     session.pop('show_login_welcome', None)
 
     return jsonify({
         'show': True,
+        'greeting': _time_greeting(now.hour),
+        'name': name,
+        'clock': now.strftime('%I:%M %p'),
+        'total_count': len(all_notifications),
+        'categories': categories,
+    })
+
+
+@app.route('/api/session/welcome-preview', methods=['GET'])
+def api_session_welcome_preview():
+    """
+    On-demand briefing payload for Aira panel (does not consume one-time login flag).
+    Allows users to reopen notifications after dismissing the initial briefing.
+    """
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    from datetime import datetime
+
+    now = datetime.now()
+    name = session.get('employee_name') or 'there'
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        all_notifications = collect_all_feed_notifications(
+            cursor, now, now.date(), now.hour, now.minute
+        )
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"api_session_welcome_preview: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': True,
+            'greeting': _time_greeting(now.hour),
+            'name': name,
+            'clock': now.strftime('%I:%M %p'),
+            'error': 'Could not load activities',
+            'total_count': 0,
+            'categories': [],
+        })
+
+    for n in all_notifications:
+        _apply_welcome_urgency(n)
+    grouped = _group_feed_notifications(all_notifications)
+    categories = _welcome_enrich_groups(grouped, session.get('employee_role'))
+
+    return jsonify({
+        'success': True,
         'greeting': _time_greeting(now.hour),
         'name': name,
         'clock': now.strftime('%I:%M %p'),
@@ -13850,10 +14520,59 @@ def approve_employee():
         
         if action == 'approve':
             cursor.execute("UPDATE employees SET status = 'active' WHERE id = %s", (employee_id,))
+            # Default approved users to NO permissions until explicitly configured.
+            cursor.execute(
+                """
+                INSERT INTO employee_permissions
+                (employee_id, can_create, can_insert, can_edit, can_suspend, can_delete, can_generate)
+                VALUES (%s, 0, 0, 0, 0, 0, 0)
+                ON DUPLICATE KEY UPDATE
+                    can_create = 0,
+                    can_insert = 0,
+                    can_edit = 0,
+                    can_suspend = 0,
+                    can_delete = 0,
+                    can_generate = 0
+                """,
+                (employee_id,),
+            )
+
+            for animal in ANIMALS:
+                cursor.execute(
+                    """
+                    INSERT INTO employee_animal_permissions
+                    (employee_id, animal, can_register, can_vaccination)
+                    VALUES (%s, %s, 0, 0)
+                    ON DUPLICATE KEY UPDATE
+                        can_register = 0,
+                        can_vaccination = 0
+                    """,
+                    (employee_id, animal),
+                )
+
+                for key in ANIMAL_ACTIVITY_KEYS:
+                    cursor.execute(
+                        """
+                        INSERT INTO employee_activity_permissions
+                        (employee_id, animal, permission_key, is_allowed)
+                        VALUES (%s, %s, %s, 0)
+                        ON DUPLICATE KEY UPDATE
+                            is_allowed = 0
+                        """,
+                        (employee_id, animal, key),
+                    )
+
             action_desc = 'approved'
+            is_manager = session.get('employee_role') == 'manager'
+            permission_url = url_for(
+                'manager_human_resource_employee_permissions' if is_manager else 'admin_human_resource_employee_permissions',
+                employee_id=employee_id,
+                newly_approved=1
+            )
         else:
             cursor.execute("DELETE FROM employees WHERE id = %s", (employee_id,))
             action_desc = 'rejected'
+            permission_url = None
         
         conn.commit()
         
@@ -13864,7 +14583,11 @@ def approve_employee():
         cursor.close()
         conn.close()
         
-        return jsonify({'success': True, 'message': f'Employee {action_desc} successfully'})
+        return jsonify({
+            'success': True,
+            'message': f'Employee {action_desc} successfully',
+            'redirect_url': permission_url
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -13893,6 +14616,119 @@ def update_employee_status():
         conn.close()
         
         return jsonify({'success': True, 'message': f'Employee status updated to {new_status}'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/hr/delete-employee', methods=['POST'])
+def delete_employee():
+    """Delete an employee from the system."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        employee_id = data.get('employee_id')
+
+        if not employee_id:
+            return jsonify({'error': 'Employee id is required'}), 400
+
+        if int(employee_id) == int(session['employee_id']):
+            return jsonify({'error': 'You cannot delete your own account while logged in'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM employees WHERE id = %s LIMIT 1", (employee_id,))
+        target_employee = cursor.fetchone()
+        if not target_employee:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Employee not found'}), 404
+
+        cursor.execute("DELETE FROM employees WHERE id = %s", (employee_id,))
+        conn.commit()
+
+        # Log activity
+        log_activity(
+            session['employee_id'],
+            'EMPLOYEE_DELETE',
+            f'Employee {employee_id} deleted from HR management'
+        )
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Employee deleted successfully'})
+    except pymysql.err.IntegrityError:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT DATABASE() AS db_name")
+            db_name_row = cursor.fetchone()
+            db_name = db_name_row.get('db_name') if isinstance(db_name_row, dict) else None
+            if not db_name:
+                raise RuntimeError('Could not determine current database for cleanup')
+
+            cursor.execute(
+                """
+                SELECT
+                    kcu.TABLE_NAME AS table_name,
+                    kcu.COLUMN_NAME AS column_name,
+                    cols.IS_NULLABLE AS is_nullable
+                FROM information_schema.KEY_COLUMN_USAGE kcu
+                INNER JOIN information_schema.COLUMNS cols
+                    ON cols.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+                    AND cols.TABLE_NAME = kcu.TABLE_NAME
+                    AND cols.COLUMN_NAME = kcu.COLUMN_NAME
+                WHERE kcu.REFERENCED_TABLE_SCHEMA = %s
+                  AND kcu.REFERENCED_TABLE_NAME = 'employees'
+                  AND kcu.REFERENCED_COLUMN_NAME = 'id'
+                """,
+                (db_name,)
+            )
+            references = cursor.fetchall()
+
+            for reference in references:
+                table_name = reference.get('table_name')
+                column_name = reference.get('column_name')
+                is_nullable = reference.get('is_nullable') == 'YES'
+
+                # Protect dynamic identifier usage.
+                if not re.match(r'^[A-Za-z0-9_]+$', table_name or '') or not re.match(r'^[A-Za-z0-9_]+$', column_name or ''):
+                    continue
+
+                if is_nullable:
+                    cursor.execute(
+                        f"UPDATE `{table_name}` SET `{column_name}` = NULL WHERE `{column_name}` = %s",
+                        (employee_id,)
+                    )
+                else:
+                    cursor.execute(
+                        f"DELETE FROM `{table_name}` WHERE `{column_name}` = %s",
+                        (employee_id,)
+                    )
+
+            cursor.execute("DELETE FROM employees WHERE id = %s", (employee_id,))
+            conn.commit()
+
+            log_activity(
+                session['employee_id'],
+                'EMPLOYEE_DELETE_FORCE',
+                f'Employee {employee_id} force-deleted after cleaning related references'
+            )
+
+            cursor.close()
+            conn.close()
+
+            return jsonify({
+                'success': True,
+                'message': 'Employee and related references deleted successfully.'
+            })
+        except Exception as force_delete_error:
+            return jsonify({
+                'error': f'Could not fully delete employee: {force_delete_error}'
+            }), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -13996,20 +14832,182 @@ def update_permissions():
         data = request.get_json()
         employee_id = data.get('employee_id')
         permissions = data.get('permissions', {})
-        
-        # For now, we'll store permissions as JSON in a comment field
-        # In a real system, you'd have a separate permissions table
+
+        if not employee_id:
+            return jsonify({'error': 'Employee id is required'}), 400
+
+        normalized_permissions = {
+            "create": bool(permissions.get("create", True)),
+            "insert": bool(permissions.get("insert", True)),
+            "edit": bool(permissions.get("edit", True)),
+            "suspend": bool(permissions.get("suspend", True)),
+            "delete": bool(permissions.get("delete", True)),
+            "generate": bool(permissions.get("generate", True)),
+        }
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
+        cursor.execute(
+            """
+            INSERT INTO employee_permissions
+            (employee_id, can_create, can_insert, can_edit, can_suspend, can_delete, can_generate)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                can_create = VALUES(can_create),
+                can_insert = VALUES(can_insert),
+                can_edit = VALUES(can_edit),
+                can_suspend = VALUES(can_suspend),
+                can_delete = VALUES(can_delete),
+                can_generate = VALUES(can_generate)
+            """,
+            (
+                employee_id,
+                normalized_permissions["create"],
+                normalized_permissions["insert"],
+                normalized_permissions["edit"],
+                normalized_permissions["suspend"],
+                normalized_permissions["delete"],
+                normalized_permissions["generate"],
+            ),
+        )
+
+        conn.commit()
+
         # Log activity
         log_activity(session['employee_id'], 'PERMISSION_UPDATE', 
-                    f'Employee {employee_id} permissions updated')
-        
+                    f'Employee {employee_id} permissions updated: {json.dumps(normalized_permissions)}')
+
         cursor.close()
         conn.close()
-        
+
         return jsonify({'success': True, 'message': 'Permissions updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/employee-permissions/<int:employee_id>', methods=['GET'])
+def get_employee_permissions(employee_id):
+    """Get action permissions for a specific employee."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        permissions = _load_employee_action_permissions(employee_id)
+        return jsonify({"success": True, "permissions": permissions})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/employee-module-permissions/<int:employee_id>', methods=['GET'])
+def get_employee_module_permissions(employee_id):
+    """Get per-animal permissions for a specific employee."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        module_permissions = _load_employee_animal_permissions(employee_id)
+        return jsonify({"success": True, "module_permissions": module_permissions})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/update-module-permissions', methods=['POST'])
+def update_module_permissions():
+    """Update per-animal module permissions."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        employee_id = data.get('employee_id')
+        module_permissions = data.get('module_permissions', {})
+        if not employee_id:
+            return jsonify({'error': 'Employee id is required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        for animal in ANIMALS:
+            row = module_permissions.get(animal, {}) or {}
+            can_register = bool(row.get('register', True))
+            can_vaccination = bool(row.get('vaccination', True))
+            cursor.execute(
+                """
+                INSERT INTO employee_animal_permissions
+                (employee_id, animal, can_register, can_vaccination)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    can_register = VALUES(can_register),
+                    can_vaccination = VALUES(can_vaccination)
+                """,
+                (employee_id, animal, can_register, can_vaccination),
+            )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        log_activity(
+            session['employee_id'],
+            'MODULE_PERMISSION_UPDATE',
+            f'Employee {employee_id} per-animal permissions updated: {json.dumps(module_permissions)}'
+        )
+        return jsonify({'success': True, 'message': 'Module permissions updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/employee-activity-permissions/<int:employee_id>', methods=['GET'])
+def get_employee_activity_permissions(employee_id):
+    """Get detailed per-animal activity permissions for a specific employee."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        activity_permissions = _load_employee_activity_permissions(employee_id)
+        return jsonify({"success": True, "activity_permissions": activity_permissions})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/update-activity-permissions', methods=['POST'])
+def update_activity_permissions():
+    """Update detailed per-animal activity permissions."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json() or {}
+        employee_id = data.get('employee_id')
+        activity_permissions = data.get('activity_permissions', {})
+        if not employee_id:
+            return jsonify({'error': 'Employee id is required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        for animal in ANIMALS:
+            rows = (activity_permissions.get(animal, {}) or {})
+            for key in ANIMAL_ACTIVITY_KEYS:
+                allowed = bool(rows.get(key, True))
+                cursor.execute(
+                    """
+                    INSERT INTO employee_activity_permissions
+                    (employee_id, animal, permission_key, is_allowed)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        is_allowed = VALUES(is_allowed)
+                    """,
+                    (employee_id, animal, key, allowed),
+                )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        log_activity(
+            session['employee_id'],
+            'ACTIVITY_PERMISSION_UPDATE',
+            f'Employee {employee_id} detailed activity permissions updated'
+        )
+        return jsonify({'success': True, 'message': 'Activity permissions updated successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -27165,9 +28163,9 @@ def animal_details_page(animal_id):
                          animal_id=animal_id, 
                          animal_type=animal_type)
 
-@app.route('/admin/farm/litter-details/<int:litter_id>')
-@app.route('/manager/farm/litter-details/<int:litter_id>')
-def litter_details_page(litter_id):
+@app.route('/admin/farm/litter-details/<litter_ref>')
+@app.route('/manager/farm/litter-details/<litter_ref>')
+def litter_details_page(litter_ref):
     """Litter details page (info + weights + activities + visual analytics)."""
     if 'employee_id' not in session:
         return redirect(url_for('employee_login'))
@@ -27184,9 +28182,34 @@ def litter_details_page(litter_id):
         'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
     }
 
+    resolved_litter_id = None
+    ref = str(litter_ref or '').strip()
+    if ref.isdigit():
+        resolved_litter_id = int(ref)
+    elif ref:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM litters WHERE litter_id = %s LIMIT 1",
+                (ref,)
+            )
+            row = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            if row:
+                resolved_litter_id = int(row.get('id'))
+        except Exception:
+            resolved_litter_id = None
+
+    if resolved_litter_id is None:
+        flash(f'Litter "{ref}" was not found.', 'error')
+        prefix = '/manager' if session.get('employee_role') == 'manager' else '/admin'
+        return redirect(f'{prefix}/farm/completed-farrowings')
+
     return render_template('admin_farm_litter_details.html',
                            user=user_data,
-                           litter_id=litter_id)
+                           litter_id=resolved_litter_id)
 
 @app.route('/admin/farm/vaccination-analytics')
 def vaccination_analytics_page():
