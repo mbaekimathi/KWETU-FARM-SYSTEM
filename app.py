@@ -2679,7 +2679,7 @@ def create_database_and_tables():
         return True
         
     except Exception as e:
-        print(f"❌ Error setting up database: {str(e)}")
+        print(f"ERROR setting up database: {str(e)}")
         return False
 
 def log_activity(employee_id, action, description, table_name=None, record_id=None):
@@ -3762,67 +3762,87 @@ def it_dashboard():
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.get_json()
-    employee_code = data.get('employee_code')
-    password = data.get('password')
+    employee_code = (data.get('employee_code') or '').strip()
+    password = data.get('password') or ''
+
+    if not employee_code:
+        return {'success': False, 'message': 'Employee code is required'}
+    if len(employee_code) != 6 or not employee_code.isdigit():
+        return {'success': False, 'message': 'Enter a valid 6-digit employee code'}
+    if not password:
+        return {'success': False, 'message': 'Password is required for password login'}
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Check if employee exists and password matches
-        hashed_password = hash_password(password)
-        sql = "SELECT * FROM employees WHERE employee_code = %s AND password = %s AND is_active = TRUE"
-        cursor.execute(sql, (employee_code, hashed_password))
+
+        # Fetch account by employee code so we can give precise login feedback.
+        cursor.execute(
+            "SELECT * FROM employees WHERE employee_code = %s LIMIT 1",
+            (employee_code,)
+        )
         employee = cursor.fetchone()
-        
-        if employee:
-            # Check if employee status is active
-            if employee['status'] != 'active':
-                cursor.close()
-                conn.close()
-                if employee['status'] == 'waiting_approval':
-                    return {'success': False, 'message': 'Your account is pending approval. Please contact your administrator.'}
-                elif employee['status'] == 'suspended':
-                    return {'success': False, 'message': 'Your account has been suspended. Please contact your administrator.'}
-                else:
-                    return {'success': False, 'message': 'Your account is not active. Please contact your administrator.'}
-            
-            # Update pig ages on login
-            try:
-                update_pig_ages(cursor)
-                print(f"Updated pig ages for employee {employee['full_name']} login")
-            except Exception as age_error:
-                print(f"Warning: Could not update pig ages: {age_error}")
-                # Don't fail login if age update fails
-            
-            # Update breeding statuses on login
-            try:
-                update_breeding_statuses()
-                print(f"✅ Updated breeding statuses for employee {employee['full_name']} login")
-            except Exception as breeding_error:
-                print(f"Warning: Could not update breeding statuses: {breeding_error}")
-                # Don't fail login if breeding update fails
-            
+
+        if not employee:
             cursor.close()
             conn.close()
-            
-            session['employee_id'] = employee['id']
-            session['employee_name'] = employee['full_name']
-            session['employee_role'] = employee['role']
-            session['employee_status'] = employee['status']
-            session['show_login_welcome'] = True
-            
-            # Log login activity
-            log_activity(employee['id'], 'LOGIN', f'Employee {employee["full_name"]} logged in successfully')
-            
-            # Get appropriate dashboard URL based on role
-            dashboard_url = get_role_dashboard_url(employee['role'])
-            
-            return {'success': True, 'redirect': dashboard_url}
-        else:
+            return {'success': False, 'message': 'Employee code not found'}
+
+        if not employee.get('is_active', True):
             cursor.close()
             conn.close()
-            return {'success': False, 'message': 'Invalid employee code or password'}
+            return {'success': False, 'message': 'This account has been deactivated. Contact your administrator.'}
+
+        # Check password after employee lookup for precise "incorrect password" message.
+        hashed_password = hash_password(password)
+        if employee.get('password') != hashed_password:
+            cursor.close()
+            conn.close()
+            return {'success': False, 'message': 'Incorrect password'}
+
+        # Check if employee status is active
+        if employee['status'] != 'active':
+            cursor.close()
+            conn.close()
+            if employee['status'] == 'waiting_approval':
+                return {'success': False, 'message': 'Your account is pending approval. Please contact your administrator.'}
+            elif employee['status'] == 'suspended':
+                return {'success': False, 'message': 'Your account has been suspended. Please contact your administrator.'}
+            else:
+                return {'success': False, 'message': 'Your account is not active. Please contact your administrator.'}
+
+        # Update pig ages on login
+        try:
+            update_pig_ages(cursor)
+            print(f"Updated pig ages for employee {employee['full_name']} login")
+        except Exception as age_error:
+            print(f"Warning: Could not update pig ages: {age_error}")
+            # Don't fail login if age update fails
+
+        # Update breeding statuses on login
+        try:
+            update_breeding_statuses()
+            print(f"Updated breeding statuses for employee {employee['full_name']} login")
+        except Exception as breeding_error:
+            print(f"Warning: Could not update breeding statuses: {breeding_error}")
+            # Don't fail login if breeding update fails
+
+        cursor.close()
+        conn.close()
+
+        session['employee_id'] = employee['id']
+        session['employee_name'] = employee['full_name']
+        session['employee_role'] = employee['role']
+        session['employee_status'] = employee['status']
+        session['show_login_welcome'] = True
+
+        # Log login activity
+        log_activity(employee['id'], 'LOGIN', f'Employee {employee["full_name"]} logged in successfully')
+
+        # Get appropriate dashboard URL based on role
+        dashboard_url = get_role_dashboard_url(employee['role'])
+
+        return {'success': True, 'redirect': dashboard_url}
             
     except Exception as e:
         return {'success': False, 'message': 'Database error'}
@@ -18509,10 +18529,10 @@ def update_breeding_statuses():
         conn.close()
         
         if updated_count > 0:
-            print(f"✅ Updated {updated_count} sows to pregnant (breeding status on pigs)")
+            print(f"Updated {updated_count} sows to pregnant (breeding status on pigs)")
         
     except Exception as e:
-        print(f"❌ Error updating breeding statuses: {e}")
+        print(f"Error updating breeding statuses: {e}")
         import traceback
         traceback.print_exc()
 
@@ -24703,21 +24723,21 @@ def get_litter_activities(litter_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        print(f"🔍 Looking for litter: {litter_id}")
+        print(f"Looking for litter: {litter_id}")
         
         # First, check if the litter exists
         cursor.execute("SELECT * FROM litters WHERE litter_id = %s", (litter_id,))
         litter_check = cursor.fetchone()
         
         if not litter_check:
-            print(f"❌ Litter {litter_id} not found in litters table")
+            print(f"Litter {litter_id} not found in litters table")
             return jsonify({'success': False, 'message': f'Litter {litter_id} not found in database'})
         
-        print(f"✅ Found litter: {litter_check}")
+        print(f"Found litter: {litter_check}")
         
         # Check if there's a farrowing record
         if not litter_check.get('farrowing_record_id'):
-            print(f"❌ Litter {litter_id} has no farrowing_record_id")
+            print(f"Litter {litter_id} has no farrowing_record_id")
             return jsonify({'success': False, 'message': f'Litter {litter_id} has no associated farrowing record'})
         
         # Get farrowing record details
@@ -24729,10 +24749,10 @@ def get_litter_activities(litter_id):
         
         farrowing_record = cursor.fetchone()
         if not farrowing_record:
-            print(f"❌ Farrowing record {litter_check['farrowing_record_id']} not found")
+            print(f"Farrowing record {litter_check['farrowing_record_id']} not found")
             return jsonify({'success': False, 'message': f'Farrowing record not found for litter {litter_id}'})
         
-        print(f"✅ Found farrowing record: {farrowing_record}")
+        print(f"Found farrowing record: {farrowing_record}")
         
         # Use litter_check instead of litter
         litter = litter_check
@@ -24753,7 +24773,7 @@ def get_litter_activities(litter_id):
         
         activities = cursor.fetchall()
         
-        print(f"✅ Found {len(activities)} activities for litter {litter_id} (farrowing_record_id: {litter['farrowing_record_id']})")
+        print(f"Found {len(activities)} activities for litter {litter_id} (farrowing_record_id: {litter['farrowing_record_id']})")
         
         # Get sow information from the litter record BEFORE closing cursor
         cursor.execute("""
@@ -24948,7 +24968,7 @@ def check_and_trigger_recovery_period(farrowing_record_id):
                 log_activity(session.get('employee_id', 1), 'RECOVERY_PERIOD_STARTED', 
                            f'40-day recovery period started for farrowing {farrowing_record_id}, sow ready on {recovery_date}')
                 
-                print(f"📅 Sow will be ready for next breeding on: {recovery_date}")
+                print(f"Sow will be ready for next breeding on: {recovery_date}")
         
         cursor.close()
         conn.close()
@@ -25003,7 +25023,7 @@ def check_and_update_litter_status(farrowing_record_id):
                     WHERE id = %s
                 """, (weaning_date, weaning_weight, litter['id']))
                 
-                print(f"✅ Updated litter {litter['litter_id']} status to 'weaned'")
+                print(f"Updated litter {litter['litter_id']} status to 'weaned'")
                 
                 # Log the activity
                 log_activity(session.get('employee_id', 1), 'LITTER_WEANED_AUTO', 
