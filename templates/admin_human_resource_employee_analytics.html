@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Employee Activity Detail - Farm Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <style>
+        .hr-tab-btn { transition: color 0.15s, border-color 0.15s, background 0.15s; }
+        .hr-tab-btn.is-active {
+            color: rgb(79 70 229);
+            border-bottom-color: rgb(79 70 229);
+            background: rgb(238 242 255 / 0.6);
+        }
+        .dark .hr-tab-btn.is-active {
+            color: rgb(165 180 252);
+            border-bottom-color: rgb(129 140 248);
+            background: rgb(49 46 129 / 0.25);
+        }
+        .hr-tab-panel { display: none; }
+        .hr-tab-panel.is-active { display: block; }
+    </style>
+    {% include 'includes/farm_chrome_bundle.html' %}
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden">
+    {% include 'includes/farm_shell_header.html' %}
+
+    {% set farm_sidebar_banner_title = 'Human Resource' %}
+    {% set farm_sidebar_banner_sub = 'Activity detail' %}
+    {% set farm_sidebar_nav_partial = 'includes/farm_nav_hr_hub.html' %}
+    {% include 'includes/farm_unified_sidebar.html' %}
+
+    <div class="pt-16 md:pl-64 min-h-screen">
+        <main class="pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-6 sm:pt-8">
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <a href="{{ '/manager/human-resource/analytics' if user.role == 'manager' else '/admin/human-resource/analytics' }}"
+                   class="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                    <i class="fas fa-arrow-left mr-2"></i> All employees
+                </a>
+                <div class="flex-1"></div>
+                <select id="days-filter" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-white">
+                    <option value="7">7 days</option>
+                    <option value="30" selected>30 days</option>
+                    <option value="90">90 days</option>
+                </select>
+                <button type="button" id="refresh-btn" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+
+            <div id="loading" class="text-center py-16 text-gray-500">Loading employee activity…</div>
+
+            <div id="content" class="hidden">
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6 shadow-sm mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <div id="emp-avatar" class="shrink-0"></div>
+                        <div class="min-w-0 flex-1">
+                            <h1 id="emp-name" class="text-2xl font-bold text-gray-900 dark:text-white"></h1>
+                            <p id="emp-meta" class="text-sm text-gray-600 dark:text-gray-400 mt-1"></p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                        <div class="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 p-3 border border-indigo-100 dark:border-indigo-800/40">
+                            <p class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Session hours</p>
+                            <p id="stat-session" class="text-xl font-bold text-indigo-700 dark:text-indigo-300">—</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-200 dark:border-slate-700">
+                            <p class="text-xs text-slate-600 dark:text-slate-400 font-medium">Time on pages</p>
+                            <p id="stat-pages" class="text-xl font-bold text-gray-900 dark:text-white">—</p>
+                        </div>
+                        <div class="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 border border-emerald-100 dark:border-emerald-800/40">
+                            <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Registrations</p>
+                            <p id="stat-reg" class="text-xl font-bold text-emerald-700 dark:text-emerald-300">—</p>
+                        </div>
+                        <div class="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-3 border border-amber-100 dark:border-amber-800/40">
+                            <p class="text-xs text-amber-600 dark:text-amber-400 font-medium">Edits / deletes</p>
+                            <p id="stat-ed-del" class="text-xl font-bold text-amber-700 dark:text-amber-300">—</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-b border-gray-200 dark:border-gray-700 mb-6 flex gap-1 overflow-x-auto" role="tablist">
+                    <button type="button" role="tab" data-tab="visual" class="hr-tab-btn is-active px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        <i class="fas fa-chart-pie mr-2"></i>Visual analytics
+                    </button>
+                    <button type="button" role="tab" data-tab="raw" class="hr-tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        <i class="fas fa-table mr-2"></i>Raw data
+                    </button>
+                </div>
+
+                <div id="panel-visual" class="hr-tab-panel is-active space-y-6" role="tabpanel">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+                            <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-3">Time per system area (hours)</h2>
+                            <div class="h-72"><canvas id="chart-page-hours"></canvas></div>
+                        </div>
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+                            <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-3">Operations breakdown</h2>
+                            <div class="h-72 flex items-center justify-center"><canvas id="chart-operations"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+                        <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-3">Daily actions</h2>
+                        <div class="h-56"><canvas id="chart-daily"></canvas></div>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+                        <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-3">Actions by area (stacked)</h2>
+                        <div class="h-72"><canvas id="chart-area-ops"></canvas></div>
+                    </div>
+                </div>
+
+                <div id="panel-raw" class="hr-tab-panel space-y-6" role="tabpanel">
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Page & module statistics</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Raw values — hours, visits, operation counts</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                                    <tr>
+                                        <th class="px-4 py-3">page_key</th>
+                                        <th class="px-4 py-3">page_label</th>
+                                        <th class="px-4 py-3">hours_on_page</th>
+                                        <th class="px-4 py-3">seconds_on_page</th>
+                                        <th class="px-4 py-3">visit_count</th>
+                                        <th class="px-4 py-3">registrations</th>
+                                        <th class="px-4 py-3">inserts</th>
+                                        <th class="px-4 py-3">edits</th>
+                                        <th class="px-4 py-3">deletions</th>
+                                        <th class="px-4 py-3">other_actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pages-table" class="divide-y divide-gray-200 dark:divide-gray-700 font-mono text-xs sm:text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Activity log (raw)</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Latest entries from activity_log</p>
+                        </div>
+                        <div class="overflow-x-auto max-h-[32rem] overflow-y-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase text-gray-500 dark:text-gray-400 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-3">created_at</th>
+                                        <th class="px-4 py-3">action</th>
+                                        <th class="px-4 py-3">operation</th>
+                                        <th class="px-4 py-3">page_key</th>
+                                        <th class="px-4 py-3">page_label</th>
+                                        <th class="px-4 py-3">description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-table" class="divide-y divide-gray-200 dark:divide-gray-700 font-mono text-xs"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Daily activity (raw)</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 dark:bg-gray-700/50 text-xs uppercase text-gray-500">
+                                    <tr><th class="px-4 py-3">date</th><th class="px-4 py-3">actions</th></tr>
+                                </thead>
+                                <tbody id="daily-table" class="divide-y divide-gray-200 dark:divide-gray-700 font-mono text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    {% include 'includes/farm_shell_footer.html' %}
+
+    <script>
+        const employeeId = {{ target_employee_id }};
+        let detailData = null;
+        let activeTab = 'visual';
+        let charts = { pageHours: null, operations: null, daily: null, areaOps: null };
+
+        function isDark() {
+            return document.documentElement.classList.contains('dark');
+        }
+
+        function chartTheme() {
+            return {
+                grid: isDark() ? 'rgba(148,163,184,0.15)' : 'rgba(226,232,240,0.9)',
+                text: isDark() ? '#94a3b8' : '#64748b',
+            };
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.hr-tab-btn').forEach(btn => {
+                btn.classList.toggle('is-active', btn.dataset.tab === tab);
+            });
+            document.querySelectorAll('.hr-tab-panel').forEach(panel => {
+                panel.classList.toggle('is-active', panel.id === 'panel-' + tab);
+            });
+            if (tab === 'visual' && detailData) renderVisualCharts();
+        }
+
+        document.querySelectorAll('.hr-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        function destroyCharts() {
+            Object.keys(charts).forEach(k => {
+                if (charts[k]) { charts[k].destroy(); charts[k] = null; }
+            });
+        }
+
+        function renderVisualCharts() {
+            if (!detailData) return;
+            destroyCharts();
+            const t = chartTheme();
+            const pages = detailData.pages || [];
+
+            const pageLabels = pages.map(p => p.page_label);
+            const pageHours = pages.map(p => p.hours_on_page || 0);
+
+            charts.pageHours = new Chart(document.getElementById('chart-page-hours'), {
+                type: 'bar',
+                data: {
+                    labels: pageLabels,
+                    datasets: [{
+                        label: 'Hours',
+                        data: pageHours,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 4,
+                    }],
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: t.text }, grid: { color: t.grid }, beginAtZero: true },
+                        y: { ticks: { color: t.text, font: { size: 10 } }, grid: { display: false } },
+                    },
+                },
+            });
+
+            const totals = detailData.totals || {};
+            charts.operations = new Chart(document.getElementById('chart-operations'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Registrations', 'Inserts', 'Edits', 'Deletions', 'Other'],
+                    datasets: [{
+                        data: [
+                            totals.registrations || 0,
+                            totals.inserts || 0,
+                            totals.edits || 0,
+                            totals.deletions || 0,
+                            totals.other_actions || 0,
+                        ],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'],
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: t.text, boxWidth: 12 } } },
+                },
+            });
+
+            const daily = detailData.daily_activity || [];
+            charts.daily = new Chart(document.getElementById('chart-daily'), {
+                type: 'line',
+                data: {
+                    labels: daily.map(d => d.date),
+                    datasets: [{
+                        label: 'Actions',
+                        data: daily.map(d => d.actions),
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99,102,241,0.15)',
+                        fill: true,
+                        tension: 0.3,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: t.text, maxRotation: 45 }, grid: { color: t.grid } },
+                        y: { ticks: { color: t.text }, grid: { color: t.grid }, beginAtZero: true },
+                    },
+                },
+            });
+
+            charts.areaOps = new Chart(document.getElementById('chart-area-ops'), {
+                type: 'bar',
+                data: {
+                    labels: pageLabels,
+                    datasets: [
+                        { label: 'Register', data: pages.map(p => p.registrations || 0), backgroundColor: '#10b981' },
+                        { label: 'Insert', data: pages.map(p => p.inserts || 0), backgroundColor: '#3b82f6' },
+                        { label: 'Edit', data: pages.map(p => p.edits || 0), backgroundColor: '#f59e0b' },
+                        { label: 'Delete', data: pages.map(p => p.deletions || 0), backgroundColor: '#ef4444' },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: t.text } } },
+                    scales: {
+                        x: { stacked: true, ticks: { color: t.text, maxRotation: 45 }, grid: { color: t.grid } },
+                        y: { stacked: true, ticks: { color: t.text }, grid: { color: t.grid }, beginAtZero: true },
+                    },
+                },
+            });
+        }
+
+        function renderDetail(data) {
+            detailData = data;
+            const emp = data.employee;
+            const initial = (emp.full_name || '?').charAt(0).toUpperCase();
+            document.getElementById('emp-avatar').innerHTML = emp.profile_image
+                ? `<img src="/static/uploads/employees/${emp.profile_image}" class="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" alt="">`
+                : `<div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">${initial}</div>`;
+            document.getElementById('emp-name').textContent = emp.full_name;
+            document.getElementById('emp-meta').textContent = `${emp.role} · ${emp.employee_code} · ${emp.email} · ${emp.status}`;
+
+            document.getElementById('stat-session').textContent = `${(data.session_hours || 0).toFixed(1)}h`;
+            document.getElementById('stat-pages').textContent = `${(data.page_time_hours || 0).toFixed(1)}h`;
+            document.getElementById('stat-reg').textContent = data.totals.registrations || 0;
+            document.getElementById('stat-ed-del').textContent = `${data.totals.edits || 0} / ${data.totals.deletions || 0}`;
+
+            const pages = data.pages || [];
+            const tbody = document.getElementById('pages-table');
+            if (!pages.length) {
+                tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500 font-sans">No data in this period.</td></tr>`;
+            } else {
+                tbody.innerHTML = pages.map(p => `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td class="px-4 py-2 text-gray-500">${p.page_key}</td>
+                        <td class="px-4 py-2 text-gray-900 dark:text-white font-sans">${p.page_label}</td>
+                        <td class="px-4 py-2">${(p.hours_on_page || 0).toFixed(4)}</td>
+                        <td class="px-4 py-2">${p.seconds_on_page || 0}</td>
+                        <td class="px-4 py-2">${p.visit_count || 0}</td>
+                        <td class="px-4 py-2">${p.registrations || 0}</td>
+                        <td class="px-4 py-2">${p.inserts || 0}</td>
+                        <td class="px-4 py-2">${p.edits || 0}</td>
+                        <td class="px-4 py-2">${p.deletions || 0}</td>
+                        <td class="px-4 py-2">${p.other_actions || 0}</td>
+                    </tr>`).join('');
+            }
+
+            const recent = data.recent_activity || [];
+            document.getElementById('recent-table').innerHTML = recent.length
+                ? recent.map(r => `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td class="px-4 py-2 whitespace-nowrap">${r.created_at ? new Date(r.created_at).toISOString() : '—'}</td>
+                        <td class="px-4 py-2">${r.action || '—'}</td>
+                        <td class="px-4 py-2">${r.operation || '—'}</td>
+                        <td class="px-4 py-2 text-gray-500">${r.page_key || '—'}</td>
+                        <td class="px-4 py-2 font-sans">${r.page_label || '—'}</td>
+                        <td class="px-4 py-2 font-sans max-w-md truncate" title="${(r.description || '').replace(/"/g, '&quot;')}">${r.description || '—'}</td>
+                    </tr>`).join('')
+                : `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 font-sans">No log entries.</td></tr>`;
+
+            const daily = data.daily_activity || [];
+            document.getElementById('daily-table').innerHTML = daily.length
+                ? daily.map(d => `<tr><td class="px-4 py-2">${d.date}</td><td class="px-4 py-2">${d.actions}</td></tr>`).join('')
+                : `<tr><td colspan="2" class="px-4 py-6 text-center text-gray-500 font-sans">No daily rows.</td></tr>`;
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.remove('hidden');
+            if (activeTab === 'visual') renderVisualCharts();
+        }
+
+        async function loadDetail() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('content').classList.add('hidden');
+            destroyCharts();
+            const days = document.getElementById('days-filter').value;
+            const res = await fetch(`/api/hr/analytics/employee/${employeeId}?days=${days}`);
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error || 'Failed');
+            renderDetail(json.data);
+        }
+
+        document.getElementById('days-filter').addEventListener('change', loadDetail);
+        document.getElementById('refresh-btn').addEventListener('click', loadDetail);
+
+        const obs = new MutationObserver(() => {
+            if (activeTab === 'visual' && detailData) renderVisualCharts();
+        });
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        document.addEventListener('DOMContentLoaded', () => loadDetail().catch(e => {
+            document.getElementById('loading').textContent = 'Could not load: ' + e.message;
+        }));
+    </script>
+</body>
+</html>

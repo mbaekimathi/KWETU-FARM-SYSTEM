@@ -1583,6 +1583,106 @@ html.farm-unified-shell #sidebar nav button span.flex-1 {
   line-height: 1.2;
 }
 
+/* Described nav rows (title + subtitle) */
+html.farm-unified-shell .farm-nav-link-modern__desc {
+  color: var(--farm-nav-muted) !important;
+  font-weight: 500;
+  line-height: 1.25;
+  margin-top: 0.1rem;
+}
+
+.dark html.farm-unified-shell .farm-nav-link-modern__desc {
+  color: var(--farm-nav-muted-dark) !important;
+}
+
+html.farm-unified-shell .farm-nav-link-modern__active-hint {
+  color: rgb(79 70 229) !important;
+  line-height: 1.25;
+  margin-top: 0.1rem;
+}
+
+.dark html.farm-unified-shell .farm-nav-link-modern__active-hint {
+  color: rgb(165 180 252) !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern.is-active .farm-nav-link-modern__icon {
+  border-color: rgb(99 102 241 / 0.55) !important;
+  color: rgb(67 56 202) !important;
+  transform: scale(1.04);
+}
+
+.dark html.farm-unified-shell #sidebar nav .farm-nav-link-modern.is-active .farm-nav-link-modern__icon {
+  border-color: rgb(129 140 248 / 0.65) !important;
+  color: rgb(196 181 253) !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__chevron {
+  color: var(--farm-nav-muted) !important;
+  opacity: 0.9;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern:hover .farm-nav-link-modern__chevron {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* HR hub — emerald accent + clearer active affordance */
+html.farm-unified-shell .farm-hr-nav .farm-nav-link-modern.is-active {
+  border-color: rgb(16 185 129 / 0.45) !important;
+  background: linear-gradient(135deg, rgb(209 250 229), rgb(224 231 255)) !important;
+  color: rgb(6 78 59) !important;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.05),
+    inset 3px 0 0 rgb(16 185 129) !important;
+}
+
+.dark html.farm-unified-shell .farm-hr-nav .farm-nav-link-modern.is-active {
+  border-color: rgb(52 211 153 / 0.4) !important;
+  background: linear-gradient(135deg, rgb(6 78 59 / 0.55), rgb(49 46 129 / 0.35)) !important;
+  color: rgb(209 250 229) !important;
+  box-shadow:
+    0 1px 4px rgb(0 0 0 / 0.35),
+    inset 3px 0 0 rgb(52 211 153) !important;
+}
+
+html.farm-unified-shell .farm-hr-nav .farm-nav-link-modern.is-active .farm-nav-link-modern__active-hint {
+  color: rgb(5 150 105) !important;
+}
+
+.dark html.farm-unified-shell .farm-hr-nav .farm-nav-link-modern.is-active .farm-nav-link-modern__active-hint {
+  color: rgb(110 231 183) !important;
+}
+
+html.farm-unified-shell .farm-hr-nav .farm-nav-link-modern.is-active .farm-nav-link-modern__icon {
+  border-color: rgb(16 185 129 / 0.5) !important;
+  background: linear-gradient(155deg, rgb(236 253 245), rgb(224 231 255)) !important;
+  color: rgb(5 150 105) !important;
+}
+
+.dark html.farm-unified-shell .farm-hr-nav .farm-nav-link-modern.is-active .farm-nav-link-modern__icon {
+  border-color: rgb(52 211 153 / 0.55) !important;
+  background: linear-gradient(155deg, rgb(6 78 59 / 0.65), rgb(49 46 129 / 0.45)) !important;
+  color: rgb(110 231 183) !important;
+}
+
+html.farm-unified-shell .farm-hr-nav .farm-nav-sublinks {
+  margin-top: -0.15rem !important;
+  margin-bottom: 0.35rem !important;
+}
+
+html.farm-unified-shell .farm-hr-nav .farm-nav-sublink.is-active {
+  border-color: rgb(16 185 129 / 0.45) !important;
+  background: linear-gradient(135deg, rgb(209 250 229), rgb(236 253 245)) !important;
+  color: rgb(6 78 59) !important;
+}
+
+.dark html.farm-unified-shell .farm-hr-nav .farm-nav-sublink.is-active {
+  border-color: rgb(52 211 153 / 0.45) !important;
+  background: linear-gradient(135deg, rgb(6 78 59 / 0.55), rgb(30 41 59 / 0.9)) !important;
+  color: rgb(209 250 229) !important;
+}
+
 @media (max-width: 420px) {
   html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
     padding: 0.35rem 0.4rem !important;

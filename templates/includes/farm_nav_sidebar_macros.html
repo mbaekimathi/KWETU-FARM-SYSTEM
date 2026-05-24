@@ -18,6 +18,29 @@
     {% endif %}
 {%- endmacro %}
 
+{# Nav row with title + short description (inactive); active state shows pulse + “Active page”. #}
+{% macro farm_nav_row_described(href, label, desc, active=false) -%}
+    {% if active %}
+    <a href="{{ href }}" class="farm-nav-link-modern is-active group" aria-current="page">
+        <div class="farm-nav-link-modern__icon [&>svg]:h-5 [&>svg]:w-5 [&>i]:text-base">{{ caller() }}</div>
+        <div class="min-w-0 flex-1">
+            <span class="farm-nav-link-modern__text block truncate text-sm font-semibold">{{ label }}</span>
+            <span class="farm-nav-link-modern__active-hint block truncate text-xs font-medium">Active page</span>
+        </div>
+        <div class="farm-nav-link-modern__pulse ml-2 shrink-0" aria-hidden="true"></div>
+    </a>
+    {% else %}
+    <a href="{{ href }}" class="farm-nav-link-modern group">
+        <div class="farm-nav-link-modern__icon [&>svg]:h-4 [&>svg]:w-4 [&>i]:text-sm">{{ caller() }}</div>
+        <div class="min-w-0 flex-1">
+            <span class="farm-nav-link-modern__text block truncate text-sm font-semibold">{{ label }}</span>
+            <span class="farm-nav-link-modern__desc block truncate text-xs">{{ desc }}</span>
+        </div>
+        <svg class="farm-nav-link-modern__chevron ml-2 h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+    </a>
+    {% endif %}
+{%- endmacro %}
+
 {# Register production — opens shared modal (openChickenProductionRegistrationModal) instead of navigating. #}
 {% macro farm_flat_nav_register_production_row(active=false) -%}
     {% if active %}

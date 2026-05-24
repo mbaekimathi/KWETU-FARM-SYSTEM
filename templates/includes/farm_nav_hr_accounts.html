@@ -1,0 +1,30 @@
+{# Accounts-only sidebar — use on /human-resource/accounts* pages only. #}
+{% import 'includes/farm_nav_sidebar_macros.html' as navm %}
+{% set _user_role = user.role if user is defined and user and user.role else 'administrator' %}
+{% set app_b = '/manager' if _user_role == 'manager' else '/admin' %}
+{% set _path = request.path.rstrip('/') %}
+{% set _accounts_href = app_b ~ '/human-resource/accounts' %}
+{% set _overview_active = _path == _accounts_href.rstrip('/') %}
+{% set _salaries_active = _path.endswith('/salaries') %}
+{% set _expenses_active = _path.endswith('/expenses') %}
+{% set _loans_active = _path.endswith('/loans') %}
+
+                <div class="farm-hr-nav flex flex-col gap-2">
+                <p class="farm-chicken-nav__label mb-0 px-0.5">Accounts</p>
+
+                {% call navm.farm_nav_row_described(_accounts_href, 'Overview', 'Accounts home', _overview_active) %}
+                <i class="fas fa-th-large" aria-hidden="true"></i>
+                {% endcall %}
+
+                {% call navm.farm_nav_row_described(_accounts_href ~ '/salaries', 'Salaries', 'Payroll & wages', _salaries_active) %}
+                <i class="fas fa-money-check-alt" aria-hidden="true"></i>
+                {% endcall %}
+
+                {% call navm.farm_nav_row_described(_accounts_href ~ '/expenses', 'Expenses', 'Farm spending', _expenses_active) %}
+                <i class="fas fa-receipt" aria-hidden="true"></i>
+                {% endcall %}
+
+                {% call navm.farm_nav_row_described(_accounts_href ~ '/loans', 'Loans', 'Advances & repayments', _loans_active) %}
+                <i class="fas fa-hand-holding-usd" aria-hidden="true"></i>
+                {% endcall %}
+                </div>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    {% set _titles = {
+        'salaries': ('Salaries', 'Payroll and wage management', 'fa-money-check-alt', 'emerald'),
+        'expenses': ('Expenses', 'Operational and farm spending', 'fa-receipt', 'amber'),
+        'loans': ('Loans', 'Advances and loan repayments', 'fa-hand-holding-usd', 'indigo')
+    } %}
+    {% set _meta = _titles.get(accounts_section, ('Accounts', '', 'fa-wallet', 'slate')) %}
+    <title>{{ _meta[0] }} - HR Accounts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    {% include 'includes/farm_chrome_bundle.html' %}
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden">
+    {% include 'includes/farm_shell_header.html' %}
+
+    {% set farm_sidebar_banner_title = 'Human Resource' %}
+    {% set farm_sidebar_banner_sub = 'Accounts' %}
+    {% set farm_sidebar_nav_partial = 'includes/farm_nav_hr_accounts.html' %}
+    {% include 'includes/farm_unified_sidebar.html' %}
+
+    <div class="pt-16 md:pl-64 min-h-screen">
+        <main class="pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-6 sm:pt-8">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shrink-0">
+                        <i class="fas {{ _meta[2] }} text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ _meta[0] }}</h1>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ _meta[1] }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-sm">
+                <div class="text-center py-12 sm:py-16">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
+                        <i class="fas {{ _meta[2] }} text-2xl text-gray-400 dark:text-gray-500"></i>
+                    </div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ _meta[0] }} module</h2>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                        This section is ready for {{ _meta[0]|lower }} records. Content and forms can be added here as your finance workflow is defined.
+                    </p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    {% include 'includes/farm_shell_footer.html' %}
+</body>
+</html>

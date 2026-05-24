@@ -22,6 +22,14 @@ import base64
 import re
 import db_migrations
 from feed_notifications_collector import collect_all_feed_notifications
+from hr_analytics import (
+    build_hr_analytics_summary,
+    build_hr_employee_analytics_detail,
+    close_open_page_visits,
+    ensure_hr_analytics_tables,
+    parse_days_param,
+    track_employee_page_visit,
+)
 from werkzeug.utils import secure_filename
 
 from webauthn import (
@@ -548,6 +556,28 @@ def enforce_action_permissions():
                 return _permission_denied_module_response(activity_key, activity_animal)
         return None
     return _permission_denied_response(action)
+
+
+@app.after_request
+def track_employee_page_visit_after_request(response):
+    """Record HTML page views for HR session / page-time analytics."""
+    try:
+        if request.method != "GET":
+            return response
+        if "employee_id" not in session:
+            return response
+        path = request.path or ""
+        if path.startswith("/static/") or path.startswith("/api/"):
+            return response
+        if response.status_code >= 400:
+            return response
+        ctype = (response.content_type or "").lower()
+        if ctype and "text/html" not in ctype:
+            return response
+        track_employee_page_visit(get_db_connection, session["employee_id"], path)
+    except Exception:
+        pass
+    return response
 
 
 def _webauthn_rp_id():
@@ -1191,7 +1221,10 @@ def create_database_and_tables():
             )
         """)
         print("Activity log table checked/created successfully")
-        
+
+        ensure_hr_analytics_tables(cursor)
+        print("Employee page visits table checked/created successfully")
+
         # Create farms table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS farms (
@@ -4681,6 +4714,107 @@ def admin_human_resource_employee_permissions(employee_id):
         target_employee_id=employee_id
     )
 
+
+@app.route('/admin/human-resource/analytics')
+def admin_human_resource_analytics():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_human_resource_analytics.html', user=user_data)
+
+
+@app.route('/admin/human-resource/analytics/<int:employee_id>')
+def admin_human_resource_employee_analytics(employee_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_employee_analytics.html',
+        user=user_data,
+        target_employee_id=employee_id,
+    )
+
+
+@app.route('/admin/human-resource/accounts')
+def admin_human_resource_accounts():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_human_resource_accounts.html', user=user_data)
+
+
+@app.route('/admin/human-resource/accounts/salaries')
+def admin_human_resource_accounts_salaries():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_accounts_section.html',
+        user=user_data,
+        accounts_section='salaries',
+    )
+
+
+@app.route('/admin/human-resource/accounts/expenses')
+def admin_human_resource_accounts_expenses():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_accounts_section.html',
+        user=user_data,
+        accounts_section='expenses',
+    )
+
+
+@app.route('/admin/human-resource/accounts/loans')
+def admin_human_resource_accounts_loans():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_accounts_section.html',
+        user=user_data,
+        accounts_section='loans',
+    )
+
+
 @app.route('/admin/farm-management')
 def admin_farm_management():
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
@@ -4790,6 +4924,107 @@ def manager_human_resource_employee_permissions(employee_id):
         user=user_data,
         target_employee_id=employee_id
     )
+
+
+@app.route('/manager/human-resource/analytics')
+def manager_human_resource_analytics():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_human_resource_analytics.html', user=user_data)
+
+
+@app.route('/manager/human-resource/analytics/<int:employee_id>')
+def manager_human_resource_employee_analytics(employee_id):
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_employee_analytics.html',
+        user=user_data,
+        target_employee_id=employee_id,
+    )
+
+
+@app.route('/manager/human-resource/accounts')
+def manager_human_resource_accounts():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template('admin_human_resource_accounts.html', user=user_data)
+
+
+@app.route('/manager/human-resource/accounts/salaries')
+def manager_human_resource_accounts_salaries():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_accounts_section.html',
+        user=user_data,
+        accounts_section='salaries',
+    )
+
+
+@app.route('/manager/human-resource/accounts/expenses')
+def manager_human_resource_accounts_expenses():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_accounts_section.html',
+        user=user_data,
+        accounts_section='expenses',
+    )
+
+
+@app.route('/manager/human-resource/accounts/loans')
+def manager_human_resource_accounts_loans():
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return redirect(url_for('employee_login'))
+    user_data = {
+        'id': session['employee_id'],
+        'name': session['employee_name'],
+        'role': session['employee_role'],
+        'status': session['employee_status'],
+        'email': f"{session['employee_name'].lower().replace(' ', '.')}@farm.com"
+    }
+    return render_template(
+        'admin_human_resource_accounts_section.html',
+        user=user_data,
+        accounts_section='loans',
+    )
+
 
 @app.route('/manager/farm-management')
 def manager_farm_management():
@@ -14523,6 +14758,43 @@ def get_employees():
         return jsonify({'success': True, 'employees': employees})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/analytics/summary', methods=['GET'])
+def hr_analytics_summary():
+    """Employee list with session hours and activity counts for HR monitoring."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        since = parse_days_param(request.args.get('days', 30))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        summary = build_hr_analytics_summary(cursor, since)
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'employees': summary, 'days': (datetime.now() - since).days})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hr/analytics/employee/<int:employee_id>', methods=['GET'])
+def hr_analytics_employee_detail(employee_id):
+    """Per-employee page time and CRUD breakdown."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        since = parse_days_param(request.args.get('days', 30))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        detail = build_hr_employee_analytics_detail(cursor, employee_id, since)
+        cursor.close()
+        conn.close()
+        if not detail:
+            return jsonify({'error': 'Employee not found'}), 404
+        return jsonify({'success': True, 'data': detail})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/hr/approve-employee', methods=['POST'])
 def approve_employee():
@@ -27924,7 +28196,7 @@ def add_cow_weight_record():
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
     if 'employee_id' in session:
-        # Log logout activity
+        close_open_page_visits(get_db_connection, session['employee_id'])
         log_activity(session['employee_id'], 'LOGOUT', f'Employee {session["employee_name"]} logged out')
         session.clear()
     return {'success': True, 'redirect': url_for('employee_login')}
