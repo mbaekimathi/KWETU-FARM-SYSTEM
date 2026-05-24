@@ -19,196 +19,328 @@
     <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
 <main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
-        <div class="p-6 lg:p-8">
-            <!-- Page Header -->
-            <div class="mb-8 animate-fade-in">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <!-- Header Background -->
-                    <div class="h-2 bg-gradient-to-r from-primary-500 via-secondary-500 to-accent-500"></div>
-                    
-                    <div class="p-8">
-                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-clipboard-list text-white text-2xl"></i>
+        <div class="p-3 sm:p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+            <div class="mb-4 sm:mb-6 lg:mb-8 animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="h-1.5 sm:h-2 bg-gradient-to-r from-primary-500 via-secondary-500 to-accent-500"></div>
+                    <div class="p-4 sm:p-6 lg:p-8">
+                        <div class="flex flex-col gap-4 sm:gap-6">
+                            <div class="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-clipboard-list text-white text-lg sm:text-xl lg:text-2xl"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Breeding Records</h1>
+                                    <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium mt-0.5 sm:mt-1">Active breeding records and pregnancy tracking</p>
+                                    <div class="flex items-center mt-1.5 sm:mt-2">
+                                        <div class="w-2 h-2 bg-accent-500 rounded-full mr-2 animate-pulse shrink-0"></div>
+                                        <span class="text-xs sm:text-sm text-accent-600 dark:text-accent-400 font-medium">Live Updates</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Breeding Records</h1>
-                                    <p class="text-gray-600 dark:text-gray-400 font-medium mt-1">Active breeding records and pregnancy tracking</p>
-                                    <div class="flex items-center mt-2">
-                                        <div class="w-2 h-2 bg-accent-500 rounded-full mr-2 animate-pulse"></div>
-                                        <span class="text-sm text-accent-600 dark:text-accent-400 font-medium">Live Updates</span>
-                            </div>
-                        </div>
-                            </div>
-                            
-                            <div class="flex items-center space-x-4">
-                            <!-- Mobile Menu Button -->
-                                <button id="mobile-menu-btn" class="lg:hidden p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Open menu">
-                                    <i class="fas fa-bars text-lg"></i>
-                            </button>
-                            
-                                <!-- Refresh Button -->
-                                <button onclick="loadBreedingRecords()" class="group p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md hover:-translate-y-0.5" aria-label="Refresh data">
-                                    <i class="fas fa-sync-alt text-lg group-hover:rotate-180 transition-transform duration-500"></i>
-                                </button>
-                                
-                                <!-- Dark Mode Toggle -->
-                                <button onclick="toggleDarkMode()" class="p-3 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-all duration-200 hover:shadow-md" aria-label="Toggle dark mode">
-                                    <i class="fas fa-moon dark:hidden text-lg"></i>
-                                    <i class="fas fa-sun hidden dark:block text-lg"></i>
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Statistics Bar -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-6">
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-heart text-pink-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Active Breeding:</span>
-                            <span id="active-breeding-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+            <!-- Statistics Bar -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                    <div class="flex items-center gap-2 sm:gap-3 p-2 sm:p-0 rounded-lg bg-gray-50/80 dark:bg-gray-700/30 lg:bg-transparent lg:dark:bg-transparent">
+                        <i class="fas fa-heart text-pink-500 text-sm sm:text-base shrink-0"></i>
+                        <div class="min-w-0">
+                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Active Breeding</p>
+                            <p id="active-breeding-count" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">0</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-baby text-green-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Pregnant Sows:</span>
-                            <span id="pregnant-sows-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                    <div class="flex items-center gap-2 sm:gap-3 p-2 sm:p-0 rounded-lg bg-gray-50/80 dark:bg-gray-700/30 lg:bg-transparent lg:dark:bg-transparent">
+                        <i class="fas fa-baby text-green-500 text-sm sm:text-base shrink-0"></i>
+                        <div class="min-w-0">
+                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Pregnant Sows</p>
+                            <p id="pregnant-sows-count" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">0</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-calendar-alt text-orange-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Due This Week:</span>
-                            <span id="due-this-week-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                    <div class="flex items-center gap-2 sm:gap-3 p-2 sm:p-0 rounded-lg bg-gray-50/80 dark:bg-gray-700/30 lg:bg-transparent lg:dark:bg-transparent">
+                        <i class="fas fa-calendar-alt text-orange-500 text-sm sm:text-base shrink-0"></i>
+                        <div class="min-w-0">
+                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Due This Week</p>
+                            <p id="due-this-week-count" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">0</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-check-circle text-emerald-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Successful Breedings:</span>
-                            <span id="successful-breedings-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
+                    <div class="flex items-center gap-2 sm:gap-3 p-2 sm:p-0 rounded-lg bg-gray-50/80 dark:bg-gray-700/30 lg:bg-transparent lg:dark:bg-transparent">
+                        <i class="fas fa-check-circle text-emerald-500 text-sm sm:text-base shrink-0"></i>
+                        <div class="min-w-0">
+                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Successful Breedings</p>
+                            <p id="successful-breedings-count" class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">0</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Breeding Records Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-slide-up">
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-slide-up">
                 <!-- Section Header -->
-                <div class="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
-                    <div class="flex flex-col space-y-4">
-                        <!-- Title Section -->
-                        <div class="flex items-center justify-between">
-                    <div>
-                                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Active Breeding Records</h2>
-                                <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium mt-1">Records of active breeding attempts and pregnancies</p>
-                    </div>
-                            
-                            <!-- Live Updates Indicator -->
-                            <div class="hidden sm:flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-accent-100 to-accent-200 dark:from-accent-900/30 dark:to-accent-800/30 rounded-lg border border-accent-200 dark:border-accent-700">
+                <div class="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
+                    <div class="flex flex-col gap-3 sm:gap-4">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+                            <div class="min-w-0">
+                                <h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Active Breeding Records</h2>
+                                <p class="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-gray-400 font-medium mt-0.5 sm:mt-1">Records of active breeding attempts and pregnancies</p>
+                            </div>
+                            <div class="hidden sm:flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-accent-100 to-accent-200 dark:from-accent-900/30 dark:to-accent-800/30 rounded-lg border border-accent-200 dark:border-accent-700 shrink-0">
                                 <div class="w-2 h-2 bg-accent-500 rounded-full animate-pulse"></div>
                                 <span class="text-xs font-semibold text-accent-700 dark:text-accent-300">Live Updates</span>
                             </div>
                         </div>
                         
-                        <!-- Search Bar -->
-                        <div class="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                            <div class="relative flex-1">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                            <div class="relative flex-1 min-w-0">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fas fa-search text-gray-400 text-sm"></i>
-                            </div>
-                            <input type="text" id="search-records" placeholder="Search records by sow, boar, or status..." 
-                                       class="pl-10 pr-4 py-2.5 sm:py-3 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-medium transition-all duration-200" 
+                                </div>
+                                <input type="text" id="search-records" placeholder="Search by sow, boar, or status..."
+                                       class="pl-10 pr-4 py-2.5 sm:py-3 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-medium transition-all duration-200"
                                        aria-label="Search breeding records">
-                        </div>
-                            
-                            <!-- Mobile Live Updates Indicator -->
+                            </div>
                             <div class="flex sm:hidden items-center justify-center space-x-2 px-3 py-2 bg-gradient-to-r from-accent-100 to-accent-200 dark:from-accent-900/30 dark:to-accent-800/30 rounded-lg border border-accent-200 dark:border-accent-700">
                                 <div class="w-2 h-2 bg-accent-500 rounded-full animate-pulse"></div>
                                 <span class="text-xs font-semibold text-accent-700 dark:text-accent-300">Live Updates</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            </div>
-                
+
                 <!-- Records Container -->
-                <div class="divide-y divide-gray-200 dark:divide-gray-700">
-                    <div id="breeding-records-container">
-                        <!-- Breeding records will be loaded here -->
-                    </div>
+                <div id="breeding-records-container" class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <!-- Breeding records will be loaded here -->
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // Dark mode toggle functionality
-        function toggleDarkMode() {
-            document.documentElement.classList.toggle('dark');
-            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
-        }
-
-        // Initialize dark mode from localStorage
-        if (localStorage.getItem('darkMode') === 'true') {
-            document.documentElement.classList.add('dark');
-        }
         // Search functionality
         function setupSearch() {
             const searchInput = document.getElementById('search-records');
             if (searchInput) {
                 searchInput.addEventListener('input', function(e) {
                     const searchTerm = e.target.value.toLowerCase();
-                    const forms = document.querySelectorAll('#breeding-records-container .breeding-record-form');
-                    
-                    forms.forEach(form => {
-                        const text = form.textContent.toLowerCase();
-                        if (text.includes(searchTerm)) {
-                            form.style.display = '';
-                        } else {
-                            form.style.display = 'none';
-                        }
+                    const recordIds = new Set(
+                        Array.from(document.querySelectorAll('#breeding-records-container [data-breeding-id]'))
+                            .map(el => el.getAttribute('data-breeding-id'))
+                    );
+
+                    recordIds.forEach(id => {
+                        const items = document.querySelectorAll(`#breeding-records-container [data-breeding-id="${id}"]`);
+                        const text = Array.from(items).map(el => el.textContent).join(' ').toLowerCase();
+                        const show = !searchTerm || text.includes(searchTerm);
+                        items.forEach(el => {
+                            el.style.display = show ? '' : 'none';
+                        });
                     });
                 });
             }
         }
 
-        // Mobile sidebar functionality
-        function setupMobileMenu() {
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const sidebar = document.getElementById('sidebar');
-            const sidebarOverlay = document.getElementById('sidebar-overlay') || document.getElementById('mobile-overlay');
-            const closeSidebarBtn = document.getElementById('close-sidebar');
+        function getBreedingRecordMeta(record) {
+            const daysLeft = record.days_to_farrowing !== null
+                ? record.days_to_farrowing
+                : (record.expected_due_date
+                    ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24))
+                    : null);
+            const canShowRegisterFarrowing = record.breeding_status === 'pregnant'
+                && !record.is_failed
+                && daysLeft !== null
+                && Number(daysLeft) <= 7
+                && !record.has_registered_litter;
+            const status = (record.breeding_status || '').toLowerCase();
+            const daysSinceMating = record.mating_date
+                ? Math.max(0, Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24)))
+                : null;
+            const currentLitterStatus = (record.current_litter_status || '').toLowerCase();
+            let daysLeftToServe = '-';
+            let daysLeftToServeClass = 'text-gray-500 dark:text-gray-400';
 
-            if (mobileMenuBtn) {
-                mobileMenuBtn.addEventListener('click', function() {
-                    sidebar.classList.remove('-translate-x-full');
-                    sidebarOverlay.classList.remove('hidden');
-                    document.body.style.overflow = 'hidden';
-                });
+            if (status === 'farrowed') {
+                if (currentLitterStatus === 'weaned') {
+                    daysLeftToServe = 'READY TO SERVE';
+                    daysLeftToServeClass = 'text-green-600 dark:text-green-400';
+                } else {
+                    daysLeftToServe = 'WAITING LITTER TO BE WEANED';
+                    daysLeftToServeClass = 'text-orange-600 dark:text-orange-400';
+                }
+            } else if (status === 'pregnant') {
+                if (daysSinceMating !== null && daysSinceMating <= 25) {
+                    daysLeftToServe = 'JUST SERVED';
+                    daysLeftToServeClass = 'text-blue-600 dark:text-blue-400';
+                } else {
+                    daysLeftToServe = 'WAITING FARROWING';
+                    daysLeftToServeClass = 'text-amber-600 dark:text-amber-400';
+                }
+            } else if (status === 'served') {
+                daysLeftToServe = 'SERVICE IN PROCESS';
+                daysLeftToServeClass = 'text-indigo-600 dark:text-indigo-400';
             }
 
-            if (closeSidebarBtn) {
-                closeSidebarBtn.addEventListener('click', function() {
-                    sidebar.classList.add('-translate-x-full');
-                    sidebarOverlay.classList.add('hidden');
-                    document.body.style.overflow = '';
-                });
-            }
+            return {
+                daysLeft,
+                canShowRegisterFarrowing,
+                daysLeftToServe,
+                daysLeftToServeClass,
+                displayStatus: recordDisplayStatus(record),
+                recordJson: JSON.stringify(record).replace(/'/g, "&apos;"),
+                sowTag: (record.sow_tag_id || '').replace(/'/g, "\\'"),
+                boarTag: (record.boar_tag_id || '').replace(/'/g, "\\'"),
+            };
+        }
 
-            if (sidebarOverlay) {
-                sidebarOverlay.addEventListener('click', function() {
-                    sidebar.classList.add('-translate-x-full');
-                    sidebarOverlay.classList.add('hidden');
-                    document.body.style.overflow = '';
-                });
-            }
+        function renderBreedingRecordActions(record, meta, layout) {
+            const isList = layout === 'list';
+            const btnBase = isList
+                ? 'inline-flex items-center justify-center p-1 text-[10px] sm:text-xs rounded transition-all duration-200 shrink-0'
+                : 'inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200';
+            const cancelLabel = record.days_remaining_to_cancel > 0
+                ? `${record.days_remaining_to_cancel}d`
+                : 'Last';
+
+            return `
+                <button onclick="showBreedingDetailsFromButton(this)" data-record='${meta.recordJson}'
+                    class="${btnBase} text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                    title="View Details">
+                    <i class="fas fa-eye"></i>${isList ? '' : '<span class="hidden sm:inline ml-1 sm:ml-2">View</span>'}
+                </button>
+                <button onclick="showEditBreedingModal(${record.id}, '${meta.sowTag}', '${meta.boarTag}', '${record.mating_date}', '${record.expected_due_date || ''}', '${record.breeding_status}', '${record.last_farrowing_date || ''}')"
+                    class="${btnBase} text-white bg-blue-600 hover:bg-blue-700" title="Edit">
+                    <i class="fas fa-edit"></i>${isList ? '' : '<span class="hidden sm:inline ml-1 sm:ml-2">Edit</span>'}
+                </button>
+                <button onclick="showDeleteBreedingModal(${record.id}, '${meta.sowTag}')"
+                    class="${btnBase} text-white bg-red-600 hover:bg-red-700" title="Delete">
+                    <i class="fas fa-trash"></i>${isList ? '' : '<span class="hidden sm:inline ml-1 sm:ml-2">Delete</span>'}
+                </button>
+                ${record.can_cancel ? `
+                    <button onclick="showCancelBreedingModal(${record.id})"
+                        class="${btnBase} text-white bg-orange-600 hover:bg-orange-700" title="Cancel conception">
+                        <i class="fas fa-times"></i>${isList ? '' : `<span class="ml-1">${cancelLabel}</span>`}
+                    </button>
+                ` : ''}
+                ${meta.canShowRegisterFarrowing ? `
+                    <button onclick="showRegisterFarrowingModal(${record.id}, '${meta.sowTag}', '${meta.boarTag}', '${record.mating_date}')"
+                        class="${btnBase} text-white bg-green-600 hover:bg-green-700" title="Register farrowing">
+                        <i class="fas fa-baby"></i>${isList ? '' : '<span class="hidden sm:inline ml-1 sm:ml-2">Register</span>'}
+                    </button>
+                ` : ''}
+            `;
+        }
+
+        function renderBreedingRecordListRow(record, meta) {
+            const daysLeftHtml = meta.daysLeft !== null
+                ? `<span class="font-bold ${meta.daysLeft <= 7 ? 'text-orange-600 dark:text-orange-400' : meta.daysLeft <= 14 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}">${meta.daysLeft}</span>`
+                : '<span class="text-gray-400">-</span>';
+
+            const serveShort = meta.daysLeftToServe === 'READY TO SERVE' ? 'Ready'
+                : meta.daysLeftToServe === 'WAITING LITTER TO BE WEANED' ? 'Weaning'
+                : meta.daysLeftToServe === 'JUST SERVED' ? 'Served'
+                : meta.daysLeftToServe === 'WAITING FARROWING' ? 'Farrowing'
+                : meta.daysLeftToServe === 'SERVICE IN PROCESS' ? 'Process'
+                : meta.daysLeftToServe;
+
+            const serveHtml = serveShort !== '-'
+                ? `<span class="font-medium ${meta.daysLeftToServeClass}">${serveShort}</span>`
+                : '<span class="text-gray-400">-</span>';
+
+            const statusLabel = (meta.displayStatus || 'unknown').replace('_', ' ');
+
+            return `
+                <tr class="breeding-record-form border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 text-[10px] sm:text-xs" data-breeding-id="${record.id}">
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.sow_tag_id || 'N/A'}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.boar_tag_id || 'N/A'}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">${record.mating_date || '-'}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">${record.expected_due_date || '-'}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">${daysLeftHtml}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">${serveHtml}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">
+                        <span class="inline-block px-1 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold leading-tight ${getStatusColor(meta.displayStatus)}">${statusLabel}</span>
+                    </td>
+                    <td class="px-1 sm:px-2 py-1.5 sm:py-2">
+                        <div class="flex items-center justify-end gap-0.5 sm:gap-1 flex-wrap">${renderBreedingRecordActions(record, meta, 'list')}</div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderBreedingRecordRow(record, meta) {
+            const daysLeftHtml = meta.daysLeft !== null
+                ? `<span class="text-base sm:text-lg font-bold ${meta.daysLeft <= 7 ? 'text-orange-600 dark:text-orange-400' : meta.daysLeft <= 14 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}">${meta.daysLeft}</span>`
+                : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>';
+            const serveHtml = meta.daysLeftToServe !== '-'
+                ? `<span class="text-xs sm:text-sm font-semibold ${meta.daysLeftToServeClass}">${meta.daysLeftToServe}</span>`
+                : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>';
+
+            return `
+                <tr class="breeding-record-form border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150" data-breeding-id="${record.id}">
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
+                            ${record.breeding_ref || `BR-${record.id}`}
+                        </span>
+                    </td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-gray-900 dark:text-white">${record.sow_tag_id || 'N/A'}</td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-gray-900 dark:text-white">${record.boar_tag_id || 'N/A'}</td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4"><div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.mating_date}</div></td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4"><div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.expected_due_date || '-'}</div></td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">${daysLeftHtml}</td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">${serveHtml}</td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(meta.displayStatus)}">
+                            ${(meta.displayStatus || 'unknown').replace('_', ' ')}
+                        </span>
+                    </td>
+                    <td class="w-36 px-3 sm:px-4 md:px-6 py-3 sm:py-4 align-top">
+                        <div class="flex flex-col items-center gap-2">${renderBreedingRecordActions(record, meta, 'table')}</div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderBreedingRecordsViews(displayRecords) {
+            const listRows = displayRecords.map(r => renderBreedingRecordListRow(r, getBreedingRecordMeta(r))).join('');
+            const rows = displayRecords.map(r => renderBreedingRecordRow(r, getBreedingRecordMeta(r))).join('');
+
+            return `
+                <div class="lg:hidden overflow-x-auto -mx-3 sm:mx-0">
+                    <table class="w-full min-w-[560px] text-[10px] sm:text-xs">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-[9px] sm:text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">
+                                <th class="px-1.5 sm:px-2 py-1.5 text-left">Sow</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-left">Boar</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-left">Served</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-left">Farrow</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-center">Days</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-center">Serve</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-center">Status</th>
+                                <th class="px-1 sm:px-2 py-1.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${listRows}</tbody>
+                    </table>
+                </div>
+                <div class="hidden lg:block overflow-x-auto">
+                    <table class="w-full min-w-[960px]">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Breeding Ref</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sow ID</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Boar ID</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Served Date</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date to Farrow</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left to Serve</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="w-36 px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
+                    </table>
+                </div>
+            `;
         }
 
         // Load breeding records
@@ -299,141 +431,7 @@
                         return;
                     }
                     
-                    // Create list/table structure
-                    const tableHTML = `
-                        <div class="overflow-x-auto -mx-4 sm:mx-0">
-                            <table class="w-full min-w-full table-fixed">
-                                <thead>
-                                    <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Breeding Ref</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sow ID</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Boar ID</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Served Date</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date to Farrow</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left to Serve</th>
-                                        <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                        <th class="w-36 px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    ${displayRecords.map((record, index) => {
-                                        const daysLeft = record.days_to_farrowing !== null ? record.days_to_farrowing : (record.expected_due_date ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24)) : null);
-                                        const canShowRegisterFarrowing = record.breeding_status === 'pregnant'
-                                            && !record.is_failed
-                                            && daysLeft !== null
-                                            && Number(daysLeft) <= 7
-                                            && !record.has_registered_litter;
-                                        const status = (record.breeding_status || '').toLowerCase();
-                                        const daysSinceMating = record.mating_date
-                                            ? Math.max(0, Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24)))
-                                            : null;
-                                        const currentLitterStatus = (record.current_litter_status || '').toLowerCase();
-                                        let daysLeftToServe = '-';
-                                        let daysLeftToServeClass = 'text-gray-500 dark:text-gray-400';
-
-                                        if (status === 'farrowed') {
-                                            if (currentLitterStatus === 'weaned') {
-                                                daysLeftToServe = 'READY TO SERVE';
-                                                daysLeftToServeClass = 'text-green-600 dark:text-green-400';
-                                            } else {
-                                                daysLeftToServe = 'WAITING LITTER TO BE WEANED';
-                                                daysLeftToServeClass = 'text-orange-600 dark:text-orange-400';
-                                            }
-                                        } else if (status === 'pregnant') {
-                                            if (daysSinceMating !== null && daysSinceMating <= 25) {
-                                                daysLeftToServe = 'JUST SERVED';
-                                                daysLeftToServeClass = 'text-blue-600 dark:text-blue-400';
-                                            } else {
-                                                daysLeftToServe = 'WAITING FARROWING';
-                                                daysLeftToServeClass = 'text-amber-600 dark:text-amber-400';
-                                            }
-                                        } else if (status === 'served') {
-                                            daysLeftToServe = 'SERVICE IN PROCESS';
-                                            daysLeftToServeClass = 'text-indigo-600 dark:text-indigo-400';
-                                        }
-                                        
-                                        return `
-                                            <tr class="breeding-record-form border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150">
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
-                                                        ${record.breeding_ref || `BR-${record.id}`}
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
-                                                    ${record.sow_tag_id || 'N/A'}
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
-                                                    ${record.boar_tag_id || 'N/A'}
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-                                                    <div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.mating_date}</div>
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-                                                    <div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.expected_due_date || '-'}</div>
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
-                                                    ${daysLeft !== null ? `
-                                                        <span class="text-base sm:text-lg font-bold ${daysLeft <= 7 ? 'text-orange-600 dark:text-orange-400' : daysLeft <= 14 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}">${daysLeft}</span>
-                                                    ` : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>'}
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
-                                                    ${daysLeftToServe !== '-'
-                                                        ? `<span class="text-xs sm:text-sm font-semibold ${daysLeftToServeClass}">${daysLeftToServe}</span>`
-                                                        : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>'
-                                                    }
-                                                </td>
-                                                <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
-                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(recordDisplayStatus(record))}">
-                                                        ${(recordDisplayStatus(record) || 'unknown').replace('_', ' ')}
-                                                    </span>
-                                                </td>
-                                                <td class="w-36 px-3 sm:px-4 md:px-6 py-3 sm:py-4 align-top">
-                                                    <div class="flex flex-col items-center gap-2">
-                                                        <button 
-                                                            onclick="showBreedingDetailsFromButton(this)"
-                                                            data-record='${JSON.stringify(record).replace(/'/g, "&apos;")}'
-                                                            class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all duration-200"
-                                                            title="View Details"
-                                                        >
-                                                            <i class="fas fa-eye mr-1 sm:mr-2"></i>
-                                                            <span class="hidden sm:inline">View</span>
-                                                        </button>
-                                                        <button onclick="showEditBreedingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}', '${record.expected_due_date || ''}', '${record.breeding_status}', '${record.last_farrowing_date || ''}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200">
-                                                            <i class="fas fa-edit mr-1 sm:mr-2"></i>
-                                                            <span class="hidden sm:inline">Edit</span>
-                                                        </button>
-                                                        <button onclick="showDeleteBreedingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-200">
-                                                            <i class="fas fa-trash mr-1 sm:mr-2"></i>
-                                                            <span class="hidden sm:inline">Delete</span>
-                                                        </button>
-                                                        ${record.can_cancel ? `
-                                                            <button onclick="showCancelBreedingModal(${record.id})" class="inline-flex items-center justify-center w-32 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-all duration-200" title="Cancel conception">
-                                                                <i class="fas fa-times mr-1 sm:mr-2"></i>
-                                                                <span>
-                                                                    ${record.days_remaining_to_cancel > 0
-                                                                        ? `Cancel (${record.days_remaining_to_cancel} day${record.days_remaining_to_cancel === 1 ? '' : 's'} left)`
-                                                                        : 'Cancel (Last day)'}
-                                                                </span>
-                                                            </button>
-                                                        ` : ''}
-                                                        ${canShowRegisterFarrowing ? `
-                                                            <button onclick="showRegisterFarrowingModal(${record.id}, '${(record.sow_tag_id || '').replace(/'/g, "\\'")}', '${(record.boar_tag_id || '').replace(/'/g, "\\'")}', '${record.mating_date}')" class="inline-flex items-center justify-center w-24 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200">
-                                                                <i class="fas fa-baby mr-1 sm:mr-2"></i>
-                                                                <span class="hidden sm:inline">Register</span>
-                                                            </button>
-                                                        ` : ''}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    
-                    container.innerHTML = tableHTML;
+                    container.innerHTML = renderBreedingRecordsViews(displayRecords);
                 }
             } catch (error) {
                 console.error('Error loading breeding records:', error);
@@ -556,7 +554,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadBreedingRecords();
             setupSearch();
-            setupMobileMenu();
 
             // "Register new breeding" lives in the shared sidebar, but this page has no register modal.
             // Route to breeding management and auto-open the modal there.

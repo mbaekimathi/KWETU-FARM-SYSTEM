@@ -1,7 +1,4 @@
-{# Drawer open control + overlay. Use when the page has no #sidebar-toggle-btn yet.
-   farm_sidebar_float_toggle_bp: 'md' (default) | 'lg' — hide control when sidebar is fixed visible. #}
+{# Drawer overlay. Toggle control lives in farm_shell_header (#mobile-menu-btn).
+   farm_sidebar_float_toggle_bp: 'md' (default) | 'lg' — hide overlay when sidebar is fixed visible. #}
 {% set _fb = farm_sidebar_float_toggle_bp|default('md') %}
 <div id="mobile-overlay" class="fixed top-16 left-0 right-0 bottom-0 z-30 bg-slate-900/50 backdrop-blur-[2px] hidden transition-opacity {{ _fb }}:hidden" aria-hidden="true"></div>
-<button type="button" id="sidebar-toggle-btn" class="farm-sidebar-toggle-btn fixed left-3 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-lg transition-all duration-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 {{ _fb }}:hidden" aria-label="Open sidebar">
-    <i class="fas fa-bars text-sm" aria-hidden="true"></i>
-</button>

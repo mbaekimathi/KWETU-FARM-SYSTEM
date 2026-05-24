@@ -207,8 +207,10 @@
     if (sidebar.dataset.farmSidebarBound === '1') return;
 
     if (sidebarToggleBtn && mobileMenuBtn) {
-      mobileMenuBtn.classList.add('hidden');
+      sidebarToggleBtn.classList.add('hidden');
     }
+
+    var toggleBtn = mobileMenuBtn || sidebarToggleBtn;
 
     var desktopBreakpoint = sidebar.className.indexOf('lg:translate-x-0') !== -1 ? 1024 : 768;
 
@@ -219,15 +221,15 @@
     }
 
     function syncToggleButton(isOpen, isDesktop) {
-      if (!sidebarToggleBtn) return;
+      if (!toggleBtn) return;
       if (isDesktop) {
-        sidebarToggleBtn.classList.add('hidden');
+        toggleBtn.classList.add('hidden');
         return;
       }
-      sidebarToggleBtn.classList.remove('hidden');
-      sidebarToggleBtn.setAttribute('aria-label', isOpen ? 'Close sidebar' : 'Open sidebar');
-      sidebarToggleBtn.setAttribute('title', isOpen ? 'Close sidebar' : 'Open sidebar');
-      var icon = sidebarToggleBtn.querySelector('i');
+      toggleBtn.classList.remove('hidden');
+      toggleBtn.setAttribute('aria-label', isOpen ? 'Close sidebar' : 'Open sidebar');
+      toggleBtn.setAttribute('title', isOpen ? 'Close sidebar' : 'Open sidebar');
+      var icon = toggleBtn.querySelector('i');
       if (icon) {
         icon.className = isOpen ? 'fas fa-times text-sm' : 'fas fa-bars text-sm';
       }
