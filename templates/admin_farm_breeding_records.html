@@ -142,55 +142,142 @@
         }
 
         function getBreedingRecordMeta(record) {
-            const daysLeft = record.days_to_farrowing !== null
-                ? record.days_to_farrowing
+            const status = (record.breeding_status || '').toLowerCase();
+            const currentLitterStatus = (record.current_litter_status || '').toLowerCase();
+            const recoveryWindow = record.serving_recovery_window_days || 21;
+
+            const rawDaysToFarrow = record.days_to_farrowing !== null && record.days_to_farrowing !== undefined && record.days_to_farrowing !== ''
+                ? Number(record.days_to_farrowing)
                 : (record.expected_due_date
                     ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24))
                     : null);
-            const canShowRegisterFarrowing = record.breeding_status === 'pregnant'
-                && !record.is_failed
-                && daysLeft !== null
-                && Number(daysLeft) <= 7
-                && !record.has_registered_litter;
-            const status = (record.breeding_status || '').toLowerCase();
-            const daysSinceMating = record.mating_date
-                ? Math.max(0, Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24)))
-                : null;
-            const currentLitterStatus = (record.current_litter_status || '').toLowerCase();
-            let daysLeftToServe = '-';
-            let daysLeftToServeClass = 'text-gray-500 dark:text-gray-400';
 
-            if (status === 'farrowed') {
-                if (currentLitterStatus === 'weaned') {
-                    daysLeftToServe = 'READY TO SERVE';
-                    daysLeftToServeClass = 'text-green-600 dark:text-green-400';
-                } else {
-                    daysLeftToServe = 'WAITING LITTER TO BE WEANED';
-                    daysLeftToServeClass = 'text-orange-600 dark:text-orange-400';
-                }
-            } else if (status === 'pregnant') {
-                if (daysSinceMating !== null && daysSinceMating <= 25) {
-                    daysLeftToServe = 'JUST SERVED';
-                    daysLeftToServeClass = 'text-blue-600 dark:text-blue-400';
-                } else {
-                    daysLeftToServe = 'WAITING FARROWING';
-                    daysLeftToServeClass = 'text-amber-600 dark:text-amber-400';
-                }
-            } else if (status === 'served') {
-                daysLeftToServe = 'SERVICE IN PROCESS';
-                daysLeftToServeClass = 'text-indigo-600 dark:text-indigo-400';
-            }
+            const showGestationCountdown = ['served', 'pregnant'].includes(status) && !record.is_failed;
+            const daysToFarrow = showGestationCountdown ? rawDaysToFarrow : null;
+
+            const canShowRegisterFarrowing = status === 'pregnant'
+                && !record.is_failed
+                && daysToFarrow !== null
+                && Number(daysToFarrow) <= 7
+                && !record.has_registered_litter;
+
+            const gestation = buildGestationDisplay(daysToFarrow, status);
+            const rebreed = buildRebreedDisplay(record, status, currentLitterStatus, recoveryWindow);
 
             return {
-                daysLeft,
+                daysToFarrow,
+                gestation,
+                rebreed,
                 canShowRegisterFarrowing,
-                daysLeftToServe,
-                daysLeftToServeClass,
                 displayStatus: recordDisplayStatus(record),
                 recordJson: JSON.stringify(record).replace(/'/g, "&apos;"),
                 sowTag: (record.sow_tag_id || '').replace(/'/g, "\\'"),
                 boarTag: (record.boar_tag_id || '').replace(/'/g, "\\'"),
             };
+        }
+
+        function buildGestationDisplay(daysToFarrow, status) {
+            if (daysToFarrow === null || daysToFarrow === undefined) {
+                return {
+                    primary: '—',
+                    secondary: status === 'farrowed' ? 'Already farrowed' : 'Not in gestation',
+                    className: 'text-gray-400 dark:text-gray-500',
+                    title: 'Gestation countdown applies only while served or pregnant',
+                };
+            }
+
+            const days = Number(daysToFarrow);
+            if (days === 0) {
+                return {
+                    primary: 'Due today',
+                    secondary: 'Register farrowing',
+                    className: 'text-orange-600 dark:text-orange-400 font-bold',
+                    title: 'Expected farrowing date is today',
+                };
+            }
+            if (days <= 7) {
+                return {
+                    primary: `${days} day${days === 1 ? '' : 's'}`,
+                    secondary: 'Due soon',
+                    className: 'text-orange-600 dark:text-orange-400 font-bold',
+                    title: `${days} day(s) until expected farrowing`,
+                };
+            }
+            if (days <= 14) {
+                return {
+                    primary: `${days} days`,
+                    secondary: 'Approaching due date',
+                    className: 'text-yellow-600 dark:text-yellow-400 font-semibold',
+                    title: `${days} days until expected farrowing`,
+                };
+            }
+            return {
+                primary: `${days} days`,
+                secondary: 'Until farrowing',
+                className: 'text-green-600 dark:text-green-400 font-semibold',
+                title: `${days} days until expected farrowing (114-day gestation)`,
+            };
+        }
+
+        function buildRebreedDisplay(record, status, currentLitterStatus, recoveryWindow) {
+            if (status !== 'farrowed') {
+                return {
+                    primary: '—',
+                    secondary: 'After farrowing',
+                    className: 'text-gray-400 dark:text-gray-500',
+                    title: 'Re-breeding countdown starts after the sow farrows and litter is weaned',
+                };
+            }
+
+            if (currentLitterStatus !== 'weaned') {
+                return {
+                    primary: 'Wean litter',
+                    secondary: 'Required first',
+                    className: 'text-orange-600 dark:text-orange-400 font-semibold',
+                    title: 'Sow must wean the current litter before she can be served again',
+                };
+            }
+
+            const daysLeft = record.days_left_to_serve;
+            if (daysLeft === null || daysLeft === undefined) {
+                return {
+                    primary: '—',
+                    secondary: 'Recovery unknown',
+                    className: 'text-gray-400 dark:text-gray-500',
+                    title: 'Farrowing date needed to calculate recovery period',
+                };
+            }
+
+            if (Number(daysLeft) === 0) {
+                return {
+                    primary: 'Ready now',
+                    secondary: 'Can be served',
+                    className: 'text-green-600 dark:text-green-400 font-bold',
+                    title: `Recovery period complete (${recoveryWindow}-day window after farrowing)`,
+                };
+            }
+
+            return {
+                primary: `${daysLeft} day${Number(daysLeft) === 1 ? '' : 's'}`,
+                secondary: 'Until ready',
+                className: 'text-blue-600 dark:text-blue-400 font-semibold',
+                title: `${daysLeft} day(s) left in ${recoveryWindow}-day post-farrowing recovery before re-breeding`,
+            };
+        }
+
+        function renderTimelineCell(display, compact) {
+            if (!display || display.primary === '—') {
+                return `<span class="text-gray-400 dark:text-gray-500" title="${display?.title || ''}">—</span>`;
+            }
+            if (compact) {
+                return `<span class="${display.className}" title="${display.title}">${display.primary}</span>`;
+            }
+            return `
+                <div class="flex flex-col items-center gap-0.5" title="${display.title}">
+                    <span class="${display.className}">${display.primary}</span>
+                    <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 leading-tight">${display.secondary}</span>
+                </div>
+            `;
         }
 
         function renderBreedingRecordActions(record, meta, layout) {
@@ -232,21 +319,8 @@
         }
 
         function renderBreedingRecordListRow(record, meta) {
-            const daysLeftHtml = meta.daysLeft !== null
-                ? `<span class="font-bold ${meta.daysLeft <= 7 ? 'text-orange-600 dark:text-orange-400' : meta.daysLeft <= 14 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}">${meta.daysLeft}</span>`
-                : '<span class="text-gray-400">-</span>';
-
-            const serveShort = meta.daysLeftToServe === 'READY TO SERVE' ? 'Ready'
-                : meta.daysLeftToServe === 'WAITING LITTER TO BE WEANED' ? 'Weaning'
-                : meta.daysLeftToServe === 'JUST SERVED' ? 'Served'
-                : meta.daysLeftToServe === 'WAITING FARROWING' ? 'Farrowing'
-                : meta.daysLeftToServe === 'SERVICE IN PROCESS' ? 'Process'
-                : meta.daysLeftToServe;
-
-            const serveHtml = serveShort !== '-'
-                ? `<span class="font-medium ${meta.daysLeftToServeClass}">${serveShort}</span>`
-                : '<span class="text-gray-400">-</span>';
-
+            const gestationHtml = renderTimelineCell(meta.gestation, true);
+            const rebreedHtml = renderTimelineCell(meta.rebreed, true);
             const statusLabel = (meta.displayStatus || 'unknown').replace('_', ' ');
 
             return `
@@ -255,8 +329,8 @@
                     <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.boar_tag_id || 'N/A'}</td>
                     <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">${record.mating_date || '-'}</td>
                     <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">${record.expected_due_date || '-'}</td>
-                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">${daysLeftHtml}</td>
-                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">${serveHtml}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">${gestationHtml}</td>
+                    <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">${rebreedHtml}</td>
                     <td class="px-1.5 sm:px-2 py-1.5 sm:py-2 text-center whitespace-nowrap">
                         <span class="inline-block px-1 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold leading-tight ${getStatusColor(meta.displayStatus)}">${statusLabel}</span>
                     </td>
@@ -268,12 +342,8 @@
         }
 
         function renderBreedingRecordRow(record, meta) {
-            const daysLeftHtml = meta.daysLeft !== null
-                ? `<span class="text-base sm:text-lg font-bold ${meta.daysLeft <= 7 ? 'text-orange-600 dark:text-orange-400' : meta.daysLeft <= 14 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}">${meta.daysLeft}</span>`
-                : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>';
-            const serveHtml = meta.daysLeftToServe !== '-'
-                ? `<span class="text-xs sm:text-sm font-semibold ${meta.daysLeftToServeClass}">${meta.daysLeftToServe}</span>`
-                : '<span class="text-gray-400 dark:text-gray-500 text-sm">-</span>';
+            const gestationHtml = renderTimelineCell(meta.gestation, false);
+            const rebreedHtml = renderTimelineCell(meta.rebreed, false);
 
             return `
                 <tr class="breeding-record-form border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150" data-breeding-id="${record.id}">
@@ -286,8 +356,8 @@
                     <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-gray-900 dark:text-white">${record.boar_tag_id || 'N/A'}</td>
                     <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4"><div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.mating_date}</div></td>
                     <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4"><div class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.expected_due_date || '-'}</div></td>
-                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">${daysLeftHtml}</td>
-                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">${serveHtml}</td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">${gestationHtml}</td>
+                    <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">${rebreedHtml}</td>
                     <td class="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-center">
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(meta.displayStatus)}">
                             ${(meta.displayStatus || 'unknown').replace('_', ' ')}
@@ -305,6 +375,15 @@
             const rows = displayRecords.map(r => renderBreedingRecordRow(r, getBreedingRecordMeta(r))).join('');
 
             return `
+                <div class="px-3 sm:px-6 lg:px-8 py-3 border-b border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/20">
+                    <div class="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm text-blue-900 dark:text-blue-200">
+                        <i class="fas fa-info-circle mt-0.5 shrink-0 text-blue-500"></i>
+                        <div class="space-y-1">
+                            <p><span class="font-semibold">Days to Farrow</span> — countdown while the sow is served or pregnant (114-day gestation).</p>
+                            <p><span class="font-semibold">Re-breed In</span> — after farrowing: wean the litter first, then wait the recovery period before serving again. Shows <span class="font-medium">—</span> when not applicable.</p>
+                        </div>
+                    </div>
+                </div>
                 <div class="lg:hidden overflow-x-auto -mx-3 sm:mx-0">
                     <table class="w-full min-w-[560px] text-[10px] sm:text-xs">
                         <thead>
@@ -312,9 +391,9 @@
                                 <th class="px-1.5 sm:px-2 py-1.5 text-left">Sow</th>
                                 <th class="px-1.5 sm:px-2 py-1.5 text-left">Boar</th>
                                 <th class="px-1.5 sm:px-2 py-1.5 text-left">Served</th>
-                                <th class="px-1.5 sm:px-2 py-1.5 text-left">Farrow</th>
-                                <th class="px-1.5 sm:px-2 py-1.5 text-center">Days</th>
-                                <th class="px-1.5 sm:px-2 py-1.5 text-center">Serve</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-left">Due</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-center" title="Days until expected farrowing">To Farrow</th>
+                                <th class="px-1.5 sm:px-2 py-1.5 text-center" title="Days until sow can be served again">Re-breed</th>
                                 <th class="px-1.5 sm:px-2 py-1.5 text-center">Status</th>
                                 <th class="px-1 sm:px-2 py-1.5 text-right">Actions</th>
                             </tr>
@@ -330,9 +409,13 @@
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Sow ID</th>
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Boar ID</th>
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Served Date</th>
-                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Date to Farrow</th>
-                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left</th>
-                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Days Left to Serve</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Expected Farrowing</th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                    <span title="Countdown until expected farrowing (served/pregnant only)">Days to Farrow</span>
+                                </th>
+                                <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                    <span title="Days until sow can be served again after farrowing">Re-breed In</span>
+                                </th>
                                 <th class="px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="w-36 px-3 sm:px-4 md:px-6 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -359,7 +442,9 @@
                             return false;
                         })
                         .sort((a, b) => {
-                            const getDaysLeft = (record) => {
+                            const getGestationDays = (record) => {
+                                const st = (record.breeding_status || '').toLowerCase();
+                                if (!['served', 'pregnant'].includes(st) || record.is_failed) return null;
                                 if (record.days_to_farrowing !== null && record.days_to_farrowing !== undefined && record.days_to_farrowing !== '') {
                                     return Number(record.days_to_farrowing);
                                 }
@@ -369,10 +454,21 @@
                                 return null;
                             };
 
+                            const getRebreedDays = (record) => {
+                                const st = (record.breeding_status || '').toLowerCase();
+                                if (st !== 'farrowed') return null;
+                                if ((record.current_litter_status || '').toLowerCase() !== 'weaned') return 9998;
+                                if (record.days_left_to_serve !== null && record.days_left_to_serve !== undefined) {
+                                    return Number(record.days_left_to_serve);
+                                }
+                                return 9999;
+                            };
+
                             const getRecentFarrowingTime = (record) => {
                                 const dateCandidate =
                                     record.farrowing_date ||
                                     record.actual_farrowing_date ||
+                                    record.last_farrowing_date ||
                                     record.updated_at ||
                                     record.mating_date ||
                                     record.expected_due_date;
@@ -380,31 +476,26 @@
                                 return Number.isNaN(parsed) ? 0 : parsed;
                             };
 
-                            const aDays = getDaysLeft(a);
-                            const bDays = getDaysLeft(b);
-                            const aIsZero = aDays === 0;
-                            const bIsZero = bDays === 0;
+                            const aGestation = getGestationDays(a);
+                            const bGestation = getGestationDays(b);
+                            const aRebreed = getRebreedDays(a);
+                            const bRebreed = getRebreedDays(b);
 
-                            // Rule 1: all 0-day records go to the bottom
-                            if (aIsZero !== bIsZero) {
-                                return aIsZero ? 1 : -1;
+                            // Pregnant/served first: soonest farrowing at top
+                            if (aGestation !== null || bGestation !== null) {
+                                if (aGestation === null) return 1;
+                                if (bGestation === null) return -1;
+                                if (aGestation !== bGestation) return aGestation - bGestation;
                             }
 
-                            // Rule 2: for non-zero records, least days left first
-                            if (!aIsZero && !bIsZero) {
-                                if (aDays === null && bDays !== null) return 1;
-                                if (aDays !== null && bDays === null) return -1;
-                                if (aDays !== null && bDays !== null && aDays !== bDays) {
-                                    return aDays - bDays;
-                                }
+                            // Farrowed next: ready to re-breed first, then shortest wait
+                            if (aRebreed !== null || bRebreed !== null) {
+                                if (aRebreed === null) return 1;
+                                if (bRebreed === null) return -1;
+                                if (aRebreed !== bRebreed) return aRebreed - bRebreed;
                             }
 
-                            // Rule 3: among 0-day records, most recently farrowed first
-                            if (aIsZero && bIsZero) {
-                                return getRecentFarrowingTime(b) - getRecentFarrowingTime(a);
-                            }
-
-                            return 0;
+                            return getRecentFarrowingTime(b) - getRecentFarrowingTime(a);
                         });
                     
                     // Update the counts in the statistics card (pregnant + farrowed view)
@@ -1119,8 +1210,7 @@
 
         // Show breeding details modal
         function showBreedingDetailsModal(record) {
-            const matingDaysAgo = Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24));
-            const daysLeft = record.days_to_farrowing !== null ? record.days_to_farrowing : (record.expected_due_date ? Math.ceil((new Date(record.expected_due_date) - new Date()) / (1000 * 60 * 60 * 24)) : null);
+            const meta = getBreedingRecordMeta(record);
             
             const modalHTML = `
                 <div id="breeding-details-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
@@ -1167,10 +1257,24 @@
                                         </tr>
                                         ${record.expected_due_date ? `
                                         <tr>
-                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Expected Due Date</td>
-                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">${record.expected_due_date} ${daysLeft !== null ? `<span class="text-gray-500 dark:text-gray-400 ml-2">(${daysLeft} days)</span>` : ''}</td>
+                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Expected Farrowing</td>
+                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">${record.expected_due_date}</td>
                                         </tr>
                                         ` : ''}
+                                        <tr>
+                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Days to Farrow</td>
+                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">
+                                                <span class="${meta.gestation.className}">${meta.gestation.primary}</span>
+                                                ${meta.gestation.secondary ? `<span class="text-gray-500 dark:text-gray-400 ml-2">(${meta.gestation.secondary})</span>` : ''}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Re-breed In</td>
+                                            <td class="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">
+                                                <span class="${meta.rebreed.className}">${meta.rebreed.primary}</span>
+                                                ${meta.rebreed.secondary ? `<span class="text-gray-500 dark:text-gray-400 ml-2">(${meta.rebreed.secondary})</span>` : ''}
+                                            </td>
+                                        </tr>
                                         
                                         <!-- Status -->
                                         <tr>

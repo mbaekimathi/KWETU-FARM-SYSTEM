@@ -17908,6 +17908,9 @@ def get_breeding_records():
                     record_dict['days_remaining_to_cancel'] = 0
                 
                 record_dict['days_to_farrowing'] = max(0, days_to_farrowing)
+                # Gestation countdown only applies while served or pregnant
+                if breeding_status not in ('served', 'pregnant') or is_failed:
+                    record_dict['days_to_farrowing'] = None
             else:
                 record_dict['can_cancel'] = False
                 record_dict['days_to_farrowing'] = None
