@@ -105,7 +105,6 @@
 
         function getBreedingRecordMeta(record) {
             const status = (record.breeding_status || '').toLowerCase();
-            const currentLitterStatus = (record.current_litter_status || '').toLowerCase();
             const recoveryWindow = record.serving_recovery_window_days || 21;
             const farrowingAlreadyRegistered = Boolean(record.has_registered_litter || record.has_farrowing_record);
 
@@ -117,7 +116,7 @@
             const canShowRegisterFarrowing = Boolean(record.can_register_farrowing);
 
             const gestation = buildGestationDisplay(daysToFarrow, status, farrowingAlreadyRegistered);
-            const rebreed = buildRebreedDisplay(record, status, currentLitterStatus, recoveryWindow);
+            const rebreed = buildRebreedDisplay(record, status, recoveryWindow);
 
             return {
                 daysToFarrow,
@@ -186,50 +185,70 @@
             };
         }
 
-        function buildRebreedDisplay(record, status, currentLitterStatus, recoveryWindow) {
-            if (status !== 'farrowed') {
+        function buildRebreedDisplay(record, status, recoveryWindow) {
+            if (record.is_failed || status === 'failed') {
                 return {
-                    primary: 'After farrowing',
+                    primary: '—',
                     badgeClass: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
                     className: 'text-gray-500 dark:text-gray-400',
-                    title: 'Sow can be bred again after farrowing and weaning',
+                    title: 'Failed conception — sow breeding readiness is not tracked on this record',
                 };
             }
 
-            if (currentLitterStatus !== 'weaned') {
+            if (['served', 'pregnant'].includes(status)) {
                 return {
-                    primary: 'Wean first to breed',
-                    badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-                    className: 'text-orange-700 dark:text-orange-300 font-semibold',
-                    title: 'Wean the litter before this sow can be served again',
+                    primary: 'Not ready',
+                    badgeClass: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
+                    className: 'text-gray-500 dark:text-gray-400',
+                    title: 'Sow is still in this breeding cycle and cannot be served again yet',
+                };
+            }
+
+            if (status !== 'farrowed') {
+                return {
+                    primary: 'Not ready',
+                    badgeClass: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
+                    className: 'text-gray-500 dark:text-gray-400',
+                    title: 'Sow breeding readiness is calculated after farrowing',
                 };
             }
 
             const daysLeft = record.days_left_to_serve;
             if (daysLeft === null || daysLeft === undefined) {
                 return {
-                    primary: 'Recovery unknown',
+                    primary: 'Unknown',
                     badgeClass: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
                     className: 'text-gray-500 dark:text-gray-400',
-                    title: 'Farrowing date needed to calculate recovery period',
+                    title: 'Actual farrowing date needed to calculate sow post-farrowing recovery',
                 };
             }
 
-            if (Number(daysLeft) === 0) {
+            const days = Number(daysLeft);
+            if (days === 0) {
                 return {
                     primary: 'Ready to breed',
                     badgeClass: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
                     className: 'text-green-700 dark:text-green-300 font-semibold',
-                    title: `Recovery complete — sow can be served now (${recoveryWindow}-day window)`,
+                    title: `Sow has completed the ${recoveryWindow}-day post-farrowing recovery period and can be served`,
                 };
             }
 
-            const dayLabel = Number(daysLeft) === 1 ? 'day' : 'days';
+            if (days <= 5) {
+                const dayLabel = days === 1 ? 'day' : 'days';
+                return {
+                    primary: 'Almost ready to breed',
+                    badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+                    className: 'text-amber-700 dark:text-amber-300 font-semibold',
+                    title: `Sow needs ${days} ${dayLabel} more recovery before she can be served (${recoveryWindow}-day window)`,
+                };
+            }
+
+            const dayLabel = days === 1 ? 'day' : 'days';
             return {
-                primary: `Breed in ${daysLeft} ${dayLabel}`,
+                primary: 'Not ready yet',
                 badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
                 className: 'text-blue-700 dark:text-blue-300 font-semibold',
-                title: `${daysLeft} ${dayLabel} left in ${recoveryWindow}-day post-farrowing recovery before breeding`,
+                title: `Sow needs ${days} ${dayLabel} more post-farrowing recovery before breeding`,
             };
         }
 
@@ -246,7 +265,7 @@
             }
             const badgeClass = display.badgeClass || display.className;
             return `
-                <span class="inline-block max-w-[5.5rem] sm:max-w-none px-2 py-1 rounded-md text-[9px] sm:text-[11px] font-semibold leading-snug text-center whitespace-normal ${badgeClass}" title="${display.title}">
+                <span class="inline-block max-w-[6.5rem] sm:max-w-[8.5rem] px-2 py-1 rounded-md text-[9px] sm:text-[11px] font-semibold leading-snug text-center whitespace-normal ${badgeClass}" title="${display.title}">
                     ${display.primary}
                 </span>
             `;
@@ -343,7 +362,7 @@
                                 <th class="px-3 py-2.5 text-left hidden md:table-cell whitespace-nowrap">Expected due date</th>
                                 <th class="px-3 py-2.5 text-left hidden md:table-cell whitespace-nowrap">Actual farrowing date</th>
                                 <th class="px-3 py-2.5 text-center whitespace-nowrap" title="Days until expected farrowing">Expected farrow</th>
-                                <th class="px-3 py-2.5 text-center hidden sm:table-cell min-w-[6.5rem]" title="When the sow can be bred again">Breed readiness</th>
+                                <th class="px-3 py-2.5 text-center hidden sm:table-cell min-w-[7rem]" title="Sow post-farrowing recovery and breeding readiness">Breed readiness</th>
                                 <th class="px-3 py-2.5 text-center">Status</th>
                                 <th class="px-3 py-2.5 text-right">Actions</th>
                             </tr>
@@ -377,7 +396,6 @@
                             const getRebreedDays = (record) => {
                                 const st = (record.breeding_status || '').toLowerCase();
                                 if (st !== 'farrowed') return null;
-                                if ((record.current_litter_status || '').toLowerCase() !== 'weaned') return 9998;
                                 if (record.days_left_to_serve !== null && record.days_left_to_serve !== undefined) {
                                     return Number(record.days_left_to_serve);
                                 }
