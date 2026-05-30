@@ -18,102 +18,47 @@
 {% include 'includes/farm_unified_sidebar.html' %}
     <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-<main class="md:ml-72 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
-        <div class="p-6 lg:p-8">
-            <!-- Page Header -->
-            <div class="mb-8 animate-fade-in">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <!-- Header Background -->
-                    <div class="h-2 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
-                    
-                    <div class="p-8">
-                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-                            <div class="flex items-center space-x-4">
-                                <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-check-circle text-white text-2xl"></i>
-                                </div>
-                                <div>
-                                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Completed Farrowings</h1>
-                                    <p class="text-gray-600 dark:text-gray-400 font-medium mt-1">Unweaned litter details for sows with 'farrowed' breeding status</p>
-                                    <div class="flex items-center mt-2">
-                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                                        <span class="text-sm text-green-600 dark:text-green-400 font-medium">Successful Births</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<main class="pt-16 md:pl-64 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+        <div class="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+            <!-- Header -->
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-11 h-11 shrink-0 bg-green-600 rounded-xl flex items-center justify-center shadow">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
                     </div>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Completed Farrowings</h1>
+                </div>
+                <div class="relative w-full sm:max-w-xs lg:max-w-sm">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                    <input type="text" id="search-completed-farrowings" placeholder="Search litter, sow…"
+                           class="pl-9 pr-4 py-2.5 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                           aria-label="Search completed farrowings">
                 </div>
             </div>
 
-            <!-- Statistics Bar -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                <div class="flex flex-wrap items-center justify-between gap-6">
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-check-circle text-green-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Unweaned Litters:</span>
-                            <span id="total-farrowings-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-baby text-blue-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Unweaned Piglets:</span>
-                            <span id="total-piglets-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-calendar-alt text-yellow-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">This Month:</span>
-                            <span id="this-month-count" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <i class="fas fa-weight text-purple-500"></i>
-                        <div>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Avg Weight:</span>
-                            <span id="avg-weight" class="ml-2 text-lg font-bold text-gray-900 dark:text-white">0 kg</span>
-                        </div>
-                    </div>
+            <!-- Summary -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Litters</p>
+                    <p id="total-farrowings-count" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Piglets</p>
+                    <p id="total-piglets-count" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">This Month</p>
+                    <p id="this-month-count" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg Weight</p>
+                    <p id="avg-weight" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0 kg</p>
                 </div>
             </div>
 
-
-            <!-- Completed Farrowings Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-slide-up">
-                <!-- Section Header -->
-                <div class="px-8 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Unweaned Litter Records</h2>
-                            <p class="text-gray-600 dark:text-gray-400 font-medium mt-1">Detailed records of unweaned litters for sows with 'farrowed' breeding status</p>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <!-- Search Bar -->
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <i class="fas fa-search text-gray-400"></i>
-                                </div>
-                                <input type="text" id="search-completed-farrowings" placeholder="Search farrowings..." 
-                                       class="pl-12 pr-4 py-3 w-full lg:w-80 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm font-medium transition-all duration-200" 
-                                       aria-label="Search completed farrowings">
-                            </div>
-                            
-                            <!-- Status Indicator -->
-                            <div class="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-xl border border-green-200 dark:border-green-700">
-                                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                <span class="text-sm font-semibold text-green-700 dark:text-green-300">Completed Records</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Records Container -->
-                <div id="completed-farrowings-container" class="p-6 space-y-4">
-                    <!-- Completed farrowings will be loaded here as cards -->
-                </div>
+            <!-- Records table -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div id="completed-farrowings-container"></div>
             </div>
         </div>
     </main>
@@ -166,51 +111,142 @@
         }
 
         // Search functionality
+        function applyCompletedFarrowingsSearch() {
+            const searchTerm = (document.getElementById('search-completed-farrowings')?.value || '').trim().toLowerCase();
+            const rows = document.querySelectorAll('#completed-farrowings-container .completed-farrowing-row');
+            let visible = 0;
+
+            rows.forEach(row => {
+                const haystack = (row.getAttribute('data-search') || row.textContent || '').toLowerCase();
+                const show = !searchTerm || haystack.includes(searchTerm);
+                row.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+
+            const noResults = document.getElementById('completed-farrowings-search-no-results');
+            if (noResults) {
+                noResults.classList.toggle('hidden', !searchTerm || visible > 0 || rows.length === 0);
+            }
+        }
+
         function setupSearch() {
             const searchInput = document.getElementById('search-completed-farrowings');
-            if (searchInput) {
-                searchInput.addEventListener('input', function(e) {
-                    const searchTerm = e.target.value.toLowerCase();
-                    const cards = document.querySelectorAll('#completed-farrowings-container .completed-farrowing-card');
-                    
-                    cards.forEach(card => {
-                        const text = card.textContent.toLowerCase();
-                        if (text.includes(searchTerm)) {
-                            card.style.display = '';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
-                });
-            }
+            if (!searchInput || searchInput.dataset.liveSearchBound === '1') return;
+            searchInput.dataset.liveSearchBound = '1';
+            searchInput.addEventListener('input', applyCompletedFarrowingsSearch);
+            searchInput.addEventListener('keyup', applyCompletedFarrowingsSearch);
+            searchInput.addEventListener('search', applyCompletedFarrowingsSearch);
+        }
+
+        function renderCompletedFarrowingRow(record) {
+            const farrowingDate = new Date(record.farrowing_date);
+            const daysSince = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
+            const status = record.litter_status || 'unknown';
+            const breedingStatus = record.sow_breeding_status || record.breeding_status || 'unknown';
+            const avgWeight = record.avg_weight != null ? `${Number(record.avg_weight).toFixed(2)} kg` : '—';
+            const recordJson = JSON.stringify(record).replace(/'/g, "&apos;");
+            const searchText = [
+                record.litter_id,
+                record.sow_tag_id,
+                record.boar_tag_id,
+                record.farrowing_date,
+                record.expected_due_date,
+                record.alive_piglets,
+                breedingStatus,
+                status
+            ].filter(v => v != null && v !== '').join(' ');
+
+            return `
+                <tr class="completed-farrowing-row border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 text-xs sm:text-sm" data-farrowing-id="${record.id}" data-search="${searchText.replace(/"/g, '&quot;')}">
+                    <td class="px-3 py-2.5 sm:py-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.litter_id || '—'}</td>
+                    <td class="px-3 py-2.5 sm:py-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.sow_tag_id || '—'}</td>
+                    <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">${record.boar_tag_id || '—'}</td>
+                    <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap" title="${daysSince} day(s) ago">${record.farrowing_date || '—'}</td>
+                    <td class="px-3 py-2.5 sm:py-3 text-center font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">${record.alive_piglets || 0}</td>
+                    <td class="px-3 py-2.5 sm:py-3 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap hidden sm:table-cell">${avgWeight}</td>
+                    <td class="px-3 py-2.5 sm:py-3 text-center whitespace-nowrap hidden lg:table-cell">
+                        <span class="inline-block px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold capitalize ${getBreedingStatusColor(breedingStatus)}">${breedingStatus}</span>
+                    </td>
+                    <td class="px-2 sm:px-3 py-2.5 sm:py-3">
+                        <div class="flex items-center justify-end gap-1">
+                            <button onclick="showLitterDetailsModalFromButton(this)" data-record='${recordJson}'
+                                class="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-xs rounded text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="View">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="viewFarrowingActivities(${record.id})"
+                                class="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-xs rounded text-white bg-green-600 hover:bg-green-700 transition-colors" title="Activities">
+                                <i class="fas fa-list-check"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderCompletedFarrowingsTable(records) {
+            const rows = records.map(renderCompletedFarrowingRow).join('');
+            return `
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[560px]">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700/80 border-b border-gray-200 dark:border-gray-600 text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                <th class="px-3 py-2.5 text-left">Litter</th>
+                                <th class="px-3 py-2.5 text-left">Sow</th>
+                                <th class="px-3 py-2.5 text-left hidden md:table-cell">Boar</th>
+                                <th class="px-3 py-2.5 text-left">Date</th>
+                                <th class="px-3 py-2.5 text-center">Alive</th>
+                                <th class="px-3 py-2.5 text-center hidden sm:table-cell">Weight</th>
+                                <th class="px-3 py-2.5 text-center hidden lg:table-cell">Status</th>
+                                <th class="px-3 py-2.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">${rows}
+                            <tr id="completed-farrowings-search-no-results" class="hidden">
+                                <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">No matching records</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderEmptyState(message) {
+            return `
+                <div class="text-center py-16 px-4">
+                    <i class="fas fa-inbox text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">${message}</p>
+                </div>
+            `;
+        }
+
+        function renderErrorState(message) {
+            return `
+                <div class="text-center py-16 px-4">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-3"></i>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">${message}</p>
+                </div>
+            `;
         }
 
         // Load completed farrowings
         async function loadCompletedFarrowings() {
             try {
-                console.log('Loading completed farrowings...');
                 const response = await fetch(apiUrl('/api/breeding/completed-farrowings'));
-                console.log('Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                console.log('Response data:', data);
                 
                 if (data.success) {
                     const records = data.records || [];
-                    console.log(`Loaded ${records.length} completed farrowing records`);
                     
-                    // Update the counts in the statistics card
                     document.getElementById('total-farrowings-count').textContent = records.length;
                     
-                    // Calculate total piglets from unweaned litters
                     const totalPiglets = records.reduce((sum, record) => sum + (record.alive_piglets || 0), 0);
                     document.getElementById('total-piglets-count').textContent = totalPiglets;
                     
-                    // Calculate this month's count
                     const thisMonth = new Date().getMonth();
                     const thisMonthRecords = records.filter(record => {
                         const farrowingDate = new Date(record.farrowing_date);
@@ -218,128 +254,28 @@
                     });
                     document.getElementById('this-month-count').textContent = thisMonthRecords.length;
                     
-                    // Calculate average weight
                     const totalWeight = records.reduce((sum, record) => sum + (record.avg_weight || 0), 0);
                     const avgWeight = records.length > 0 ? (totalWeight / records.length).toFixed(2) : 0;
                     document.getElementById('avg-weight').textContent = `${avgWeight} kg`;
                     
                     const container = document.getElementById('completed-farrowings-container');
-                    container.innerHTML = '';
                     
                     if (records.length === 0) {
-                        container.innerHTML = `
-                            <div class="text-center py-12">
-                                <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <i class="fas fa-baby text-gray-400 text-2xl"></i>
-                                </div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Unweaned Litters</h3>
-                                <p class="text-gray-600 dark:text-gray-400 mb-4">No unweaned litter records found for sows with 'farrowed' breeding status.</p>
-                            </div>
-                        `;
+                        container.innerHTML = renderEmptyState('No unweaned litters');
                         return;
                     }
                     
-                    // Create table structure
-                    const tableHTML = `
-                        <div class="overflow-x-auto">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Litter ID</th>
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Sow</th>
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Farrowing Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Alive Piglets</th>
-                                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    ${records.map((record, index) => {
-                                        const farrowingDate = new Date(record.farrowing_date);
-                                        const daysSinceFarrowing = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
-                                        
-                                        return `
-                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
-                                                <td class="px-4 py-3 whitespace-nowrap">
-                                                    <div class="flex items-center">
-                                                        <i class="fas fa-baby text-green-500 mr-2"></i>
-                                                        <div>
-                                                            <span class="text-sm font-medium text-gray-900 dark:text-white">${record.litter_id || 'N/A'}</span>
-                                                            <div class="text-xs text-gray-500 dark:text-gray-400 capitalize">Status: ${record.litter_status || 'unknown'}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-3 whitespace-nowrap">
-                                                    <div class="flex flex-col gap-1">
-                                                        <span class="text-sm font-medium text-gray-900 dark:text-white">${record.sow_tag_id || 'N/A'}</span>
-                                                        <span class="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-xs font-medium ${getBreedingStatusColor(record.sow_breeding_status || record.breeding_status || 'unknown')}">
-                                                            ${(record.sow_breeding_status || record.breeding_status || 'unknown')}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-3 whitespace-nowrap">
-                                                    <div class="text-sm text-gray-900 dark:text-white">${record.farrowing_date}</div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400">${daysSinceFarrowing} days ago</div>
-                                                </td>
-                                                <td class="px-4 py-3 whitespace-nowrap">
-                                                    <span class="text-sm font-semibold text-orange-600 dark:text-orange-400">${record.alive_piglets || 0}</span>
-                                                </td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-center">
-                                                    <div class="inline-flex items-center gap-2">
-                                                        <button 
-                                                            onclick="showLitterDetailsModalFromButton(this)"
-                                                            data-record='${JSON.stringify(record).replace(/'/g, "&apos;")}'
-                                                            class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all duration-200"
-                                                            title="View Details"
-                                                        >
-                                                            <i class="fas fa-eye mr-1"></i>
-                                                            View
-                                                        </button>
-                                                        <button
-                                                            onclick="viewFarrowingActivities(${record.id})"
-                                                            class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all duration-200"
-                                                            title="Open Farrowing Activities"
-                                                        >
-                                                            <i class="fas fa-list-check mr-1"></i>
-                                                            Activities
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    
-                    container.innerHTML = tableHTML;
+                    container.innerHTML = renderCompletedFarrowingsTable(records);
+                    applyCompletedFarrowingsSearch();
                 } else {
-                    console.error('API returned unsuccessful response:', data);
                     const container = document.getElementById('completed-farrowings-container');
-                    container.innerHTML = `
-                        <div class="text-center py-12">
-                            <div class="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Error Loading Data</h3>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">${data.error || 'Failed to load completed farrowings data.'}</p>
-                        </div>
-                    `;
+                    container.innerHTML = renderErrorState(data.error || 'Failed to load records.');
                 }
             } catch (error) {
                 console.error('Error loading completed farrowings:', error);
                 const container = document.getElementById('completed-farrowings-container');
                 if (container) {
-                    container.innerHTML = `
-                        <div class="text-center py-12">
-                            <div class="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Error Loading Data</h3>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">An error occurred while loading completed farrowings. Please refresh the page or contact support.</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Error: ${error.message || 'Unknown error'}</p>
-                        </div>
-                    `;
+                    container.innerHTML = renderErrorState('Unable to load records. Please refresh.');
                 }
             }
         }

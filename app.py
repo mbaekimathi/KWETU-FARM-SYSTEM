@@ -1094,6 +1094,82 @@ def _migration_003_employee_webauthn(cursor):
     """)
 
 
+def _dedupe_farrowing_records_for_breeding(cursor, breeding_id):
+    """Keep one farrowing record per breeding_id; merge or remove extras."""
+    cursor.execute("""
+        SELECT fr.id,
+               EXISTS(
+                   SELECT 1 FROM litters l WHERE l.farrowing_record_id = fr.id
+               ) AS has_litter
+        FROM farrowing_records fr
+        WHERE fr.breeding_id = %s
+        ORDER BY has_litter DESC, fr.id ASC
+    """, (breeding_id,))
+    rows = cursor.fetchall() or []
+    if len(rows) <= 1:
+        return rows[0]['id'] if rows else None
+
+    keeper_id = rows[0]['id']
+    for row in rows[1:]:
+        dup_id = row['id']
+        if row.get('has_litter'):
+            cursor.execute(
+                "SELECT id FROM litters WHERE farrowing_record_id = %s LIMIT 1",
+                (keeper_id,),
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    "UPDATE litters SET farrowing_record_id = %s WHERE farrowing_record_id = %s",
+                    (keeper_id, dup_id),
+                )
+            cursor.execute("DELETE FROM litters WHERE farrowing_record_id = %s", (dup_id,))
+        cursor.execute("DELETE FROM farrowing_activities WHERE farrowing_record_id = %s", (dup_id,))
+        if db_migrations.ensure_table_exists(cursor, 'farrowing_records_edit_history'):
+            cursor.execute(
+                "DELETE FROM farrowing_records_edit_history WHERE record_id = %s",
+                (dup_id,),
+            )
+        cursor.execute("DELETE FROM farrowing_records WHERE id = %s", (dup_id,))
+    return keeper_id
+
+
+def _get_farrowing_record_for_breeding(cursor, breeding_id):
+    """Return the single farrowing row for a breeding record (dedupes legacy duplicates first)."""
+    _dedupe_farrowing_records_for_breeding(cursor, breeding_id)
+    cursor.execute("""
+        SELECT fr.id,
+               EXISTS(
+                   SELECT 1 FROM litters l WHERE l.farrowing_record_id = fr.id
+               ) AS has_litter
+        FROM farrowing_records fr
+        WHERE fr.breeding_id = %s
+        LIMIT 1
+    """, (breeding_id,))
+    return cursor.fetchone()
+
+
+def _migration_005_farrowing_one_per_breeding(cursor):
+    """Enforce exactly one farrowing record per breeding record."""
+    if not db_migrations.ensure_table_exists(cursor, 'farrowing_records'):
+        return
+
+    cursor.execute("""
+        SELECT breeding_id
+        FROM farrowing_records
+        GROUP BY breeding_id
+        HAVING COUNT(*) > 1
+    """)
+    for row in cursor.fetchall() or []:
+        _dedupe_farrowing_records_for_breeding(cursor, row['breeding_id'])
+
+    db_migrations.ensure_unique_index(
+        cursor,
+        'farrowing_records',
+        'uniq_farrowing_breeding_id',
+        ['breeding_id'],
+    )
+
+
 def _migration_004_company_settings(cursor):
     """Singleton company branding (name, logo path, contact) for header/footer and settings UI."""
     if not db_migrations.ensure_table_exists(cursor, "employees"):
@@ -1657,7 +1733,8 @@ def create_database_and_tables():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (breeding_id) REFERENCES breeding_records(id),
-                FOREIGN KEY (created_by) REFERENCES employees(id)
+                FOREIGN KEY (created_by) REFERENCES employees(id),
+                UNIQUE KEY uniq_farrowing_breeding_id (breeding_id)
             )
         """)
         print("Farrowing records table checked/created successfully")
@@ -2703,6 +2780,7 @@ def create_database_and_tables():
             ('002_cow_breeding_ai', _migration_002_cow_breeding_ai),
             ('003_employee_webauthn', _migration_003_employee_webauthn),
             ('004_company_settings', _migration_004_company_settings),
+            ('005_farrowing_one_per_breeding', _migration_005_farrowing_one_per_breeding),
         ]
         db_migrations.run_migrations(conn, MIGRATIONS)
         
@@ -17885,14 +17963,23 @@ def get_breeding_records():
                 
                 # Format mating_date to show only date (YYYY-MM-DD) for response
                 record_dict['mating_date'] = mating_date.strftime('%Y-%m-%d')
-                
-                days_since_mating = (today - mating_date).days
-                days_to_farrowing = 114 - days_since_mating
-                
-                # Calculate expected due date (114 days from mating)
+
+                # Use stored expected due date when set; otherwise default to 114-day gestation.
+                stored_due = record.get('expected_due_date')
+                if isinstance(stored_due, datetime):
+                    stored_due = stored_due.date()
+                elif isinstance(stored_due, str) and stored_due.strip():
+                    from datetime import datetime as dt
+                    stored_due = dt.strptime(stored_due.split(' ')[0], '%Y-%m-%d').date()
+                else:
+                    stored_due = None
+
                 from datetime import timedelta
-                expected_due_date = mating_date + timedelta(days=114)
-                record_dict['expected_due_date'] = expected_due_date.strftime('%Y-%m-%d')
+                if not stored_due:
+                    stored_due = mating_date + timedelta(days=114)
+
+                record_dict['expected_due_date'] = stored_due.strftime('%Y-%m-%d')
+                days_to_farrowing = (stored_due - today).days
                 
                 # Determine if can cancel based on breeding status and days
                 # Can only cancel within 25 days of mating (served status)
@@ -17907,7 +17994,7 @@ def get_breeding_records():
                     record_dict['can_cancel'] = False
                     record_dict['days_remaining_to_cancel'] = 0
                 
-                record_dict['days_to_farrowing'] = max(0, days_to_farrowing)
+                record_dict['days_to_farrowing'] = days_to_farrowing
                 # Gestation countdown only applies while served or pregnant
                 if breeding_status not in ('served', 'pregnant') or is_failed:
                     record_dict['days_to_farrowing'] = None
@@ -17946,6 +18033,16 @@ def get_breeding_records():
                 else:
                     record_dict['days_left_to_serve'] = 0
             record_dict['serving_recovery_window_days'] = serving_recovery_days
+
+            days_to_farrow = record_dict.get('days_to_farrowing')
+            record_dict['can_register_farrowing'] = (
+                not is_failed
+                and breeding_status in ('served', 'pregnant')
+                and not record_dict['has_registered_litter']
+                and not record_dict['has_farrowing_record']
+                and days_to_farrow is not None
+                and int(days_to_farrow) <= 7
+            )
             
             processed_records.append(record_dict)
         
@@ -18364,7 +18461,8 @@ def get_completed_farrowings():
                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                 FOREIGN KEY (breeding_id) REFERENCES breeding_records(id),
-                                FOREIGN KEY (created_by) REFERENCES employees(id)
+                                FOREIGN KEY (created_by) REFERENCES employees(id),
+                                UNIQUE KEY uniq_farrowing_breeding_id (breeding_id)
                             ) ENGINE=InnoDB
                         """
                         try:
@@ -18407,7 +18505,7 @@ def get_completed_farrowings():
                         create_sql_no_fk = """
                             CREATE TABLE farrowing_records (
                                 id INT AUTO_INCREMENT PRIMARY KEY,
-                                breeding_id INT NOT NULL,
+                                breeding_id INT NOT NULL UNIQUE,
                                 farrowing_date DATE NOT NULL,
                                 alive_piglets INT NOT NULL,
                                 still_births INT NOT NULL,
@@ -18813,7 +18911,7 @@ def update_breeding_statuses():
 
 @app.route('/api/breeding/register-farrowing/<int:breeding_id>', methods=['POST'])
 def register_farrowing(breeding_id):
-    """Register farrowing for a breeding record"""
+    """Register farrowing for a breeding record (one farrowing record per breeding cycle)."""
     if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -18864,30 +18962,18 @@ def register_farrowing(breeding_id):
         if not breeding_record:
             return jsonify({'success': False, 'message': 'Breeding record not found'})
 
-        # Prevent duplicate litter registration per breeding cycle.
-        # If a farrowing record exists without a litter, allow completion.
-        cursor.execute("""
-            SELECT fr.id
-            FROM farrowing_records fr
-            WHERE fr.breeding_id = %s
-            LIMIT 1
-        """, (breeding_id,))
-        existing_farrowing = cursor.fetchone()
+        existing_farrowing = _get_farrowing_record_for_breeding(cursor, breeding_id)
+        if existing_farrowing and existing_farrowing.get('has_litter'):
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'This breeding record already has a farrowing record with a registered litter.'
+            })
+
         farrowing_id = None
         created_new_farrowing_record = False
         if existing_farrowing:
-            cursor.execute("""
-                SELECT id
-                FROM litters
-                WHERE farrowing_record_id = %s
-                LIMIT 1
-            """, (existing_farrowing['id'],))
-            if cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'message': 'Litter already registered for this breeding record'
-                })
-            # Reuse and refresh existing farrowing record if litter was never registered.
             farrowing_id = existing_farrowing['id']
             cursor.execute("""
                 UPDATE farrowing_records
@@ -18899,21 +18985,57 @@ def register_farrowing(breeding_id):
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             """, (farrowing_date, alive_piglets, still_births, avg_weight, health_notes, farrowing_id))
-            # Activities may already exist from a prior draft; resync due dates to the new farrowing date.
             resync_farrowing_activity_due_dates_for_record(cursor, farrowing_id, farrowing_date)
         else:
-            # Insert farrowing record
-            cursor.execute("""
-                INSERT INTO farrowing_records (
-                    breeding_id, farrowing_date, alive_piglets, still_births, 
-                    avg_weight, health_notes, created_by
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (
-                breeding_id, farrowing_date, alive_piglets, still_births,
-                avg_weight, health_notes, session['employee_id']
-            ))
-            farrowing_id = cursor.lastrowid
-            created_new_farrowing_record = True
+            try:
+                cursor.execute("""
+                    INSERT INTO farrowing_records (
+                        breeding_id, farrowing_date, alive_piglets, still_births,
+                        avg_weight, health_notes, created_by
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    breeding_id, farrowing_date, alive_piglets, still_births,
+                    avg_weight, health_notes, session['employee_id']
+                ))
+                farrowing_id = cursor.lastrowid
+                created_new_farrowing_record = True
+            except Exception as insert_error:
+                err_text = str(insert_error)
+                if '1062' not in err_text and 'Duplicate' not in err_text:
+                    raise
+                existing_farrowing = _get_farrowing_record_for_breeding(cursor, breeding_id)
+                if not existing_farrowing:
+                    raise
+                if existing_farrowing.get('has_litter'):
+                    cursor.close()
+                    conn.close()
+                    return jsonify({
+                        'success': False,
+                        'message': 'This breeding record already has a farrowing record with a registered litter.'
+                    })
+                farrowing_id = existing_farrowing['id']
+                cursor.execute("""
+                    UPDATE farrowing_records
+                    SET farrowing_date = %s,
+                        alive_piglets = %s,
+                        still_births = %s,
+                        avg_weight = %s,
+                        health_notes = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (farrowing_date, alive_piglets, still_births, avg_weight, health_notes, farrowing_id))
+                resync_farrowing_activity_due_dates_for_record(cursor, farrowing_id, farrowing_date)
+
+        cursor.execute("""
+            SELECT id FROM litters WHERE farrowing_record_id = %s LIMIT 1
+        """, (farrowing_id,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'A litter is already linked to this farrowing record.'
+            })
         
         # Create farrowing activities with due dates from settings templates
         # for new farrowing records, or backfill if none exist.

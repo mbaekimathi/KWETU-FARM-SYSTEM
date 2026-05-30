@@ -1,84 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Litters - Farm A Management System</title>
+    <title>Weaned Litters - Farm A Management System</title>
     {% include 'includes/farm_hub_shell_head_fragment.html' %}
 </head>
-<body class="min-h-screen bg-gray-50 dark:bg-gray-900">
-{% set farm_shell_breadcrumb_current = 'Litters' %}
+<body class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 transition-colors duration-300">
+{% set farm_shell_breadcrumb_current = 'Weaned Litters' %}
 {% set farm_shell_icon_class = 'fas fa-piggy-bank' %}
 {% set farm_sidebar_banner_title = 'Pig hub' %}
 {% set farm_sidebar_banner_sub = 'Breeding' %}
 {% set farm_sidebar_nav_partial = 'includes/farm_nav_breeding_management_hub.html' %}
+{% set pig_nav_active = 'breeding' %}
 
 {% include 'includes/farm_shell_header.html' %}
 {% include 'includes/farm_unified_sidebar.html' %}
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-<main class="md:ml-64 pt-20 min-h-screen">
-    <div class="p-4 sm:p-6 lg:p-8 space-y-6">
-        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Weaned Litters</h1>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                This page shows only litter records that are marked as weaned. Open any litter to view complete weight, health, and medication progress.
-            </p>
-        </section>
-
-        <section class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4">
-            <div class="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-700/60 rounded-xl p-1">
-                <button id="tab-raw-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white">Raw Data</button>
-                <button id="tab-analytics-btn" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">Analytics</button>
+<main class="pt-16 md:pl-64 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+    <div class="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 shrink-0 bg-indigo-600 rounded-xl flex items-center justify-center shadow">
+                    <i class="fas fa-seedling text-white text-lg"></i>
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Weaned Litters</h1>
             </div>
-        </section>
-
-        <section id="raw-data-tab" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Weaned Litters (Raw Data)</h2>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                <div id="search-weaned-wrap" class="relative w-full sm:max-w-xs lg:max-w-sm">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                    <input type="text" id="search-weaned-litters" placeholder="Search litter, sow…"
+                           class="pl-9 pr-4 py-2.5 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                           aria-label="Search weaned litters">
+                </div>
+                <div class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/60 rounded-lg p-1 shrink-0">
+                    <button id="tab-raw-btn" type="button" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-indigo-600 text-white">Table</button>
+                    <button id="tab-analytics-btn" type="button" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">Analytics</button>
+                </div>
             </div>
+        </div>
+
+        <!-- Summary -->
+        <div id="weaned-summary" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Litters</p>
+                <p id="total-litters-count" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Piglets</p>
+                <p id="total-piglets-count" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">This Month</p>
+                <p id="this-month-count" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">0</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg Wean Wt</p>
+                <p id="avg-weaning-weight" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">—</p>
+            </div>
+        </div>
+
+        <!-- Table tab -->
+        <section id="raw-data-tab" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 dark:bg-gray-700/40">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Litter ID</th>
-                            <th class="px-4 py-3 text-left">Sow</th>
-                            <th class="px-4 py-3 text-left">Farrowing Date</th>
-                            <th class="px-4 py-3 text-left">Total Piglets</th>
-                            <th class="px-4 py-3 text-left">Status</th>
-                            <th class="px-4 py-3 text-left">Action</th>
+                <table class="w-full min-w-[520px]">
+                    <thead>
+                        <tr class="bg-gray-50 dark:bg-gray-700/80 border-b border-gray-200 dark:border-gray-600 text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                            <th class="px-3 py-2.5 text-left">Litter</th>
+                            <th class="px-3 py-2.5 text-left">Sow</th>
+                            <th class="px-3 py-2.5 text-left hidden md:table-cell">Farrowed</th>
+                            <th class="px-3 py-2.5 text-left">Weaned</th>
+                            <th class="px-3 py-2.5 text-center">Total</th>
+                            <th class="px-3 py-2.5 text-center hidden sm:table-cell">Alive</th>
+                            <th class="px-3 py-2.5 text-center hidden lg:table-cell">Wean Wt</th>
+                            <th class="px-3 py-2.5 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="weaned-litters-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                    <tbody id="weaned-litters-body" class="divide-y divide-gray-100 dark:divide-gray-700"></tbody>
                 </table>
             </div>
         </section>
 
-        <section id="analytics-tab" class="hidden space-y-6">
-            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-                <label for="analytics-litter-select" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Select Weaned Litter</label>
-                <select id="analytics-litter-select" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></select>
+        <!-- Analytics tab -->
+        <section id="analytics-tab" class="hidden space-y-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+                <label for="analytics-litter-select" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Litter</label>
+                <select id="analytics-litter-select" class="w-full sm:max-w-md px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"></select>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Weight Progress</h3>
-                    <div class="relative h-72"><canvas id="weaned-weight-chart"></canvas></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Weight</h3>
+                    <div class="relative h-64 sm:h-72"><canvas id="weaned-weight-chart"></canvas></div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Health Progress (Survival)</h3>
-                    <div class="relative h-72"><canvas id="weaned-health-chart"></canvas></div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Health</h3>
+                    <div class="relative h-64 sm:h-72"><canvas id="weaned-health-chart"></canvas></div>
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-                <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Medication/Care Progress</h3>
-                <div class="relative h-72"><canvas id="weaned-medication-chart"></canvas></div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Care Activities</h3>
+                <div class="relative h-64 sm:h-72"><canvas id="weaned-medication-chart"></canvas></div>
             </div>
         </section>
     </div>
 </main>
 
 <script>
+const LITTER_DETAILS_PREFIX = '{{ "/manager" if user.role == "manager" else "/admin" }}';
 let weanedLittersCache = [];
 let charts = {};
 
@@ -87,17 +119,103 @@ function switchTab(tabName) {
     const analyticsBtn = document.getElementById('tab-analytics-btn');
     const rawTab = document.getElementById('raw-data-tab');
     const analyticsTab = document.getElementById('analytics-tab');
+    const summaryGrid = document.getElementById('weaned-summary');
+    const searchWrap = document.getElementById('search-weaned-wrap');
 
     const rawActive = tabName === 'raw';
     rawTab.classList.toggle('hidden', !rawActive);
     analyticsTab.classList.toggle('hidden', rawActive);
+    if (summaryGrid) summaryGrid.classList.toggle('hidden', !rawActive);
+    if (searchWrap) searchWrap.classList.toggle('hidden', !rawActive);
 
     rawBtn.className = rawActive
-        ? 'px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white'
-        : 'px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600';
+        ? 'px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-indigo-600 text-white'
+        : 'px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600';
     analyticsBtn.className = rawActive
-        ? 'px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
-        : 'px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white';
+        ? 'px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+        : 'px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-indigo-600 text-white';
+}
+
+function applyWeanedLittersSearch() {
+    const searchTerm = (document.getElementById('search-weaned-litters')?.value || '').trim().toLowerCase();
+    const rows = document.querySelectorAll('#weaned-litters-body .weaned-litter-row');
+    let visible = 0;
+
+    rows.forEach(row => {
+        const haystack = (row.getAttribute('data-search') || row.textContent || '').toLowerCase();
+        const show = !searchTerm || haystack.includes(searchTerm);
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    const noResults = document.getElementById('weaned-search-no-results');
+    if (noResults) {
+        noResults.classList.toggle('hidden', !searchTerm || visible > 0 || rows.length === 0);
+    }
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById('search-weaned-litters');
+    if (!searchInput || searchInput.dataset.liveSearchBound === '1') return;
+    searchInput.dataset.liveSearchBound = '1';
+    searchInput.addEventListener('input', applyWeanedLittersSearch);
+    searchInput.addEventListener('keyup', applyWeanedLittersSearch);
+    searchInput.addEventListener('search', applyWeanedLittersSearch);
+}
+
+function updateSummaryStats(litters) {
+    document.getElementById('total-litters-count').textContent = litters.length;
+
+    const totalPiglets = litters.reduce((sum, row) => sum + Number(row.alive_piglets || row.total_piglets || 0), 0);
+    document.getElementById('total-piglets-count').textContent = totalPiglets;
+
+    const thisMonth = new Date().getMonth();
+    const thisMonthCount = litters.filter(row => {
+        const d = new Date(row.weaning_date || row.farrowing_date || 0);
+        return !Number.isNaN(d.getTime()) && d.getMonth() === thisMonth;
+    }).length;
+    document.getElementById('this-month-count').textContent = thisMonthCount;
+
+    const weights = litters.map(row => Number(row.weaning_weight)).filter(v => !Number.isNaN(v) && v > 0);
+    document.getElementById('avg-weaning-weight').textContent = weights.length
+        ? `${(weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(2)} kg`
+        : '—';
+}
+
+function renderWeanedLitterRow(row) {
+    const litterRef = row.litter_id || row.id;
+    const weanWeight = row.weaning_weight != null && row.weaning_weight !== ''
+        ? `${Number(row.weaning_weight).toFixed(2)} kg`
+        : '—';
+    const searchText = [
+        row.litter_id,
+        row.sow_tag_id,
+        row.boar_tag_id,
+        row.farrowing_date,
+        row.weaning_date,
+        row.total_piglets,
+        row.alive_piglets,
+        row.weaning_weight
+    ].filter(v => v != null && v !== '').join(' ');
+
+    return `
+        <tr class="weaned-litter-row hover:bg-gray-50 dark:hover:bg-gray-700/30 text-xs sm:text-sm" data-search="${searchText.replace(/"/g, '&quot;')}">
+            <td class="px-3 py-2.5 sm:py-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${row.litter_id || '—'}</td>
+            <td class="px-3 py-2.5 sm:py-3 text-gray-900 dark:text-white whitespace-nowrap">${row.sow_tag_id || '—'}</td>
+            <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">${row.farrowing_date || '—'}</td>
+            <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">${row.weaning_date || '—'}</td>
+            <td class="px-3 py-2.5 sm:py-3 text-center text-gray-900 dark:text-white whitespace-nowrap">${row.total_piglets ?? '—'}</td>
+            <td class="px-3 py-2.5 sm:py-3 text-center font-semibold text-green-600 dark:text-green-400 whitespace-nowrap hidden sm:table-cell">${row.alive_piglets ?? '—'}</td>
+            <td class="px-3 py-2.5 sm:py-3 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap hidden lg:table-cell">${weanWeight}</td>
+            <td class="px-2 sm:px-3 py-2.5 sm:py-3 text-right">
+                <a href="${LITTER_DETAILS_PREFIX}/farm/litter-details/${litterRef}"
+                   class="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                   title="View progress">
+                    <i class="fas fa-chart-line text-xs"></i>
+                </a>
+            </td>
+        </tr>
+    `;
 }
 
 function destroyChart(key) {
@@ -111,7 +229,6 @@ async function renderLitterAnalyticsById(selectedId) {
     const litter = weanedLittersCache.find((l) => Number(l.id) === Number(selectedId));
     if (!litter) return;
 
-    // Weight progress
     let weights = [];
     try {
         const weightsRes = await fetch(`/api/litter/${litter.id}/weights`);
@@ -130,7 +247,7 @@ async function renderLitterAnalyticsById(selectedId) {
         data: {
             labels: weightLabels.length ? weightLabels : ['No data'],
             datasets: [{
-                label: 'Average Weight (kg)',
+                label: 'Avg weight (kg)',
                 data: weightValues.length ? weightValues : [0],
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16,185,129,0.15)',
@@ -142,7 +259,6 @@ async function renderLitterAnalyticsById(selectedId) {
         options: { responsive: true, maintainAspectRatio: false }
     });
 
-    // Health progress
     const total = Number(litter.total_piglets || 0);
     const alive = Number(litter.alive_piglets || 0);
     const still = Number(litter.still_births || 0);
@@ -151,13 +267,12 @@ async function renderLitterAnalyticsById(selectedId) {
     charts.health = new Chart(document.getElementById('weaned-health-chart'), {
         type: 'doughnut',
         data: {
-            labels: ['Alive', 'Still Births', 'Lost After Birth'],
+            labels: ['Alive', 'Stillborn', 'Lost'],
             datasets: [{ data: [alive, still, lost], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
         },
         options: { responsive: true, maintainAspectRatio: false }
     });
 
-    // Medication/Care progress (from farrowing activities)
     let activities = [];
     try {
         const actRes = await fetch(`/api/litter/${litter.litter_id}/activities`);
@@ -170,7 +285,7 @@ async function renderLitterAnalyticsById(selectedId) {
     charts.medication = new Chart(document.getElementById('weaned-medication-chart'), {
         type: 'bar',
         data: {
-            labels: ['Completed', 'Pending'],
+            labels: ['Done', 'Pending'],
             datasets: [{
                 label: 'Activities',
                 data: [completed, pending],
@@ -187,7 +302,7 @@ function populateAnalyticsSelector() {
     weanedLittersCache.forEach((row) => {
         const option = document.createElement('option');
         option.value = row.id;
-        option.textContent = `${row.litter_id || row.id} • Sow ${row.sow_tag_id || '-'} • ${row.farrowing_date || '-'}`;
+        option.textContent = `${row.litter_id || row.id} · ${row.sow_tag_id || '—'}`;
         select.appendChild(option);
     });
     if (weanedLittersCache.length) {
@@ -196,13 +311,11 @@ function populateAnalyticsSelector() {
 }
 
 async function loadLittersData() {
+    const weanedBody = document.getElementById('weaned-litters-body');
     try {
         const weanedRes = await fetch('/api/farrowing/weaned-litters');
         const weanedData = await weanedRes.json();
         weanedLittersCache = (weanedData.litters || []).slice();
-
-        const weanedBody = document.getElementById('weaned-litters-body');
-        weanedBody.innerHTML = '';
 
         const weanedLitters = weanedLittersCache.sort((a, b) => {
             const ad = new Date(a.weaning_date || a.farrowing_date || 0);
@@ -210,33 +323,37 @@ async function loadLittersData() {
             return bd - ad;
         });
 
+        updateSummaryStats(weanedLitters);
+
         if (!weanedLitters.length) {
-            weanedBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-gray-500 dark:text-gray-400">No weaned litters found.</td></tr>';
+            weanedBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-4 py-16 text-center">
+                        <i class="fas fa-inbox text-4xl text-gray-300 dark:text-gray-600 mb-3 block"></i>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">No weaned litters</p>
+                    </td>
+                </tr>
+            `;
         } else {
-            weanedLitters.forEach((row) => {
-                const prefix = '{{ "/manager" if user.role == "manager" else "/admin" }}';
-                const litterRef = row.litter_id || row.id;
-                weanedBody.insertAdjacentHTML('beforeend', `
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${row.litter_id || '-'}</td>
-                        <td class="px-4 py-3">${row.sow_tag_id || '-'}</td>
-                        <td class="px-4 py-3">${row.farrowing_date || '-'}</td>
-                        <td class="px-4 py-3">${row.total_piglets ?? '-'}</td>
-                        <td class="px-4 py-3 capitalize">${row.status || '-'}</td>
-                        <td class="px-4 py-3">
-                            <a href="${prefix}/farm/litter-details/${litterRef}"
-                               class="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors">
-                                <i class="fas fa-chart-line mr-1.5"></i>
-                                View Progress
-                            </a>
-                        </td>
-                    </tr>
-                `);
-            });
+            weanedBody.innerHTML = weanedLitters.map(renderWeanedLitterRow).join('') + `
+                <tr id="weaned-search-no-results" class="hidden">
+                    <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">No matching records</td>
+                </tr>
+            `;
+            applyWeanedLittersSearch();
         }
+
         populateAnalyticsSelector();
     } catch (err) {
         console.error('Failed to load litters page data', err);
+        weanedBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="px-4 py-16 text-center">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-3 block"></i>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Unable to load records</p>
+                </td>
+            </tr>
+        `;
     }
 }
 
@@ -246,10 +363,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('analytics-litter-select').addEventListener('change', function () {
         renderLitterAnalyticsById(this.value);
     });
+    setupSearch();
     switchTab('raw');
     loadLittersData();
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    {% include 'includes/farm_shell_footer.html' %}\n</body>
+{% include 'includes/farm_shell_footer.html' %}
+</body>
 </html>

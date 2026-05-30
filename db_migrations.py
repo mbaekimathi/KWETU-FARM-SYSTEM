@@ -51,6 +51,31 @@ def ensure_table_exists(cursor, table_name):
     return cursor.fetchone() is not None
 
 
+def ensure_unique_index(cursor, table_name, index_name, columns):
+    """Add a unique index if it does not already exist."""
+    _validate_identifier(table_name)
+    _validate_identifier(index_name)
+    if not columns:
+        raise ValueError("columns must be a non-empty list")
+    for col in columns:
+        _validate_identifier(col)
+
+    cursor.execute("""
+        SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = %s
+          AND INDEX_NAME = %s
+          AND NON_UNIQUE = 0
+        LIMIT 1
+    """, (table_name, index_name))
+    if cursor.fetchone():
+        return False
+
+    cols_sql = ", ".join(f"`{col}`" for col in columns)
+    cursor.execute(f"ALTER TABLE `{table_name}` ADD UNIQUE INDEX `{index_name}` ({cols_sql})")
+    return True
+
+
 def ensure_migrations_table(cursor):
     """Create schema_migrations table if it doesn't exist."""
     cursor.execute("""
