@@ -19597,9 +19597,8 @@ def get_farrowing_activities(farrowing_id):
                 'weaning_weight': entry['weaning_weight'],
                 'weaning_date': entry['weaning_date'].isoformat() if entry['weaning_date'] else None
             })
-        
-        cursor.close()
-        conn.close()
+
+        scheduled_complete = _farrowing_scheduled_activities_complete(cursor, farrowing_id)
 
         context = None
         if ctx_row:
@@ -19617,7 +19616,8 @@ def get_farrowing_activities(farrowing_id):
                 'alive_piglets': ctx_row.get('alive_piglets')
             }
 
-        scheduled_complete = _farrowing_scheduled_activities_complete(cursor, farrowing_id)
+        cursor.close()
+        conn.close()
 
         return jsonify({
             'success': True,
