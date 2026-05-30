@@ -731,19 +731,67 @@ html.farm-unified-shell #sidebar nav > div[class*="ml-"] a[href] {
   font-size: 0.8125rem !important;
 }
 
+/* Responsive sidebar link scale (appearance only — no nav structure changes) */
+html.farm-unified-shell {
+  --farm-sidebar-link-py: 0.625rem;
+  --farm-sidebar-link-px: 0.75rem;
+  --farm-sidebar-link-gap: 0.625rem;
+  --farm-sidebar-link-fs: 0.8125rem;
+  --farm-sidebar-link-fs-sub: 0.8125rem;
+  --farm-sidebar-link-fs-hint: 0.6875rem;
+  --farm-sidebar-link-icon: 2rem;
+  --farm-sidebar-link-min-h: 2.75rem;
+  --farm-sidebar-sublink-min-h: 2.5rem;
+  --farm-sidebar-nav-gap: 0.375rem;
+  --farm-sidebar-scroll-pad: 0.875rem;
+}
+
+@media (min-width: 1024px) {
+  html.farm-unified-shell {
+    --farm-sidebar-link-py: 0.6875rem;
+    --farm-sidebar-link-px: 0.875rem;
+    --farm-sidebar-link-fs: 0.875rem;
+    --farm-sidebar-link-fs-sub: 0.8125rem;
+    --farm-sidebar-link-icon: 2.125rem;
+    --farm-sidebar-link-min-h: 2.875rem;
+    --farm-sidebar-scroll-pad: 1rem;
+  }
+}
+
+@media (max-width: 767px) {
+  html.farm-unified-shell {
+    --farm-sidebar-link-py: 0.6875rem;
+    --farm-sidebar-link-px: 0.875rem;
+    --farm-sidebar-link-gap: 0.625rem;
+    --farm-sidebar-link-fs: 14px;
+    --farm-sidebar-link-fs-sub: 13px;
+    --farm-sidebar-link-fs-hint: 11px;
+    --farm-sidebar-link-icon: 2.25rem;
+    --farm-sidebar-link-min-h: 44px;
+    --farm-sidebar-sublink-min-h: 42px;
+    --farm-sidebar-nav-gap: 0.3125rem;
+    --farm-sidebar-scroll-pad: 0.75rem;
+  }
+}
+
 /* Modern sidebar links with animated icon chips */
 html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
   position: relative;
   display: flex !important;
   align-items: center !important;
-  gap: 0.625rem !important;
+  gap: var(--farm-sidebar-link-gap) !important;
   width: 100% !important;
-  padding: 0.7rem 0.75rem !important;
-  border-radius: 0.7rem !important;
+  min-height: var(--farm-sidebar-link-min-h) !important;
+  padding: var(--farm-sidebar-link-py) var(--farm-sidebar-link-px) !important;
+  border-radius: 0.75rem !important;
   border: 1px solid rgb(226 232 240 / 0.9) !important;
   background: rgb(255 255 255 / 0.96) !important;
   color: rgb(51 65 85) !important;
+  font-size: var(--farm-sidebar-link-fs) !important;
+  line-height: 1.25 !important;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.04) !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease,
     background 0.2s ease !important;
 }
@@ -785,15 +833,22 @@ html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  min-width: 2.1rem;
+  width: var(--farm-sidebar-link-icon);
+  height: var(--farm-sidebar-link-icon);
+  min-width: var(--farm-sidebar-link-icon);
   border-radius: 0.65rem;
   border: 1px solid rgb(203 213 225);
   background: linear-gradient(155deg, rgb(236 253 245), rgb(224 231 255));
   color: rgb(5 150 105);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 1px 2px rgb(15 23 42 / 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon svg,
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon i {
+  width: 1em;
+  height: 1em;
+  font-size: calc(var(--farm-sidebar-link-icon) * 0.42);
 }
 
 .dark html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
@@ -808,12 +863,17 @@ html.farm-unified-shell .farm-nav-action-row {
   display: flex !important;
   align-items: center !important;
   width: 100% !important;
-  gap: 0.625rem !important;
-  padding: 0.7rem 0.75rem !important;
-  border-radius: 0.7rem !important;
+  gap: var(--farm-sidebar-link-gap) !important;
+  min-height: var(--farm-sidebar-link-min-h) !important;
+  padding: var(--farm-sidebar-link-py) var(--farm-sidebar-link-px) !important;
+  border-radius: 0.75rem !important;
   border: 1px solid rgb(226 232 240 / 0.9) !important;
   background: rgb(255 255 255 / 0.96) !important;
   color: rgb(51 65 85) !important;
+  font-size: var(--farm-sidebar-link-fs) !important;
+  line-height: 1.25 !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease !important;
 }
 
@@ -855,6 +915,16 @@ html.farm-unified-shell #sidebar nav .farm-nav-link-modern__text {
   flex: 1;
   min-width: 0;
   font-weight: 600;
+  font-size: var(--farm-sidebar-link-fs) !important;
+  line-height: 1.25 !important;
+}
+
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__desc,
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern__active-hint,
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern.is-active span.text-xs,
+html.farm-unified-shell #sidebar nav .farm-nav-link-modern.is-active .block.text-xs {
+  font-size: var(--farm-sidebar-link-fs-hint) !important;
+  line-height: 1.2 !important;
 }
 
 html.farm-unified-shell #sidebar nav .farm-nav-link-modern__pulse {
@@ -875,19 +945,6 @@ html.farm-unified-shell #sidebar nav .farm-nav-link-modern__pulse {
   }
   100% {
     box-shadow: 0 0 0 0 rgb(16 185 129 / 0);
-  }
-}
-
-@media (max-width: 767px) {
-  html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
-    padding: 0.4rem 0.45rem !important;
-    font-size: 0.6875rem !important;
-  }
-
-  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
-    width: 1.6rem;
-    height: 1.6rem;
-    min-width: 1.6rem;
   }
 }
 
@@ -1500,8 +1557,17 @@ html.farm-unified-shell[data-farm-sidebar-bp="1024"] .farm-sidebar-top-controls 
 
 /* Sidebar nav rhythm and hierarchy */
 html.farm-unified-shell #sidebar nav {
-  gap: 0.375rem !important;
-  padding: 0.9rem 0.65rem 1rem !important;
+  gap: var(--farm-sidebar-nav-gap) !important;
+}
+
+html.farm-unified-shell #sidebar .farm-sidebar-nav-scroll,
+html.farm-unified-shell #sidebar .farm-chicken-nav.scrollbar-thin {
+  padding: var(--farm-sidebar-scroll-pad) !important;
+  gap: var(--farm-sidebar-nav-gap) !important;
+}
+
+html.farm-unified-shell #sidebar .farm-chicken-nav > .shrink-0.border-b {
+  padding: calc(var(--farm-sidebar-scroll-pad) * 0.65) var(--farm-sidebar-scroll-pad) calc(var(--farm-sidebar-scroll-pad) * 0.75) !important;
 }
 
 html.farm-unified-shell .farm-chicken-nav__label {
@@ -1523,7 +1589,7 @@ html.farm-unified-shell .farm-nav-sublinks {
   padding: 0.35rem 0 0.2rem 0.75rem !important;
   border-left: 2px solid rgb(226 232 240) !important;
   display: grid !important;
-  gap: 0.25rem !important;
+  gap: calc(var(--farm-sidebar-nav-gap) * 0.85) !important;
 }
 
 html.farm-unified-shell.dark .farm-nav-sublinks {
@@ -1532,10 +1598,18 @@ html.farm-unified-shell.dark .farm-nav-sublinks {
 
 html.farm-unified-shell .farm-nav-sublink {
   position: relative;
+  display: flex !important;
+  align-items: center !important;
+  min-height: var(--farm-sidebar-sublink-min-h) !important;
+  padding: calc(var(--farm-sidebar-link-py) * 0.85) var(--farm-sidebar-link-px) !important;
+  font-size: var(--farm-sidebar-link-fs-sub) !important;
+  line-height: 1.25 !important;
   border: 1px solid rgb(226 232 240 / 0.72) !important;
   background: linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(248 250 252 / 0.94)) !important;
   border-radius: 0.65rem !important;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.04) !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 html.farm-unified-shell .farm-nav-sublink:hover {
@@ -1574,13 +1648,17 @@ html.farm-unified-shell .farm-nav-sublink {
 
 html.farm-unified-shell .farm-nav-link-modern__text,
 html.farm-unified-shell #sidebar nav a span.flex-1,
-html.farm-unified-shell #sidebar nav button span.flex-1 {
+html.farm-unified-shell #sidebar nav button span.flex-1,
+html.farm-unified-shell #sidebar nav a[href] span.text-sm,
+html.farm-unified-shell #sidebar nav a[href] span.font-medium,
+html.farm-unified-shell #sidebar nav a[href] span.font-semibold {
   min-width: 0 !important;
   white-space: normal !important;
   overflow: visible !important;
   text-overflow: unset !important;
   word-break: break-word;
-  line-height: 1.2;
+  line-height: 1.25 !important;
+  font-size: inherit !important;
 }
 
 /* Described nav rows (title + subtitle) */
@@ -1683,23 +1761,43 @@ html.farm-unified-shell .farm-hr-nav .farm-nav-sublink.is-active {
   color: rgb(209 250 229) !important;
 }
 
-@media (max-width: 420px) {
-  html.farm-unified-shell #sidebar nav .farm-nav-link-modern {
-    padding: 0.35rem 0.4rem !important;
-    gap: 0.35rem !important;
-    font-size: 0.625rem !important;
-  }
+/* Sidebar footer controls — match main nav link sizing */
+html.farm-unified-shell #sidebar .shrink-0.border-t a,
+html.farm-unified-shell #sidebar .shrink-0.border-t button {
+  min-height: var(--farm-sidebar-link-min-h) !important;
+  padding: var(--farm-sidebar-link-py) var(--farm-sidebar-link-px) !important;
+  border-radius: 0.75rem !important;
+  font-size: var(--farm-sidebar-link-fs) !important;
+  line-height: 1.25 !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
 
-  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__text,
-  html.farm-unified-shell #sidebar nav a[href] span.text-sm,
-  html.farm-unified-shell #sidebar nav a[href] span.font-medium {
-    font-size: 0.625rem !important;
-  }
+html.farm-unified-shell #sidebar .shrink-0.border-t span.text-sm,
+html.farm-unified-shell #sidebar .shrink-0.border-t .text-sm {
+  font-size: var(--farm-sidebar-link-fs) !important;
+}
 
-  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon {
-    width: 1.45rem;
-    height: 1.45rem;
-    min-width: 1.45rem;
+html.farm-unified-shell #sidebar .shrink-0.border-t span.h-8.w-8,
+html.farm-unified-shell #sidebar .shrink-0.border-t span.flex.h-8 {
+  width: var(--farm-sidebar-link-icon) !important;
+  height: var(--farm-sidebar-link-icon) !important;
+  min-width: var(--farm-sidebar-link-icon) !important;
+  min-height: var(--farm-sidebar-link-icon) !important;
+}
+
+html.farm-unified-shell #sidebar .shrink-0.border-t .space-y-1 {
+  padding: var(--farm-sidebar-scroll-pad) !important;
+  gap: calc(var(--farm-sidebar-nav-gap) * 0.85) !important;
+}
+
+@media (max-width: 767px) {
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern__chevron,
+  html.farm-unified-shell #sidebar nav .farm-nav-link-modern > svg.ml-2 {
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+    margin-left: 0.25rem !important;
+    flex-shrink: 0;
   }
 }
 
@@ -1906,39 +2004,40 @@ html.farm-unified-shell pre {
     font-size: 0.75rem !important;
   }
 
-  /* Sidebar drawer: smaller type and tighter rows so long labels fit */
+  /* Sidebar drawer: readable touch-friendly nav (overlay has room — do not shrink below 13px) */
   html.farm-unified-shell #sidebar nav,
   html.farm-unified-shell #sidebar .farm-chicken-nav {
-    gap: 0.2rem !important;
-    padding: 0.45rem 0.4rem 0.65rem !important;
+    gap: var(--farm-sidebar-nav-gap) !important;
   }
 
+  html.farm-unified-shell #sidebar .farm-sidebar-nav-scroll,
   html.farm-unified-shell #sidebar .farm-chicken-nav.scrollbar-thin {
-    padding: 0.4rem !important;
-    gap: 0.25rem !important;
+    padding: var(--farm-sidebar-scroll-pad) !important;
+    gap: var(--farm-sidebar-nav-gap) !important;
   }
 
   html.farm-unified-shell #sidebar .farm-chicken-nav__section {
-    gap: 0.15rem !important;
+    gap: calc(var(--farm-sidebar-nav-gap) * 0.85) !important;
   }
 
   html.farm-unified-shell #sidebar .farm-chicken-nav__label {
-    font-size: 0.5625rem !important;
-    letter-spacing: 0.07em !important;
-    margin-top: 0.15rem !important;
-    margin-bottom: 0.15rem !important;
-    padding: 0 0.25rem !important;
+    font-size: max(0.625rem, var(--farm-sidebar-link-fs-hint)) !important;
+    letter-spacing: 0.08em !important;
+    margin-top: 0.2rem !important;
+    margin-bottom: 0.2rem !important;
+    padding: 0 0.35rem !important;
   }
 
   html.farm-unified-shell #sidebar nav .farm-nav-link-modern,
   html.farm-unified-shell #sidebar .farm-nav-action-row,
   html.farm-unified-shell #sidebar nav a[href],
   html.farm-unified-shell #sidebar nav button:not(#close-sidebar) {
-    padding: 0.4rem 0.45rem !important;
-    gap: 0.4rem !important;
-    font-size: 0.6875rem !important;
-    border-radius: 0.5rem !important;
-    margin: 0.06rem 0 !important;
+    min-height: var(--farm-sidebar-link-min-h) !important;
+    padding: var(--farm-sidebar-link-py) var(--farm-sidebar-link-px) !important;
+    gap: var(--farm-sidebar-link-gap) !important;
+    font-size: var(--farm-sidebar-link-fs) !important;
+    border-radius: 0.75rem !important;
+    margin: 0.05rem 0 !important;
   }
 
   html.farm-unified-shell #sidebar nav .farm-nav-link-modern__text,
@@ -1950,13 +2049,13 @@ html.farm-unified-shell pre {
   html.farm-unified-shell #sidebar nav a[href] span.flex-1,
   html.farm-unified-shell #sidebar nav button span.font-medium,
   html.farm-unified-shell #sidebar .shrink-0.border-t span.text-sm {
-    font-size: 0.6875rem !important;
-    line-height: 1.15 !important;
+    font-size: var(--farm-sidebar-link-fs) !important;
+    line-height: 1.25 !important;
   }
 
   html.farm-unified-shell #sidebar nav a[href] .text-xs,
   html.farm-unified-shell #sidebar .text-xs {
-    font-size: 0.5625rem !important;
+    font-size: var(--farm-sidebar-link-fs-hint) !important;
   }
 
   html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon,
@@ -1966,94 +2065,86 @@ html.farm-unified-shell pre {
   html.farm-unified-shell #sidebar nav button > div.rounded-lg,
   html.farm-unified-shell #sidebar .shrink-0.border-t span.h-8.w-8,
   html.farm-unified-shell #sidebar .shrink-0.border-t span.mr-3 {
-    width: 1.6rem !important;
-    height: 1.6rem !important;
-    min-width: 1.6rem !important;
-    min-height: 1.6rem !important;
-    margin-right: 0.35rem !important;
+    width: var(--farm-sidebar-link-icon) !important;
+    height: var(--farm-sidebar-link-icon) !important;
+    min-width: var(--farm-sidebar-link-icon) !important;
+    min-height: var(--farm-sidebar-link-icon) !important;
+    margin-right: 0.4rem !important;
   }
 
   html.farm-unified-shell #sidebar nav .farm-nav-link-modern__icon svg,
   html.farm-unified-shell #sidebar nav a[href] > div svg,
   html.farm-unified-shell #sidebar .shrink-0.border-t span svg {
-    width: 0.8rem !important;
-    height: 0.8rem !important;
+    width: calc(var(--farm-sidebar-link-icon) * 0.42) !important;
+    height: calc(var(--farm-sidebar-link-icon) * 0.42) !important;
   }
 
   html.farm-unified-shell #sidebar nav a[href] svg.ml-2,
   html.farm-unified-shell #sidebar nav a[href] > svg.ml-1 {
-    width: 0.7rem !important;
-    height: 0.7rem !important;
-    margin-left: 0.2rem !important;
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+    margin-left: 0.25rem !important;
   }
 
   html.farm-unified-shell #sidebar nav > div[class*="ml-"] a[href] {
-    font-size: 0.625rem !important;
-    padding: 0.35rem 0.4rem !important;
+    font-size: var(--farm-sidebar-link-fs-sub) !important;
+    min-height: var(--farm-sidebar-sublink-min-h) !important;
+    padding: calc(var(--farm-sidebar-link-py) * 0.85) var(--farm-sidebar-link-px) !important;
   }
 
   html.farm-unified-shell #sidebar nav > .shrink-0.border-b,
   html.farm-unified-shell #sidebar .farm-chicken-nav > .shrink-0.border-b {
-    padding: 0.3rem 0.4rem 0.35rem !important;
+    padding: calc(var(--farm-sidebar-scroll-pad) * 0.65) var(--farm-sidebar-scroll-pad) calc(var(--farm-sidebar-scroll-pad) * 0.75) !important;
   }
 
   html.farm-unified-shell #sidebar .farm-chicken-sidebar__brand,
   html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child {
-    min-height: 3.25rem !important;
-    padding: 0.5rem 0.6rem !important;
+    min-height: 3.5rem !important;
+    padding: 0.625rem var(--farm-sidebar-scroll-pad) !important;
   }
 
   html.farm-unified-shell #sidebar .farm-chicken-sidebar__brand h2,
   html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child h2 {
-    font-size: 0.8125rem !important;
+    font-size: clamp(0.8125rem, 0.75rem + 0.35vw, 0.9375rem) !important;
     line-height: 1.2 !important;
   }
 
   html.farm-unified-shell #sidebar .farm-chicken-sidebar__brand p,
   html.farm-unified-shell #sidebar > div.flex.flex-col > div:first-child p {
-    font-size: 0.5625rem !important;
-  }
-
-  html.farm-unified-shell #sidebar .farm-chicken-sidebar__brand .h-10 {
-    height: 1.75rem !important;
-    width: 1.75rem !important;
-  }
-
-  html.farm-unified-shell #sidebar .farm-chicken-sidebar__brand .h-5 {
-    height: 0.875rem !important;
-    width: 0.875rem !important;
+    font-size: var(--farm-sidebar-link-fs-hint) !important;
   }
 
   html.farm-unified-shell #sidebar .shrink-0.border-t .space-y-1 {
-    padding: 0.4rem !important;
-    gap: 0.15rem !important;
+    padding: var(--farm-sidebar-scroll-pad) !important;
+    gap: calc(var(--farm-sidebar-nav-gap) * 0.85) !important;
   }
 
   html.farm-unified-shell #sidebar .shrink-0.border-t a,
   html.farm-unified-shell #sidebar .shrink-0.border-t button {
-    padding: 0.4rem 0.45rem !important;
+    padding: var(--farm-sidebar-link-py) var(--farm-sidebar-link-px) !important;
   }
 
   html.farm-unified-shell #sidebar .shrink-0.border-t .rounded-xl.p-3 {
-    padding: 0.45rem !important;
+    padding: calc(var(--farm-sidebar-scroll-pad) * 0.85) !important;
   }
 
   html.farm-unified-shell #sidebar .farm-nav-sublink {
-    padding: 0.35rem 0.4rem !important;
-    font-size: 0.625rem !important;
+    min-height: var(--farm-sidebar-sublink-min-h) !important;
+    padding: calc(var(--farm-sidebar-link-py) * 0.85) var(--farm-sidebar-link-px) !important;
+    font-size: var(--farm-sidebar-link-fs-sub) !important;
   }
 
   html.farm-unified-shell #sidebar .farm-nav-sublinks {
-    margin-left: 0.3rem !important;
-    padding-left: 0.5rem !important;
-    gap: 0.15rem !important;
+    margin-left: 0.35rem !important;
+    padding-left: 0.625rem !important;
+    gap: calc(var(--farm-sidebar-nav-gap) * 0.85) !important;
   }
 
   html.farm-unified-shell #sidebar nav a[href] > span.text-lg,
   html.farm-unified-shell #sidebar nav a[href] > span.text-sm {
-    width: 1.6rem !important;
-    height: 1.6rem !important;
-    font-size: 0.8rem !important;
+    width: var(--farm-sidebar-link-icon) !important;
+    height: var(--farm-sidebar-link-icon) !important;
+    font-size: calc(var(--farm-sidebar-link-icon) * 0.45) !important;
   }
 }
 

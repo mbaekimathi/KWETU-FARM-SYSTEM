@@ -1471,9 +1471,64 @@
             });
         }
 
+        function escapeHtml(text) {
+            return String(text == null ? '' : text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function showFarrowingCycleCompleteNotice(cycle) {
+            const messages = (cycle && cycle.messages && cycle.messages.length)
+                ? cycle.messages
+                : ['All farrowing activities are complete.'];
+            const listHtml = messages.map(m => `<li class="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">${escapeHtml(m)}</li>`).join('');
+            const badges = [];
+            if (cycle && cycle.litter_weaned && cycle.litter_tag) {
+                badges.push(`<span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 px-2.5 py-0.5 text-xs font-semibold">Litter ${escapeHtml(cycle.litter_tag)} weaned</span>`);
+            }
+            if (cycle && cycle.sow_available && cycle.sow_tag_id) {
+                badges.push(`<span class="inline-flex items-center rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 px-2.5 py-0.5 text-xs font-semibold">Sow ${escapeHtml(cycle.sow_tag_id)} available</span>`);
+            }
+            const modalHTML = `
+                <div id="farrowing-cycle-complete-modal" class="fixed inset-0 z-[70] flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="cycle-complete-title">
+                    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" aria-hidden="true"></div>
+                    <div class="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+                        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-white">
+                                    <i class="fas fa-check-double text-lg" aria-hidden="true"></i>
+                                </div>
+                                <div>
+                                    <h3 id="cycle-complete-title" class="text-lg font-bold text-white">Farrowing cycle complete</h3>
+                                    <p class="text-sm text-emerald-50/90">Statuses updated automatically</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-5 py-4 space-y-3">
+                            ${badges.length ? `<div class="flex flex-wrap gap-2">${badges.join('')}</div>` : ''}
+                            <ul class="list-disc list-inside space-y-1.5 pl-1">${listHtml}</ul>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">This litter will leave Completed Farrowings. The sow can appear under available sows for breeding when marked available.</p>
+                        </div>
+                        <div class="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <button type="button" onclick="closeFarrowingCycleCompleteModal()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold">OK</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function closeFarrowingCycleCompleteModal() {
+            const modal = document.getElementById('farrowing-cycle-complete-modal');
+            if (modal) modal.remove();
+        }
+
         // Complete one or multiple activity rows with same payload
         async function completeActivitiesWithData(activityIds, activityData) {
             try {
+                let lastData = null;
                 for (const activityId of activityIds) {
                     const response = await fetch(apiUrl(`/api/farrowing/activities/${activityId}/complete`), {
                         method: 'POST',
@@ -1487,11 +1542,28 @@
                         alert('Error: ' + data.message);
                         return;
                     }
+                    lastData = data;
                 }
 
-                alert('Activity marked as completed!');
-                    closeActivitiesModal();
-                    window.location.reload();
+                closeActivityNotesModal();
+                closeWeaningCompletionModal();
+                closeActivitiesModal();
+
+                if (lastData && lastData.cycle && lastData.cycle.all_activities_completed) {
+                    showFarrowingCycleCompleteNotice(lastData.cycle);
+                    if (typeof window.loadNotifications === 'function') {
+                        window.loadNotifications();
+                    }
+                    await loadCompletedFarrowings();
+                } else {
+                    alert((lastData && lastData.message) || 'Activity marked as completed!');
+                    const farrowingId = activityWeighInState.context && activityWeighInState.context.farrowing_id;
+                    if (farrowingId) {
+                        await viewFarrowingActivities(farrowingId);
+                    } else {
+                        await loadCompletedFarrowings();
+                    }
+                }
             } catch (error) {
                 console.error('Error completing activity:', error);
                 alert('Error completing activity. Please try again.');
