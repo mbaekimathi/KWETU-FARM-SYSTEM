@@ -911,11 +911,38 @@ def _coerce_farrowing_date(farrowing_date):
     return datetime.strptime(fd, '%Y-%m-%d').date()
 
 
-def sync_farrowing_activities_from_templates(cursor, farrowing_record_id, farrowing_date=None):
-    """Apply template changes only for days the litter has not reached yet.
+def _farrowing_litter_age_days(cursor, farrowing_record_id, farrowing_date=None):
+    """Days since farrowing for schedule applicability checks."""
+    farrowing_date_obj = _coerce_farrowing_date(farrowing_date)
+    if farrowing_date_obj is None and farrowing_record_id:
+        cursor.execute(
+            "SELECT farrowing_date FROM farrowing_records WHERE id = %s",
+            (farrowing_record_id,),
+        )
+        row = cursor.fetchone()
+        farrowing_date_obj = _coerce_farrowing_date(row.get('farrowing_date')) if row else None
+    if not farrowing_date_obj:
+        return None
+    return (datetime.now().date() - farrowing_date_obj).days
 
-    Completed activities and any step on or before the litter's current age
-    are left unchanged so settings edits do not rewrite history.
+
+def _farrowing_template_day_waived(litter_age_days, due_day):
+    """True when the litter passed this schedule day and no activity row exists yet."""
+    if litter_age_days is None:
+        return False
+    try:
+        return litter_age_days >= int(due_day)
+    except (TypeError, ValueError):
+        return False
+
+
+def sync_farrowing_activities_from_templates(cursor, farrowing_record_id, farrowing_date=None):
+    """Align litter activities with Farrowing Activity Settings templates.
+
+    - Future days: create or update open (incomplete) rows.
+    - Past days missing a row: backfill a completed row (settings added after litter passed that day).
+    - Past incomplete rows: left for the user to complete (overdue).
+    - Completed rows are never rewritten.
     """
     if not farrowing_record_id:
         return
@@ -932,11 +959,13 @@ def sync_farrowing_activities_from_templates(cursor, farrowing_record_id, farrow
     if not farrowing_date_obj:
         return
 
-    today = datetime.now().date()
-    litter_age_days = (today - farrowing_date_obj).days
+    litter_age_days = _farrowing_litter_age_days(
+        cursor, farrowing_record_id, farrowing_date_obj
+    )
 
     def day_not_yet_attained(due_day):
-        """True while litter age is still before the scheduled activity day."""
+        if litter_age_days is None:
+            return True
         try:
             return litter_age_days < int(due_day)
         except (TypeError, ValueError):
@@ -962,32 +991,53 @@ def sync_farrowing_activities_from_templates(cursor, farrowing_record_id, farrow
     existing = cursor.fetchall() or []
     existing_by_day = {int(a['due_day']): a for a in existing}
     template_days = set(template_by_day.keys())
-    touched_future = False
+    touched = False
+    retro_note = (
+        'Auto-recorded: schedule day already passed when template was applied'
+    )
 
     for due_day, activity_name in template_by_day.items():
-        if not activity_name or not day_not_yet_attained(due_day):
+        if not activity_name:
             continue
         due_date = farrowing_date_obj + timedelta(days=due_day)
         if due_day in existing_by_day:
             act = existing_by_day[due_day]
-            if act.get('completed'):
+            if _activity_row_is_completed(act):
                 continue
-            cursor.execute("""
-                UPDATE farrowing_activities
-                SET activity_name = %s, due_date = %s
-                WHERE id = %s
-            """, (activity_name, due_date, act['id']))
-            touched_future = True
-        else:
+            if day_not_yet_attained(due_day):
+                cursor.execute("""
+                    UPDATE farrowing_activities
+                    SET activity_name = %s, due_date = %s
+                    WHERE id = %s
+                """, (activity_name, due_date, act['id']))
+                touched = True
+            continue
+
+        if day_not_yet_attained(due_day):
             cursor.execute("""
                 INSERT INTO farrowing_activities (
                     farrowing_record_id, activity_name, due_day, due_date
                 ) VALUES (%s, %s, %s, %s)
             """, (farrowing_record_id, activity_name, due_day, due_date))
-            touched_future = True
+            touched = True
+        else:
+            cursor.execute("""
+                INSERT INTO farrowing_activities (
+                    farrowing_record_id, activity_name, due_day, due_date,
+                    completed, completed_date, notes
+                ) VALUES (%s, %s, %s, %s, TRUE, %s, %s)
+            """, (
+                farrowing_record_id,
+                activity_name,
+                due_day,
+                due_date,
+                due_date,
+                retro_note,
+            ))
+            touched = True
 
     for act in existing:
-        if act.get('completed'):
+        if _activity_row_is_completed(act):
             continue
         day = int(act['due_day'])
         if not day_not_yet_attained(day):
@@ -997,9 +1047,9 @@ def sync_farrowing_activities_from_templates(cursor, farrowing_record_id, farrow
                 "DELETE FROM farrowing_activities WHERE id = %s",
                 (act['id'],),
             )
-            touched_future = True
+            touched = True
 
-    if touched_future:
+    if touched:
         resync_farrowing_activity_due_dates_for_record(
             cursor, farrowing_record_id, farrowing_date_obj
         )
@@ -19000,6 +19050,8 @@ def get_completed_farrowings():
                 )
                 if reconcile_summary.get('updated'):
                     conn.commit()
+                sync_unweaned_farrowing_activities_from_templates(cursor)
+                conn.commit()
                 cursor.execute("""
                     SELECT fr.id, fr.breeding_id, fr.farrowing_date, fr.alive_piglets, fr.still_births,
                            fr.dead_piglets, fr.weak_piglets, fr.avg_weight, fr.health_notes, fr.notes,
@@ -19024,7 +19076,12 @@ def get_completed_farrowings():
                 """)
                 records = cursor.fetchall()
                 for record in records or []:
-                    stats = _farrowing_activity_completion_stats(cursor, record['id'])
+                    _prune_non_template_incomplete_farrowing_activities(
+                        cursor, record['id']
+                    )
+                    stats = _farrowing_activity_completion_stats(
+                        cursor, record['id'], record.get('farrowing_date')
+                    )
                     record.update(stats)
                 print(f"Found {len(records)} completed farrowing records with unweaned litters")
                 
@@ -19601,7 +19658,13 @@ def get_farrowing_activities(farrowing_id):
                 'weaning_date': entry['weaning_date'].isoformat() if entry['weaning_date'] else None
             })
 
-        scheduled_complete = _farrowing_scheduled_activities_complete(cursor, farrowing_id)
+        farrowing_date_for_schedule = ctx_row.get('farrowing_date') if ctx_row else None
+        scheduled_complete = _farrowing_scheduled_activities_complete(
+            cursor, farrowing_id, farrowing_date_for_schedule
+        )
+        activity_stats = _farrowing_activity_completion_stats(
+            cursor, farrowing_id, farrowing_date_for_schedule
+        )
 
         context = None
         if ctx_row:
@@ -19627,6 +19690,9 @@ def get_farrowing_activities(farrowing_id):
             'activities': activities_list,
             'context': context,
             'scheduled_activities_complete': scheduled_complete,
+            'activities_completed': activity_stats.get('activities_completed'),
+            'activities_total': activity_stats.get('activities_total'),
+            'activities_percent': activity_stats.get('activities_percent'),
             'cycle': cycle_on_load if cycle_on_load else None,
         })
         
@@ -25668,11 +25734,15 @@ def _prune_non_template_incomplete_farrowing_activities(cursor, farrowing_record
     return removed
 
 
-def _farrowing_activity_completion_stats(cursor, farrowing_record_id):
+def _farrowing_activity_completion_stats(cursor, farrowing_record_id, farrowing_date=None):
     """
     Completion % aligned with _farrowing_scheduled_activities_complete:
     each active template due_day counts as one step when all rows for that day are done.
+    Days the litter already passed count as done when no row exists (handled via sync backfill).
     """
+    litter_age_days = _farrowing_litter_age_days(
+        cursor, farrowing_record_id, farrowing_date
+    )
     template_days = sorted(_active_farrowing_template_days(cursor))
     cursor.execute("""
         SELECT due_day, completed
@@ -25689,10 +25759,12 @@ def _farrowing_activity_completion_stats(cursor, farrowing_record_id):
 
     if template_days:
         total = len(template_days)
-        completed = sum(
-            1 for day in template_days
-            if day in by_day and by_day[day] and all(by_day[day])
-        )
+        completed = 0
+        for day in template_days:
+            if day in by_day and by_day[day] and all(by_day[day]):
+                completed += 1
+            elif day not in by_day and _farrowing_template_day_waived(litter_age_days, day):
+                completed += 1
         percent = int(round((completed / total) * 100)) if total else 0
         return {
             'activities_completed': completed,
@@ -25720,12 +25792,15 @@ def _farrowing_activity_completion_stats(cursor, farrowing_record_id):
     }
 
 
-def _farrowing_scheduled_activities_complete(cursor, farrowing_record_id):
+def _farrowing_scheduled_activities_complete(cursor, farrowing_record_id, farrowing_date=None):
     """True when every active template due_day is present and fully completed."""
     template_days = _active_farrowing_template_days(cursor)
     if not template_days:
         return _farrowing_all_activities_complete(cursor, farrowing_record_id)
 
+    litter_age_days = _farrowing_litter_age_days(
+        cursor, farrowing_record_id, farrowing_date
+    )
     cursor.execute("""
         SELECT due_day, completed
         FROM farrowing_activities
@@ -25741,6 +25816,8 @@ def _farrowing_scheduled_activities_complete(cursor, farrowing_record_id):
 
     for day in template_days:
         if day not in by_day:
+            if _farrowing_template_day_waived(litter_age_days, day):
+                continue
             return False
         if not all(by_day[day]):
             return False

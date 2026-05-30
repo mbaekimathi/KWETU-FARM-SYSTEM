@@ -1122,7 +1122,12 @@
                         data.activities,
                         farrowingId,
                         data.context || null,
-                        data.scheduled_activities_complete === true
+                        data.scheduled_activities_complete === true,
+                        {
+                            percent: data.activities_percent,
+                            completed: data.activities_completed,
+                            total: data.activities_total
+                        }
                     );
                 } else {
                     alert('Error: ' + data.message);
@@ -1133,20 +1138,32 @@
             }
         }
 
-        function showActivitiesModal(activities, farrowingId, context, scheduledActivitiesComplete) {
+        function showActivitiesModal(activities, farrowingId, context, scheduledActivitiesComplete, activityProgress) {
             const litterAge = context && context.days_since_farrowing != null
                 ? context.days_since_farrowing
                 : (context && context.farrowing_date ? daysSinceLocalDate(context.farrowing_date) : null);
             const litterTag = context && context.litter_tag ? ` · Litter ${context.litter_tag}` : '';
+            const progress = activityProgress || {};
+            const progressPct = progress.percent != null ? Number(progress.percent) : null;
+            const progressCompleted = progress.completed;
+            const progressTotal = progress.total;
+            const progressLine = (progressTotal != null && progressTotal > 0 && progressPct != null)
+                ? ` · <span class="font-semibold">${progressPct}%</span> of schedule (${progressCompleted}/${progressTotal} steps)`
+                : '';
             const ageLine = litterAge != null
-                ? `Litter age <strong>${litterAge}</strong> day${litterAge === 1 ? '' : 's'} since farrowing · schedule from settings`
-                : 'Schedule from Farrowing Activity Settings';
+                ? `Litter age <strong>${litterAge}</strong> day${litterAge === 1 ? '' : 's'} since farrowing · schedule from settings${progressLine}`
+                : `Schedule from Farrowing Activity Settings${progressLine}`;
 
             const litterLabel = context && context.litter_tag ? context.litter_tag : '';
             const sowLabel = context && context.sow_tag_id ? context.sow_tag_id : '';
-            const allActivitiesDone = scheduledActivitiesComplete === true
-                || (activities.length > 0 && activities.every(a => a.completed));
+            const allActivitiesDone = scheduledActivitiesComplete === true;
             const canManualWean = allActivitiesDone && !!(context && context.litter_id);
+            const visibleAllDone = activities.length > 0 && activities.every(a => a.completed);
+            const scheduleMismatchNote = (visibleAllDone && !allActivitiesDone)
+                ? `<div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100">
+                        <strong>Schedule not fully complete.</strong> Every activity listed here is done, but Farrowing Activity Settings include additional step(s) for this litter (often days already passed before a setting was added). Refresh the page after saving settings — missing past steps are recorded automatically.
+                   </div>`
+                : '';
             const manualWeanFooterHtml = canManualWean ? `
                         <div class="shrink-0 border-t border-gray-200 dark:border-gray-700 bg-slate-50/95 dark:bg-gray-900/40 px-4 sm:px-6 py-4">
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1262,6 +1279,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                            ${scheduleMismatchNote}
                             <p class="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">Overdue items stay available to complete. Tap <strong>Complete</strong> when work is done.</p>
                         </div>
 
