@@ -19023,6 +19023,9 @@ def get_completed_farrowings():
                     ORDER BY fr.farrowing_date DESC
                 """)
                 records = cursor.fetchall()
+                for record in records or []:
+                    stats = _farrowing_activity_completion_stats(cursor, record['id'])
+                    record.update(stats)
                 print(f"Found {len(records)} completed farrowing records with unweaned litters")
                 
                 # Debug: Print first record if available
@@ -19650,6 +19653,73 @@ def reconcile_farrowing_cycles_api():
     except Exception as e:
         print(f"Error reconciling farrowing cycles: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/farrowing/manual-wean/<int:farrowing_id>', methods=['POST'])
+def manual_wean_farrowing_cycle_api(farrowing_id):
+    """Mark litter(s) weaned and sow available when all scheduled activities are already complete."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json(silent=True) or {}
+        notes = (data.get('notes') or '').strip() or None
+        weaning_weight = data.get('weaning_weight')
+        weaning_date_raw = (data.get('weaning_date') or '').strip()
+
+        parsed_weight = None
+        if weaning_weight not in [None, '']:
+            try:
+                parsed_weight = float(weaning_weight)
+                if parsed_weight <= 0:
+                    return jsonify({'success': False, 'message': 'Weaning weight must be greater than zero.'})
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'message': 'Invalid weaning weight.'})
+
+        weaning_date = None
+        if weaning_date_raw:
+            try:
+                if 'T' in weaning_date_raw:
+                    weaning_date = datetime.fromisoformat(
+                        weaning_date_raw.replace('Z', '+00:00')
+                    ).date()
+                else:
+                    weaning_date = datetime.strptime(weaning_date_raw[:10], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Invalid weaning date. Use YYYY-MM-DD.'})
+            if weaning_date > datetime.now().date():
+                return jsonify({'success': False, 'message': 'Weaning date cannot be in the future.'})
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        _prune_non_template_incomplete_farrowing_activities(cursor, farrowing_id)
+        if not _farrowing_scheduled_activities_complete(cursor, farrowing_id):
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Complete all scheduled farrowing activities before using manual wean.',
+            })
+
+        result = manual_wean_farrowing_cycle(
+            cursor,
+            farrowing_id,
+            session.get('employee_id'),
+            weaning_weight=parsed_weight,
+            weaning_date=weaning_date,
+            notes=notes,
+        )
+        if result.get('error'):
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': result['error']})
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': result.get('message'), 'cycle': result})
+    except Exception as e:
+        print(f"Error manual weaning farrowing cycle: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to manual wean: {str(e)}'})
 
 
 @app.route('/api/farrowing/activity-templates', methods=['GET'])
@@ -25598,6 +25668,58 @@ def _prune_non_template_incomplete_farrowing_activities(cursor, farrowing_record
     return removed
 
 
+def _farrowing_activity_completion_stats(cursor, farrowing_record_id):
+    """
+    Completion % aligned with _farrowing_scheduled_activities_complete:
+    each active template due_day counts as one step when all rows for that day are done.
+    """
+    template_days = sorted(_active_farrowing_template_days(cursor))
+    cursor.execute("""
+        SELECT due_day, completed
+        FROM farrowing_activities
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    by_day = {}
+    for row in cursor.fetchall() or []:
+        try:
+            day = int(row['due_day'])
+        except (TypeError, ValueError):
+            continue
+        by_day.setdefault(day, []).append(_activity_row_is_completed(row))
+
+    if template_days:
+        total = len(template_days)
+        completed = sum(
+            1 for day in template_days
+            if day in by_day and by_day[day] and all(by_day[day])
+        )
+        percent = int(round((completed / total) * 100)) if total else 0
+        return {
+            'activities_completed': completed,
+            'activities_total': total,
+            'activities_percent': percent,
+        }
+
+    cursor.execute("""
+        SELECT COUNT(*) AS t,
+               COALESCE(SUM(CASE WHEN completed IN (1, TRUE) OR completed = b'1' THEN 1 ELSE 0 END), 0) AS d
+        FROM farrowing_activities
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    row = cursor.fetchone() or {}
+    try:
+        total = int(row.get('t') or 0)
+        completed = int(row.get('d') or 0)
+    except (TypeError, ValueError):
+        total, completed = 0, 0
+    percent = int(round((completed / total) * 100)) if total else 0
+    return {
+        'activities_completed': completed,
+        'activities_total': total,
+        'activities_percent': percent,
+    }
+
+
 def _farrowing_scheduled_activities_complete(cursor, farrowing_record_id):
     """True when every active template due_day is present and fully completed."""
     template_days = _active_farrowing_template_days(cursor)
@@ -25692,6 +25814,156 @@ def reconcile_complete_farrowing_cycles(cursor, employee_id=None):
                 if msg not in summary['messages']:
                     summary['messages'].append(msg)
     return summary
+
+
+def manual_wean_farrowing_cycle(cursor, farrowing_record_id, employee_id,
+                                weaning_weight=None, weaning_date=None, notes=None):
+    """
+    Apply litter weaned + sow available using the same status fields as finalize_farrowing_cycle_after_activity.
+    Caller must verify _farrowing_scheduled_activities_complete first.
+    Syncs an incomplete Weaning activity row when present so activity-based modules stay aligned.
+    """
+    result = {
+        'litter_weaned': False,
+        'litter_tag': None,
+        'sow_available': False,
+        'sow_tag_id': None,
+        'weaning_activity_updated': False,
+        'messages': [],
+        'message': '',
+        'error': None,
+    }
+    employee_id = employee_id or 1
+    manual_note = notes or 'Manual wean (Completed Farrowings)'
+
+    cursor.execute("SELECT id FROM farrowing_records WHERE id = %s", (farrowing_record_id,))
+    if not cursor.fetchone():
+        result['error'] = 'Farrowing record not found.'
+        return result
+
+    effective_weaning_date = weaning_date or datetime.now().date()
+
+    cursor.execute("""
+        SELECT id, litter_id, status, weaning_date, weaning_weight
+        FROM litters
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    litters = cursor.fetchall() or []
+    if not litters:
+        result['error'] = 'No litter is linked to this farrowing record. Register the litter first.'
+        return result
+
+    weaned_tags = []
+    newly_weaned_tags = []
+    for litter in litters:
+        status = (litter.get('status') or '').strip().lower()
+        tag = litter.get('litter_id')
+        if status == 'weaned':
+            if tag:
+                weaned_tags.append(tag)
+            continue
+        cursor.execute("""
+            UPDATE litters
+            SET status = 'weaned',
+                weaning_date = COALESCE(%s, weaning_date, %s),
+                weaning_weight = COALESCE(%s, weaning_weight),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (effective_weaning_date, effective_weaning_date, weaning_weight, litter['id']))
+        if cursor.rowcount:
+            if tag:
+                weaned_tags.append(tag)
+                newly_weaned_tags.append(tag)
+
+    if newly_weaned_tags:
+        tag_list = ', '.join(newly_weaned_tags)
+        msg = f'Litter(s) {tag_list} marked as weaned (manual).'
+        result['messages'].append(msg)
+        log_activity(employee_id, 'LITTER_WEANED_MANUAL', msg)
+    if weaned_tags:
+        result['litter_weaned'] = True
+        result['litter_tag'] = weaned_tags[0]
+
+    cursor.execute("""
+        SELECT id, activity_name, completed
+        FROM farrowing_activities
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    for act in cursor.fetchall() or []:
+        if not _activity_name_is_weaning(act.get('activity_name')):
+            continue
+        if _activity_row_is_completed(act):
+            continue
+        cursor.execute("""
+            UPDATE farrowing_activities
+            SET completed = TRUE,
+                completed_date = %s,
+                weaning_date = COALESCE(%s, weaning_date, %s),
+                weaning_weight = COALESCE(%s, weaning_weight),
+                completed_by = %s,
+                notes = CONCAT(
+                    COALESCE(notes, ''),
+                    CASE WHEN notes IS NULL OR notes = '' THEN %s ELSE CONCAT(' | ', %s) END
+                ),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (
+            effective_weaning_date,
+            effective_weaning_date,
+            effective_weaning_date,
+            weaning_weight,
+            employee_id,
+            manual_note,
+            manual_note,
+            act['id'],
+        ))
+        if cursor.rowcount:
+            result['weaning_activity_updated'] = True
+
+    cursor.execute("""
+        SELECT br.sow_id, p.breeding_status, p.tag_id
+        FROM farrowing_records fr
+        JOIN breeding_records br ON fr.breeding_id = br.id
+        JOIN pigs p ON br.sow_id = p.id
+        WHERE fr.id = %s
+    """, (farrowing_record_id,))
+    pig_row = cursor.fetchone()
+    if pig_row:
+        breeding_status = (pig_row.get('breeding_status') or '').strip().lower()
+        if breeding_status == 'available':
+            result['sow_available'] = True
+            result['sow_tag_id'] = pig_row.get('tag_id')
+            result['messages'].append(
+                f'Sow {pig_row["tag_id"]} is already available for breeding.'
+            )
+        elif breeding_status == 'farrowed':
+            cursor.execute("""
+                UPDATE pigs
+                SET breeding_status = 'available'
+                WHERE id = %s AND breeding_status = 'farrowed'
+            """, (pig_row['sow_id'],))
+            if cursor.rowcount:
+                result['sow_available'] = True
+                result['sow_tag_id'] = pig_row.get('tag_id')
+                sow_msg = (
+                    f'Sow {pig_row["tag_id"]} is now available for breeding (manual wean).'
+                )
+                result['messages'].append(sow_msg)
+                log_activity(employee_id, 'BREEDING_CYCLE_COMPLETED_MANUAL', sow_msg)
+        else:
+            result['messages'].append(
+                f'Sow {pig_row.get("tag_id") or "?"} was not updated '
+                f'(breeding status is {breeding_status or "unknown"}, expected farrowed).'
+            )
+
+    if not result['messages']:
+        result['error'] = (
+            'Nothing was updated — litter may already be weaned and the sow could not be set to available.'
+        )
+        return result
+
+    result['message'] = ' '.join(result['messages'])
+    return result
 
 
 def finalize_farrowing_cycle_after_activity(cursor, farrowing_record_id, employee_id):
