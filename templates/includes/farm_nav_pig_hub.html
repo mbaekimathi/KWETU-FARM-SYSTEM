@@ -1,6 +1,6 @@
 {# Pig module sidebar body for farm_unified_sidebar. Set pig_nav_active: hub | register | breeding | health | slaughter | feeding #}
 {% set pig_nav_active = pig_nav_active|default('hub') %}
-{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set farm_b = pig_farm_base() %}
 
                 <p class="farm-chicken-nav__label mb-0 px-0.5">Pig module</p>
                 {% if pig_nav_active == 'hub' %}
@@ -28,7 +28,7 @@
                     <a href="{{ farm_b }}register-pigs" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if pig_nav_active == 'register' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
                         <span class="flex-1">Register pigs</span>
                     </a>
-                    <a href="{{ farm_b }}breeding-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if pig_nav_active == 'breeding' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
+                    <a href="{{ pig_breeding_management_url() }}" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if pig_nav_active == 'breeding' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">
                         <span class="flex-1">Breeding</span>
                     </a>
                     <a href="{{ farm_b }}health-management" class="farm-nav-sublink group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all {% if pig_nav_active == 'health' %}is-active text-indigo-900 dark:text-indigo-100{% else %}text-slate-700 dark:text-slate-300{% endif %}">

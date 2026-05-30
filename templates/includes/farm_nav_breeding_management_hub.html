@@ -1,5 +1,5 @@
 {# Breeding-only sidebar links for breeding management page #}
-{% set farm_b = '/manager/farm/' if user.role == 'manager' else '/admin/farm/' %}
+{% set farm_b = pig_farm_base() %}
 {% set path = request.path|default('') %}
 {% set active_records = path.endswith('/breeding-records') %}
 {% set active_completed = path.endswith('/completed-farrowings') %}
@@ -10,15 +10,15 @@
 
 <p class="farm-chicken-nav__label mb-0 px-0.5">Breeding links</p>
 
-<button
+<a
     id="sidebar-register-new-breeding"
-    type="button"
-    class="farm-nav-link-modern"
+    href="{{ pig_breeding_register_url() }}"
+    class="farm-nav-link-modern pig-breeding-register-link"
 >
     <span class="farm-nav-link-modern__icon"><i class="fas fa-plus-circle"></i></span>
     <span class="farm-nav-link-modern__text text-left">Register new breeding</span>
     <span class="farm-nav-link-modern__pulse" aria-hidden="true"></span>
-</button>
+</a>
 
 <a href="{{ farm_b }}breeding-records" class="farm-nav-link-modern{% if active_records %} is-active{% endif %}">
     <span class="farm-nav-link-modern__icon"><i class="fas fa-notes-medical"></i></span>

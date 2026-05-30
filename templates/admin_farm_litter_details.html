@@ -19,388 +19,228 @@
 {% include 'includes/farm_unified_sidebar.html' %}
     <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 md:hidden hidden"></div>
 
-<main class="pt-16 md:pl-64 min-h-screen bg-gray-50 dark:bg-gray-900 transition-[padding] duration-300">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <!-- Page Header -->
-        <div class="mb-8 animate-slide-up">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-16 h-16 bg-gradient-to-br from-pink-500 via-rose-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-baby text-white text-2xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Litter Details</h1>
-                            <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">View a litter's profile, weights, activities and growth analytics</p>
-                            <div class="flex items-center space-x-2 mt-2">
-                                <div class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
-                                <span class="text-xs font-semibold text-pink-600 dark:text-pink-400">Live Data</span>
-                            </div>
-                        </div>
-                    </div>
+<main class="pt-16 md:pl-64 min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-all duration-300 ease-in-out">
+    <div class="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+        <!-- Header -->
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+                <a id="litter-back-link" href="/admin/farm/pig-management?view=litters"
+                   class="shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                   title="Back to litters" aria-label="Back to litters">
+                    <i class="fas fa-arrow-left text-sm"></i>
+                </a>
+                <div class="w-11 h-11 shrink-0 bg-primary-600 rounded-xl flex items-center justify-center shadow">
+                    <i class="fas fa-baby text-white text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 id="page-title" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Litter Details</h1>
+                    <p id="page-subtitle" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"></p>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto lg:flex-1 lg:justify-end">
+                <div id="litter-detail-search-wrap" class="relative w-full sm:max-w-xs lg:max-w-sm hidden">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                    <input type="search" id="litter-detail-search" placeholder="Search weights, activities…"
+                           class="pl-9 pr-4 py-2.5 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                           aria-label="Search current tab" autocomplete="off">
+                </div>
+                <div id="litterTabs" class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/60 rounded-lg p-1 shrink-0 self-end sm:self-auto">
+                    <button type="button" data-tab="details" class="tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">Details</button>
+                    <button type="button" data-tab="analytics" class="tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-primary-600 text-white">Analytics</button>
                 </div>
             </div>
         </div>
 
-        <!-- Tab Bar -->
-        <div id="litterTabs" class="mb-6 hidden">
-            <div class="inline-flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-1.5">
-                <button data-tab="details" class="tab-btn px-4 sm:px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow">
-                    <i class="fas fa-list-ul mr-2"></i>Details
-                </button>
-                <button data-tab="analytics" class="tab-btn px-4 sm:px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-chart-line mr-2"></i>Visual Analytics
-                </button>
-            </div>
+        <!-- Loading -->
+        <div id="loadingState" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-10 text-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500 mx-auto mb-3"></div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Loading litter…</p>
         </div>
 
-        <!-- Loading State -->
-        <div id="loadingState" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-12 animate-slide-up">
-            <div class="flex justify-center items-center">
-                <div class="text-center">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-                    <p class="text-gray-600 dark:text-gray-400 font-medium">Loading litter details...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Error State -->
-        <div id="errorState" class="hidden bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 animate-slide-up">
-            <div class="flex items-center">
-                <i class="fas fa-exclamation-triangle text-red-500 mr-3 text-xl"></i>
+        <!-- Error -->
+        <div id="errorState" class="hidden bg-white dark:bg-gray-800 rounded-xl border border-red-200 dark:border-red-800 p-6">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
                 <div>
-                    <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error Loading Litter</h3>
-                    <p class="text-red-600 dark:text-red-400 mt-1" id="errorMessage">Failed to load litter information.</p>
+                    <h3 class="text-sm font-semibold text-red-800 dark:text-red-200">Could not load litter</h3>
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-1" id="errorMessage">Failed to load litter information.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Details Tab Content -->
-        <div id="litterDetails" class="hidden space-y-6">
-            <!-- Overview Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 rounded-2xl p-5 border border-pink-200 dark:border-pink-800">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-300">Litter ID</p>
-                    <p id="summLitterId" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">—</p>
-                </div>
-                <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-2xl p-5 border border-emerald-200 dark:border-emerald-800">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Alive Piglets</p>
-                    <p id="summAlive" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">—</p>
-                    <p id="summAliveSub" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
-                </div>
-                <div class="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-5 border border-amber-200 dark:border-amber-800">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-300">Age</p>
-                    <p id="summAge" class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">—</p>
-                    <p id="summFarrowing" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
-                </div>
-                <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-2xl p-5 border border-indigo-200 dark:border-indigo-800">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Status</p>
-                    <span id="summStatus" class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">—</span>
-                </div>
+        <!-- Summary -->
+        <div id="litterSummary" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Litter</p>
+                <p id="summLitterId" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">—</p>
             </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Alive</p>
+                <p id="summAlive" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">—</p>
+                <p id="summAliveSub" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"></p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Age</p>
+                <p id="summAge" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">—</p>
+                <p id="summFarrowing" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"></p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</p>
+                <span id="summStatus" class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">—</span>
+            </div>
+        </div>
+        <p id="litter-detail-search-meta" class="hidden text-xs text-gray-500 dark:text-gray-400 -mt-2"></p>
 
-            <!-- Basic Information -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-info-circle text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Basic Information</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Litter identification and statistics</p>
-                        </div>
-                    </div>
+        <!-- Details Tab -->
+        <div id="litterDetails" class="hidden space-y-4">
+            <!-- Profile -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Profile</h2>
                 </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Litter ID</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="litterIdText">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Farm</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="farmName">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Farrowing Date</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="farrowingDate">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Age (days)</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="ageDays">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Piglets</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="totalPiglets">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alive Piglets</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="alivePiglets">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Still Births</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="stillBirths">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Avg Birth Weight</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="avgWeight">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Weaning Date</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="weaningDate">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Weaning Weight</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="weaningWeight">-</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                            <span id="statusBadge" class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">-</span>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Registered By</label>
-                            <p class="mt-1 text-sm text-gray-900 dark:text-white" id="createdBy">-</p>
-                        </div>
-                    </div>
-                    <div id="notesBlock" class="mt-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 hidden">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Notes</p>
+                <div class="p-4 sm:p-6">
+                    <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Litter ID</dt><dd id="litterIdText" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Farm</dt><dd id="farmName" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Farrowing</dt><dd id="farrowingDate" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Age</dt><dd id="ageDays" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</dt><dd id="totalPiglets" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Alive</dt><dd id="alivePiglets" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Still births</dt><dd id="stillBirths" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg birth wt</dt><dd id="avgWeight" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Weaning date</dt><dd id="weaningDate" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Weaning wt</dt><dd id="weaningWeight" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</dt><dd class="mt-1"><span id="statusBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">—</span></dd></div>
+                        <div><dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Registered by</dt><dd id="createdBy" class="mt-1 font-medium text-gray-900 dark:text-white">—</dd></div>
+                    </dl>
+                    <div id="notesBlock" class="mt-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 hidden">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Notes</p>
                         <p id="notesText" class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line"></p>
                     </div>
                 </div>
             </div>
 
             <!-- Parentage -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-venus-mars text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Parentage</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Sow and boar information</p>
-                        </div>
-                    </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Parentage</h2>
                 </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Sow -->
-                    <div class="rounded-xl p-4 border border-pink-200 dark:border-pink-800 bg-pink-50/40 dark:bg-pink-900/10 flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow">
-                                <i class="fas fa-venus text-white text-lg"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] uppercase font-semibold text-pink-600 dark:text-pink-300">Sow</p>
-                                <p id="sowTag"   class="text-lg font-bold text-gray-900 dark:text-white">—</p>
-                                <p id="sowBreed" class="text-xs text-gray-600 dark:text-gray-400">—</p>
-                            </div>
+                <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase font-semibold text-gray-500 dark:text-gray-400">Sow</p>
+                            <p id="sowTag" class="text-base font-bold text-gray-900 dark:text-white truncate">—</p>
+                            <p id="sowBreed" class="text-xs text-gray-600 dark:text-gray-400 truncate">—</p>
                         </div>
-                        <button id="sowViewBtn" class="hidden px-3 py-2 text-xs font-semibold rounded-lg bg-pink-600 text-white hover:bg-pink-700 transition-colors">
-                            <i class="fas fa-eye mr-1"></i>View
+                        <button type="button" id="sowViewBtn" class="hidden shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+                            <i class="fas fa-eye"></i>
                         </button>
                     </div>
-                    <!-- Boar -->
-                    <div class="rounded-xl p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow">
-                                <i class="fas fa-mars text-white text-lg"></i>
-                            </div>
-                            <div>
-                                <p class="text-[11px] uppercase font-semibold text-blue-600 dark:text-blue-300">Boar</p>
-                                <p id="boarTag"   class="text-lg font-bold text-gray-900 dark:text-white">—</p>
-                                <p id="boarBreed" class="text-xs text-gray-600 dark:text-gray-400">—</p>
-                            </div>
+                    <div class="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase font-semibold text-gray-500 dark:text-gray-400">Boar</p>
+                            <p id="boarTag" class="text-base font-bold text-gray-900 dark:text-white truncate">—</p>
+                            <p id="boarBreed" class="text-xs text-gray-600 dark:text-gray-400 truncate">—</p>
                         </div>
-                        <button id="boarViewBtn" class="hidden px-3 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-eye mr-1"></i>View
+                        <button type="button" id="boarViewBtn" class="hidden shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+                            <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Weight Records -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-weight text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Weight Records</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Average weight per weighing with expected growth comparison</p>
-                        </div>
-                    </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Weight Records</h2>
                 </div>
-                <div class="p-6">
-                    <div id="weightRecords" class="space-y-4">
-                        <div class="flex justify-center items-center py-8">
-                            <div class="text-center">
-                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
-                                <p class="text-gray-600 dark:text-gray-400 font-medium">Loading weight records...</p>
-                            </div>
-                        </div>
+                <div class="p-4 sm:p-6">
+                    <div id="weightRecords">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-6">Loading weights…</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Farrowing / Care Activities -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-calendar-check text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Farrowing Activities</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Scheduled care activities and their completion status</p>
-                        </div>
-                    </div>
+            <!-- Activities -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Farrowing Activities</h2>
+                    <span id="activitiesSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
                 </div>
-                <div class="p-6">
-                    <div id="activitiesContainer" class="space-y-3">
-                        <div class="flex justify-center items-center py-8">
-                            <div class="text-center">
-                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
-                                <p class="text-gray-600 dark:text-gray-400 font-medium">Loading activities...</p>
-                            </div>
-                        </div>
+                <div class="p-4 sm:p-6">
+                    <div id="activitiesContainer" class="space-y-2">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-6">Loading activities…</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Analytics Tab Content -->
-        <div id="analyticsContent" class="hidden space-y-6">
-            <!-- Weight trend -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-weight text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Weight Records</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Litter average weight vs. expected piglet growth curve</p>
-                        </div>
-                    </div>
+        <!-- Analytics Tab -->
+        <div id="analyticsContent" class="hidden space-y-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Weight Trend</h2>
                     <span id="weightAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
                 </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Average Weight Over Time (kg)</h4>
-                            <div class="relative h-64"><canvas id="weightTrendChart"></canvas></div>
+                <div class="p-4 sm:p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                            <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Avg weight (kg)</h3>
+                            <div class="relative h-56 sm:h-64"><canvas id="weightTrendChart"></canvas></div>
                         </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Average Daily Gain (kg/day)</h4>
-                            <div class="relative h-64"><canvas id="adgChart"></canvas></div>
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                            <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Daily gain (kg/day)</h3>
+                            <div class="relative h-56 sm:h-64"><canvas id="adgChart"></canvas></div>
                         </div>
                     </div>
-                    <div id="weightAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">
-                        <i class="fas fa-chart-area text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
-                        <p>No weight measurements recorded for this litter yet.</p>
-                    </div>
+                    <div id="weightAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">No weight measurements yet.</div>
                 </div>
             </div>
 
-            <!-- Health / Survival -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-heartbeat text-white text-lg"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Health Records</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Piglet survival vs. benchmark (95% target)</p>
-                        </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Health</h2>
+                        <span id="healthAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
                     </div>
-                    <span id="healthAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Survival Rate</h4>
-                            <div class="relative h-64"><canvas id="survivalChart"></canvas></div>
+                    <div class="p-4 sm:p-6 grid grid-cols-1 gap-4">
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                            <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Survival</h3>
+                            <div class="relative h-56 sm:h-64"><canvas id="survivalChart"></canvas></div>
                         </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Litter Composition</h4>
-                            <div class="relative h-64"><canvas id="compositionChart"></canvas></div>
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                            <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Composition</h3>
+                            <div class="relative h-56 sm:h-64"><canvas id="compositionChart"></canvas></div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Vaccination (piglet schedule) -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-shield-alt text-white text-lg"></i>
+                <div class="space-y-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Vaccination</h2>
+                            <span id="vaccinationAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
                         </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Vaccination Records</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Planned piglet vaccinations over the litter's age</p>
+                        <div class="p-4 sm:p-6">
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                                <div class="relative h-56 sm:h-64"><canvas id="vaccinationTrendChart"></canvas></div>
+                            </div>
+                            <div id="vaccinationAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">No vaccination schedule.</div>
                         </div>
                     </div>
-                    <span id="vaccinationAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
-                </div>
-                <div class="p-6">
-                    <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                        <div class="relative h-64"><canvas id="vaccinationTrendChart"></canvas></div>
-                    </div>
-                    <div id="vaccinationAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">
-                        <i class="fas fa-syringe text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
-                        <p>No vaccination schedule available.</p>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Breeding (farrowing activities compliance) -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-calendar-check text-white text-lg"></i>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Care Activities</h2>
+                            <span id="breedingAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
                         </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Breeding Records</h2>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Farrowing activities — completed vs. scheduled</p>
+                        <div class="p-4 sm:p-6">
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                                <div class="relative h-56 sm:h-64"><canvas id="activitiesChart"></canvas></div>
+                            </div>
+                            <div id="breedingAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">No activities for this litter.</div>
                         </div>
                     </div>
-                    <span id="breedingAnalyticsSummary" class="text-xs text-gray-500 dark:text-gray-400"></span>
-                </div>
-                <div class="p-6">
-                    <div class="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
-                        <div class="relative h-64"><canvas id="activitiesChart"></canvas></div>
-                    </div>
-                    <div id="breedingAnalyticsEmpty" class="hidden text-center text-sm text-gray-500 dark:text-gray-400 py-6">
-                        <i class="fas fa-calendar-check text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
-                        <p>No farrowing activities found for this litter.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Production coming soon -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 animate-slide-up">
-                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <i class="fas fa-chart-line text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Production Records</h2>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">Output and productivity analytics</p>
-                    </div>
-                </div>
-                <div class="p-10 text-center">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 mb-3">
-                        <i class="fas fa-hourglass-half text-2xl text-orange-500"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Coming Soon</h3>
-                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                        Production analytics will visualise wean-to-market performance and revenue once those data points are captured.
-                    </p>
                 </div>
             </div>
         </div>
@@ -408,11 +248,13 @@
 </main>
 
 <script>
+    const FARM_PREFIX = '{{ "/manager" if user.role == "manager" else "/admin" }}';
     const litterId = {{ litter_id }};
     let litterData = null;
     let weightCategoriesCache = null;
     let litterWeightsCache = null;
     let activitiesCache = null;
+    let currentTab = 'analytics';
 
     async function getWeightCategories() {
         if (weightCategoriesCache !== null) return weightCategoriesCache;
@@ -470,7 +312,81 @@
         document.getElementById('errorMessage').textContent = msg || 'Failed to load litter';
     }
 
-    document.addEventListener('DOMContentLoaded', loadLitterDetails);
+    function getLitterDetailSearchTerm() {
+        return (document.getElementById('litter-detail-search')?.value || '').trim().toLowerCase();
+    }
+
+    function updateLitterDetailSearchMeta(count, term) {
+        const meta = document.getElementById('litter-detail-search-meta');
+        if (!meta) return;
+        if (!term) {
+            meta.classList.add('hidden');
+            meta.textContent = '';
+            return;
+        }
+        meta.classList.remove('hidden');
+        meta.textContent = count === 1 ? '1 result' : `${count} results`;
+    }
+
+    function updateLitterDetailSearchPlaceholder() {
+        const input = document.getElementById('litter-detail-search');
+        if (!input) return;
+        input.placeholder = currentTab === 'analytics' ? 'Search charts…' : 'Search weights, activities…';
+    }
+
+    function applyLitterDetailSearch() {
+        const term = getLitterDetailSearchTerm();
+        if (currentTab !== 'details') {
+            updateLitterDetailSearchMeta(0, '');
+            return;
+        }
+
+        let visible = 0;
+        document.querySelectorAll('#weightRecords .litter-weight-row').forEach(row => {
+            const haystack = (row.getAttribute('data-search') || row.textContent || '').toLowerCase();
+            const show = !term || haystack.includes(term);
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        document.querySelectorAll('#activitiesContainer .litter-activity-row').forEach(row => {
+            const haystack = (row.getAttribute('data-search') || row.textContent || '').toLowerCase();
+            const show = !term || haystack.includes(term);
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        const noWeight = document.getElementById('litter-weight-no-results');
+        const weightRows = document.querySelectorAll('#weightRecords .litter-weight-row');
+        if (noWeight) {
+            const anyVisible = Array.from(weightRows).some(r => r.style.display !== 'none');
+            noWeight.classList.toggle('hidden', !term || anyVisible || weightRows.length === 0);
+        }
+
+        const noActivity = document.getElementById('litter-activity-no-results');
+        const activityRows = document.querySelectorAll('#activitiesContainer .litter-activity-row');
+        if (noActivity) {
+            const anyVisible = Array.from(activityRows).some(r => r.style.display !== 'none');
+            noActivity.classList.toggle('hidden', !term || anyVisible || activityRows.length === 0);
+        }
+
+        updateLitterDetailSearchMeta(visible, term);
+    }
+
+    function setupLitterDetailSearch() {
+        const input = document.getElementById('litter-detail-search');
+        if (!input || input.dataset.liveSearchBound === '1') return;
+        input.dataset.liveSearchBound = '1';
+        input.addEventListener('input', applyLitterDetailSearch);
+        input.addEventListener('keyup', applyLitterDetailSearch);
+        input.addEventListener('search', applyLitterDetailSearch);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const backLink = document.getElementById('litter-back-link');
+        if (backLink) backLink.href = `${FARM_PREFIX}/farm/pig-management?view=litters`;
+        setupLitterDetailSearch();
+        loadLitterDetails();
+    });
 
     async function loadLitterDetails() {
         try {
@@ -506,6 +422,15 @@
         summStatus.textContent = statusLabel;
         summStatus.className = `mt-2 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadgeClasses(l.status)}`;
 
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) pageTitle.textContent = l.litter_id || 'Litter Details';
+        const pageSubtitle = document.getElementById('page-subtitle');
+        if (pageSubtitle) {
+            const parts = [l.sow_tag_id ? `Sow ${l.sow_tag_id}` : '', l.farm_name || ''].filter(Boolean);
+            pageSubtitle.textContent = parts.join(' · ');
+        }
+        document.title = `${l.litter_id || 'Litter'} - Farm A Management System`;
+
         setText('litterIdText', l.litter_id);
         setText('farmName', l.farm_name);
         setText('farrowingDate', formatDate(l.farrowing_date));
@@ -534,17 +459,17 @@
         if (l.sow_id) {
             const b = document.getElementById('sowViewBtn');
             b.classList.remove('hidden');
-            b.onclick = () => window.location.href = `/admin/farm/animal-details/${l.sow_id}?type=grown_pig`;
+            b.onclick = () => window.location.href = `${FARM_PREFIX}/farm/animal-details/${l.sow_id}?type=grown_pig`;
         }
         if (l.boar_id) {
             const b = document.getElementById('boarViewBtn');
             b.classList.remove('hidden');
-            b.onclick = () => window.location.href = `/admin/farm/animal-details/${l.boar_id}?type=grown_pig`;
+            b.onclick = () => window.location.href = `${FARM_PREFIX}/farm/animal-details/${l.boar_id}?type=grown_pig`;
         }
 
         document.getElementById('loadingState').classList.add('hidden');
-        document.getElementById('litterDetails').classList.remove('hidden');
-        document.getElementById('litterTabs').classList.remove('hidden');
+        document.getElementById('litterSummary').classList.remove('hidden');
+        applyLitterTab('analytics');
     }
 
     async function loadWeightRecords() {
@@ -587,8 +512,9 @@
                     const expAdg = cat ? Number(cat.daily_gain || 0) : null;
                     adgCell = `<div class="flex flex-col"><span class="font-semibold">${actualAdg.toFixed(3)} kg/day</span>${expAdg != null ? `<span class="text-[11px] text-gray-500">Expected ${expAdg.toFixed(3)}</span>` : ''}</div>`;
                 }
+                const searchText = [date.toLocaleDateString(), ageDays, actual, expected, w.notes, cat && cat.category_name].filter(v => v != null && v !== '').join(' ');
                 return `
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    <tr class="litter-weight-row hover:bg-gray-50 dark:hover:bg-gray-700/40" data-search="${String(searchText).replace(/"/g, '&quot;')}">
                         <td class="px-4 py-2 text-sm text-gray-900 dark:text-white whitespace-nowrap">${date.toLocaleDateString()}</td>
                         <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">${ageDays != null ? ageDays + ' days' : '—'}</td>
                         <td class="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">${actual.toFixed(2)} kg</td>
@@ -604,18 +530,21 @@
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700/40">
                             <tr>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Date</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Age</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actual Weight</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Expected</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">vs. Expected</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">ADG</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Notes</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Date</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Age</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actual</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Expected</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">vs Expected</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">ADG</th>
+                                <th class="px-3 py-2 text-left text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Notes</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}</tbody>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">${rows}
+                            <tr id="litter-weight-no-results" class="hidden"><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No matching records</td></tr>
+                        </tbody>
                     </table>
                 </div>`;
+            applyLitterDetailSearch();
         } catch (e) {
             console.error(e);
             container.innerHTML = `<p class="text-sm text-red-500">Failed to load weight records.</p>`;
@@ -640,12 +569,7 @@
             const currentAge = litterData && litterData.age_days != null ? Number(litterData.age_days) : null;
 
             container.innerHTML = `
-                <div class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <i class="fas fa-info-circle text-blue-500"></i>
-                    <p class="text-sm text-blue-700 dark:text-blue-300">
-                        No weight records recorded yet. Showing the <strong>default weight schedule</strong> from farm settings as a reference${currentAge !== null ? ` (current age: <strong>${currentAge} days</strong>)` : ''}.
-                    </p>
-                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 px-1">No weights recorded yet — default schedule from farm settings${currentAge !== null ? ` (age ${currentAge} days)` : ''}.</p>
                 <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700/50">
@@ -689,13 +613,13 @@
             activitiesCache = activities;
 
             if (!activities.length) {
-                container.innerHTML = `
-                    <div class="text-center py-8">
-                        <i class="fas fa-calendar-check text-3xl text-gray-300 dark:text-gray-600 mb-2"></i>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">${(data && data.message) || 'No farrowing activities were scheduled for this litter.'}</p>
-                    </div>`;
+                container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-6">${(data && data.message) || 'No farrowing activities scheduled.'}</p>`;
+                document.getElementById('activitiesSummary').textContent = '0 activities';
                 return;
             }
+
+            const completed = activities.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+            document.getElementById('activitiesSummary').textContent = `${completed}/${activities.length} completed`;
 
             container.innerHTML = activities.map(a => {
                 const status = (a.status || 'pending').toLowerCase();
@@ -704,25 +628,23 @@
                                 : status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'
                                 :                           'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
                 const due = a.due_date || a.due_day_date || a.planned_date || '';
+                const activityName = a.activity_name || a.name || 'Activity';
+                const searchText = [activityName, status, a.due_day, due, a.notes, a.completed_at].filter(v => v != null && v !== '').join(' ');
                 return `
-                    <div class="flex items-start justify-between gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
-                        <div class="flex items-start space-x-3">
-                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow">
-                                <i class="fas fa-tasks text-white text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-900 dark:text-white">${a.activity_name || a.name || 'Activity'}</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">
-                                    ${a.due_day != null ? `Day ${a.due_day}` : ''}
-                                    ${due ? ` · Due ${formatDate(due)}` : ''}
-                                    ${a.completed_at ? ` · Completed ${formatDate(a.completed_at)}` : ''}
-                                </p>
-                                ${a.notes ? `<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">${a.notes}</p>` : ''}
-                            </div>
+                    <div class="litter-activity-row flex items-start justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30" data-search="${String(searchText).replace(/"/g, '&quot;')}">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-sm text-gray-900 dark:text-white">${activityName}</p>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                ${a.due_day != null ? `Day ${a.due_day}` : ''}
+                                ${due ? ` · Due ${formatDate(due)}` : ''}
+                                ${a.completed_at ? ` · Done ${formatDate(a.completed_at)}` : ''}
+                            </p>
+                            ${a.notes ? `<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">${a.notes}</p>` : ''}
                         </div>
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${badgeCls}">${status.replace('_', ' ').replace(/^./, c => c.toUpperCase())}</span>
+                        <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeCls}">${status.replace('_', ' ').replace(/^./, c => c.toUpperCase())}</span>
                     </div>`;
-            }).join('');
+            }).join('') + `<div id="litter-activity-no-results" class="hidden text-sm text-gray-500 dark:text-gray-400 text-center py-4">No matching records</div>`;
+            applyLitterDetailSearch();
         } catch (e) {
             console.error(e);
             container.innerHTML = `<p class="text-sm text-red-500">Failed to load activities.</p>`;
@@ -732,9 +654,10 @@
     // =========================================================
     // Tabs + analytics
     // =========================================================
-    let currentTab = 'details';
     let analyticsRendered = false;
     const analyticsCharts = {};
+    const TAB_ACTIVE = 'tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-primary-600 text-white';
+    const TAB_INACTIVE = 'tab-btn px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600';
 
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('.tab-btn');
@@ -742,24 +665,28 @@
         switchTab(btn.dataset.tab);
     });
 
-    function switchTab(tab) {
-        if (!tab || tab === currentTab) return;
+    function applyLitterTab(tab) {
+        if (!tab) return;
         currentTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => {
-            const active = b.dataset.tab === tab;
-            b.classList.toggle('bg-gradient-to-r', active);
-            b.classList.toggle('from-pink-500', active);
-            b.classList.toggle('to-rose-600',  active);
-            b.classList.toggle('text-white',   active);
-            b.classList.toggle('shadow',       active);
-            b.classList.toggle('text-gray-600', !active);
-            b.classList.toggle('dark:text-gray-300', !active);
-            b.classList.toggle('hover:bg-gray-100', !active);
-            b.classList.toggle('dark:hover:bg-gray-700', !active);
+            b.className = b.dataset.tab === tab ? TAB_ACTIVE : TAB_INACTIVE;
         });
         document.getElementById('litterDetails').classList.toggle('hidden', tab !== 'details');
         document.getElementById('analyticsContent').classList.toggle('hidden', tab !== 'analytics');
+        const searchWrap = document.getElementById('litter-detail-search-wrap');
+        if (searchWrap) searchWrap.classList.toggle('hidden', tab !== 'details');
+        updateLitterDetailSearchPlaceholder();
+        if (tab === 'details') {
+            applyLitterDetailSearch();
+        } else {
+            updateLitterDetailSearchMeta(0, '');
+        }
         if (tab === 'analytics' && !analyticsRendered) renderAllAnalytics();
+    }
+
+    function switchTab(tab) {
+        if (!tab || tab === currentTab) return;
+        applyLitterTab(tab);
     }
 
     function destroyChartIfExists(key) {

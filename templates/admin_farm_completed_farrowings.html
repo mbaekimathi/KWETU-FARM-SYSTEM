@@ -138,9 +138,26 @@
             searchInput.addEventListener('search', applyCompletedFarrowingsSearch);
         }
 
+        function parseLocalDate(isoOrStr) {
+            if (isoOrStr == null || isoOrStr === '') return null;
+            const s = String(isoOrStr).slice(0, 10);
+            const parts = s.split('-').map(Number);
+            if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null;
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
+        function daysSinceLocalDate(isoOrStr) {
+            const d = parseLocalDate(isoOrStr);
+            if (!d) return null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            d.setHours(0, 0, 0, 0);
+            return Math.floor((today - d) / (1000 * 60 * 60 * 24));
+        }
+
         function renderCompletedFarrowingRow(record) {
-            const farrowingDate = new Date(record.farrowing_date);
-            const daysSince = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
+            const daysSince = daysSinceLocalDate(record.farrowing_date);
+            const daysSinceLabel = daysSince != null ? daysSince : '—';
             const status = record.litter_status || 'unknown';
             const breedingStatus = record.sow_breeding_status || record.breeding_status || 'unknown';
             const avgWeight = record.avg_weight != null ? `${Number(record.avg_weight).toFixed(2)} kg` : '—';
@@ -161,7 +178,7 @@
                     <td class="px-3 py-2.5 sm:py-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.litter_id || '—'}</td>
                     <td class="px-3 py-2.5 sm:py-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">${record.sow_tag_id || '—'}</td>
                     <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">${record.boar_tag_id || '—'}</td>
-                    <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap" title="${daysSince} day(s) ago">${record.farrowing_date || '—'}</td>
+                    <td class="px-3 py-2.5 sm:py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap" title="${daysSinceLabel} day(s) since farrowing">${record.farrowing_date || '—'}</td>
                     <td class="px-3 py-2.5 sm:py-3 text-center font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">${record.alive_piglets || 0}</td>
                     <td class="px-3 py-2.5 sm:py-3 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap hidden sm:table-cell">${avgWeight}</td>
                     <td class="px-3 py-2.5 sm:py-3 text-center whitespace-nowrap hidden lg:table-cell">
@@ -646,10 +663,10 @@
 
         // Show litter details modal
         function showLitterDetailsModal(record) {
-            // Calculate days since farrowing
-            const farrowingDate = new Date(record.farrowing_date);
-            const daysSinceFarrowing = Math.floor((new Date() - farrowingDate) / (1000 * 60 * 60 * 24));
-            const matingDaysAgo = Math.floor((new Date() - new Date(record.mating_date)) / (1000 * 60 * 60 * 24));
+            const daysSinceFarrowing = daysSinceLocalDate(record.farrowing_date);
+            const matingDaysAgo = daysSinceLocalDate(record.mating_date);
+            const daysSinceLabel = daysSinceFarrowing != null ? daysSinceFarrowing : '—';
+            const matingDaysLabel = matingDaysAgo != null ? matingDaysAgo : '—';
             
             const fmtMate = formatModalDate(record.mating_date);
             const fmtFar = formatModalDate(record.farrowing_date);
@@ -704,14 +721,14 @@
                                             <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Mating</td>
                                             <td class="px-4 py-3 text-gray-900 dark:text-white">
                                                 <span class="font-medium">${fmtMate}</span>
-                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">· ${matingDaysAgo}d ago</span>
+                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">· ${matingDaysLabel}d ago</span>
                                             </td>
                                         </tr>
                                         <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
                                             <td class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400 bg-slate-50/90 dark:bg-gray-800/60">Farrowing</td>
                                             <td class="px-4 py-3 text-gray-900 dark:text-white">
                                                 <span class="font-medium">${fmtFar}</span>
-                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">· ${daysSinceFarrowing}d ago</span>
+                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">· ${daysSinceLabel}d since farrowing</span>
                                             </td>
                                         </tr>
                                         <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-colors">
@@ -853,25 +870,25 @@
         }
 
         // Check if the activity day has been reached
+        function activityDueDateStart(dueDate) {
+            const due = parseLocalDate(dueDate);
+            if (!due || isNaN(due.getTime())) return new Date(dueDate);
+            due.setHours(0, 0, 0, 0);
+            return due;
+        }
+
         function isActivityDayReached(dueDate) {
             const today = new Date();
-            const due = new Date(dueDate);
-            
-            // Set both dates to start of day for accurate comparison
+            const due = activityDueDateStart(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
-            
             return today >= due;
         }
 
         // Get activity status color based on due date
         function getActivityStatusColor(dueDate) {
             const today = new Date();
-            const due = new Date(dueDate);
-            
-            // Set both dates to start of day for accurate comparison
+            const due = activityDueDateStart(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
             
             if (today > due) {
                 return 'text-orange-600'; // Overdue - can still complete
@@ -883,28 +900,34 @@
         }
 
         // Get activity status text based on due date (short label; detail in title attr if needed)
-        function getActivityStatusText(dueDate) {
+        function getActivityStatusText(dueDate, activity) {
             const today = new Date();
-            const due = new Date(dueDate);
-            
-            // Set both dates to start of day for accurate comparison
+            const due = parseLocalDate(dueDate) || new Date(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
-            
+            if (!isNaN(due.getTime())) due.setHours(0, 0, 0, 0);
+
+            let label;
             if (today > due) {
-                return 'Overdue';
+                label = 'Overdue';
             } else if (today.getTime() === due.getTime()) {
-                return 'Due today';
+                label = 'Due today';
             } else {
-                return 'Upcoming';
+                label = 'Upcoming';
             }
+
+            if (activity && activity.days_overdue > 0) {
+                return `${label} (${activity.days_overdue}d past day ${activity.due_day})`;
+            }
+            if (activity && activity.days_until_due > 0) {
+                return `${label} (in ${activity.days_until_due}d)`;
+            }
+            return label;
         }
 
         function getActivityStatusPillClass(dueDate) {
             const today = new Date();
-            const due = new Date(dueDate);
+            const due = activityDueDateStart(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
             if (today > due) {
                 return 'inline-flex items-center rounded-full border border-amber-200/80 bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/50 dark:text-amber-200';
             }
@@ -917,24 +940,16 @@
         // Check if activity can be completed (on due day or overdue, but not future)
         function canCompleteActivity(dueDate) {
             const today = new Date();
-            const due = new Date(dueDate);
-            
-            // Set both dates to start of day for accurate comparison
+            const due = activityDueDateStart(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
-            
-            // Can complete on due day or any day after (overdue), but not before
             return today >= due;
         }
 
         // Get button text based on due date
         function getButtonText(dueDate) {
             const today = new Date();
-            const due = new Date(dueDate);
-            
-            // Set both dates to start of day for accurate comparison
+            const due = activityDueDateStart(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
             
             if (today > due) {
                 return 'Complete';
@@ -948,11 +963,8 @@
         // Get button style based on due date
         function getButtonStyle(dueDate) {
             const today = new Date();
-            const due = new Date(dueDate);
-            
-            // Set both dates to start of day for accurate comparison
+            const due = activityDueDateStart(dueDate);
             today.setHours(0, 0, 0, 0);
-            due.setHours(0, 0, 0, 0);
             
             if (today > due) {
                 return 'inline-flex min-w-[7rem] justify-center items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm bg-orange-600 hover:bg-orange-500 text-white shadow-sm shadow-orange-600/20 transition focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50';
@@ -1026,7 +1038,7 @@
                 if (data.success) {
                     activityWeighInState.context = data.context || null;
                     loadWeightCategoriesOnce();
-                    showActivitiesModal(data.activities, farrowingId);
+                    showActivitiesModal(data.activities, farrowingId, data.context || null);
                 } else {
                     alert('Error: ' + data.message);
                 }
@@ -1036,7 +1048,15 @@
             }
         }
 
-        function showActivitiesModal(activities, farrowingId) {
+        function showActivitiesModal(activities, farrowingId, context) {
+            const litterAge = context && context.days_since_farrowing != null
+                ? context.days_since_farrowing
+                : (context && context.farrowing_date ? daysSinceLocalDate(context.farrowing_date) : null);
+            const litterTag = context && context.litter_tag ? ` · Litter ${context.litter_tag}` : '';
+            const ageLine = litterAge != null
+                ? `Litter age <strong>${litterAge}</strong> day${litterAge === 1 ? '' : 's'} since farrowing · schedule from settings`
+                : 'Schedule from Farrowing Activity Settings';
+
             const modalHTML = `
                 <div id="activities-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="farrowing-activities-title">
                     <div class="absolute inset-0 bg-slate-900/55 dark:bg-slate-950/70 backdrop-blur-[2px]" aria-hidden="true" onclick="closeActivitiesModal()"></div>
@@ -1051,7 +1071,8 @@
                                     </div>
                                     <div class="min-w-0">
                                         <h3 id="farrowing-activities-title" class="text-lg sm:text-xl font-bold text-white tracking-tight">Farrowing activities</h3>
-                                        <p class="mt-0.5 text-sm text-amber-50/90">Farrowing #${farrowingId} · ${activities.length} step${activities.length === 1 ? '' : 's'}</p>
+                                        <p class="mt-0.5 text-sm text-amber-50/90">Farrowing #${farrowingId}${litterTag} · ${activities.length} step${activities.length === 1 ? '' : 's'}</p>
+                                        <p class="mt-1 text-xs text-amber-50/80">${ageLine}</p>
                                     </div>
                                 </div>
                                 <button type="button" onclick="closeActivitiesModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/20 transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Close">
@@ -1091,7 +1112,7 @@
                                                             ${metaDone ? `<p class="text-xs leading-snug text-slate-500 dark:text-slate-400">${metaDone}</p>` : ''}
                                                         </div>
                                                     ` : `
-                                                        <span class="${getActivityStatusPillClass(activity.due_date)}" title="${getActivityStatusText(activity.due_date)} — complete when the due day has been reached.">${getActivityStatusText(activity.due_date)}</span>
+                                                        <span class="${getActivityStatusPillClass(activity.due_date)}" title="Due on litter day ${activity.due_day} (${formatModalDate(activity.due_date)}). Complete when litter age reaches day ${activity.due_day}.">${getActivityStatusText(activity.due_date, activity)}</span>
                                                     `}
                                                 </td>
                                                 <td class="px-3 py-3.5 text-center">

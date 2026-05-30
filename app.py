@@ -897,6 +897,104 @@ def resync_farrowing_activity_due_dates_for_record(cursor, farrowing_record_id, 
         WHERE farrowing_record_id = %s
     """, (fd, farrowing_record_id))
 
+def _coerce_farrowing_date(farrowing_date):
+    """Return a date object from farrowing_date (date, datetime, or YYYY-MM-DD string)."""
+    if farrowing_date is None:
+        return None
+    if isinstance(farrowing_date, datetime):
+        return farrowing_date.date()
+    if hasattr(farrowing_date, 'year') and hasattr(farrowing_date, 'month'):
+        return farrowing_date
+    fd = _farrowing_date_to_sql(farrowing_date)
+    if not fd:
+        return None
+    return datetime.strptime(fd, '%Y-%m-%d').date()
+
+
+def sync_farrowing_activities_from_templates(cursor, farrowing_record_id, farrowing_date=None):
+    """Align farrowing_activities with active farrowing_activity_templates."""
+    if not farrowing_record_id:
+        return
+    farrowing_date_obj = _coerce_farrowing_date(farrowing_date)
+    if farrowing_date_obj is None:
+        cursor.execute(
+            "SELECT farrowing_date FROM farrowing_records WHERE id = %s",
+            (farrowing_record_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return
+        farrowing_date_obj = _coerce_farrowing_date(row.get('farrowing_date'))
+    if not farrowing_date_obj:
+        return
+
+    combine_same_day_farrowing_templates(cursor)
+    cursor.execute("""
+        SELECT due_day, activity_name
+        FROM farrowing_activity_templates
+        WHERE is_active = 1
+        ORDER BY due_day ASC, id ASC
+    """)
+    template_by_day = {
+        int(t['due_day']): (t.get('activity_name') or '').strip()
+        for t in (cursor.fetchall() or [])
+    }
+
+    cursor.execute("""
+        SELECT id, due_day, completed
+        FROM farrowing_activities
+        WHERE farrowing_record_id = %s
+    """, (farrowing_record_id,))
+    existing = cursor.fetchall() or []
+    existing_by_day = {int(a['due_day']): a for a in existing}
+
+    for due_day, activity_name in template_by_day.items():
+        if not activity_name:
+            continue
+        due_date = farrowing_date_obj + timedelta(days=due_day)
+        if due_day in existing_by_day:
+            act = existing_by_day[due_day]
+            if not act.get('completed'):
+                cursor.execute("""
+                    UPDATE farrowing_activities
+                    SET activity_name = %s, due_date = %s
+                    WHERE id = %s
+                """, (activity_name, due_date, act['id']))
+        else:
+            cursor.execute("""
+                INSERT INTO farrowing_activities (
+                    farrowing_record_id, activity_name, due_day, due_date
+                ) VALUES (%s, %s, %s, %s)
+            """, (farrowing_record_id, activity_name, due_day, due_date))
+
+    template_days = set(template_by_day.keys())
+    for act in existing:
+        day = int(act['due_day'])
+        if day not in template_days and not act.get('completed'):
+            cursor.execute(
+                "DELETE FROM farrowing_activities WHERE id = %s",
+                (act['id'],),
+            )
+
+    resync_farrowing_activity_due_dates_for_record(
+        cursor, farrowing_record_id, farrowing_date_obj
+    )
+
+
+def sync_unweaned_farrowing_activities_from_templates(cursor):
+    """Refresh activity schedules for all litters still on the unweaned list."""
+    cursor.execute("""
+        SELECT DISTINCT fr.id, fr.farrowing_date
+        FROM farrowing_records fr
+        INNER JOIN litters l ON l.farrowing_record_id = fr.id
+        WHERE l.status = 'unweaned'
+    """)
+    for row in cursor.fetchall() or []:
+        sync_farrowing_activities_from_templates(
+            cursor, row['id'], row.get('farrowing_date')
+        )
+
+
 def resync_farrowing_activity_due_dates_for_breeding(cursor, breeding_id, farrowing_date):
     """Recompute due dates for all activities tied to this breeding's farrowing record(s)."""
     fd = _farrowing_date_to_sql(farrowing_date)
@@ -2975,8 +3073,25 @@ def inject_role_url():
             if role == 'manager' and path.startswith('/admin/'):
                 return path.replace('/admin/', '/manager/', 1)
         return path
+    def pig_farm_base():
+        """Role-aware base path for farm pig module pages."""
+        if session.get('employee_role') == 'manager':
+            return '/manager/farm/'
+        return '/admin/farm/'
+
+    def pig_breeding_management_url():
+        """Canonical pig breeding management hub URL."""
+        return pig_farm_base() + 'breeding-management'
+
+    def pig_breeding_register_url():
+        """Single entry point for registering a new pig breeding record."""
+        return pig_breeding_management_url() + '?openRegister=1'
+
     return dict(
         role_url=role_url,
+        pig_farm_base=pig_farm_base,
+        pig_breeding_management_url=pig_breeding_management_url,
+        pig_breeding_register_url=pig_breeding_register_url,
         app_version_label=get_git_version_label(),
         current_user_profile_image=get_current_employee_profile_image(),
         build_profile_image_url=build_profile_image_url,
@@ -17763,6 +17878,69 @@ def get_available_boars():
         print(f"Error getting available boars: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+def _coerce_sql_date(value):
+    """Normalize DB date/datetime/str values to datetime.date."""
+    if value is None:
+        return None
+    from datetime import datetime
+    if isinstance(value, datetime):
+        return value.date()
+    if hasattr(value, 'year') and hasattr(value, 'month') and hasattr(value, 'day'):
+        return value
+    if isinstance(value, str) and value.strip():
+        return datetime.strptime(value.split(' ')[0], '%Y-%m-%d').date()
+    return None
+
+
+def _breeding_record_cycle_maps(records):
+    """Map each sow to its active open cycle and latest farrowed cycle."""
+    latest_by_sow = {}
+    for record in records or []:
+        sow_id = record.get('sow_id')
+        if sow_id is None:
+            continue
+        breeding_id = int(record['id'])
+        latest_by_sow[sow_id] = max(latest_by_sow.get(sow_id, 0), breeding_id)
+
+    active_open_by_sow = {}
+    latest_farrowed_by_sow = {}
+    for record in records or []:
+        sow_id = record.get('sow_id')
+        if sow_id is None:
+            continue
+        breeding_id = int(record['id'])
+        if latest_by_sow.get(sow_id) != breeding_id:
+            continue
+        is_failed = bool(record.get('is_failed'))
+        has_farrowing = bool(record.get('has_farrowing_record'))
+        if not is_failed and not has_farrowing:
+            active_open_by_sow[sow_id] = breeding_id
+        if has_farrowing and not is_failed:
+            latest_farrowed_by_sow[sow_id] = breeding_id
+    return active_open_by_sow, latest_farrowed_by_sow
+
+
+def _derive_breeding_record_status(record, today, active_open_by_sow, latest_farrowed_by_sow):
+    """Return per-record status and whether it should appear on the active records view."""
+    breeding_id = int(record['id'])
+    sow_id = record.get('sow_id')
+    is_failed = bool(record.get('is_failed'))
+    has_farrowing = bool(record.get('has_farrowing_record'))
+
+    if is_failed:
+        return 'failed', True
+    if active_open_by_sow.get(sow_id) == breeding_id:
+        mating_date = _coerce_sql_date(record.get('mating_date'))
+        if mating_date:
+            days_since_mating = (today - mating_date).days
+            return ('served' if days_since_mating <= 25 else 'pregnant'), True
+        return 'served', True
+    if has_farrowing and latest_farrowed_by_sow.get(sow_id) == breeding_id and not active_open_by_sow.get(sow_id):
+        return 'farrowed', True
+    return 'completed', False
+
+
 @app.route('/api/breeding/register', methods=['POST'])
 def register_breeding():
     """Register a new breeding record"""
@@ -17782,18 +17960,62 @@ def register_breeding():
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Verify sow is available for breeding
+
         cursor.execute("""
-            SELECT id, tag_id, breeding_status 
-            FROM pigs 
-            WHERE id = %s AND gender = 'female' AND pig_type = 'grown_pig' 
-            AND purpose = 'breeding' AND breeding_status = 'available' AND status = 'active'
+            SELECT id, tag_id, breeding_status
+            FROM pigs
+            WHERE id = %s AND gender = 'female' AND pig_type = 'grown_pig'
+            AND purpose = 'breeding' AND status = 'active'
+            FOR UPDATE
         """, (sow_id,))
         sow = cursor.fetchone()
-        
+
         if not sow:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Selected sow was not found or is inactive'})
+
+        if (sow.get('breeding_status') or '').lower() != 'available':
+            cursor.close()
+            conn.close()
             return jsonify({'success': False, 'message': 'Selected sow is not available for breeding'})
+
+        cursor.execute("""
+            SELECT br.id
+            FROM breeding_records br
+            WHERE br.sow_id = %s
+              AND NOT EXISTS (
+                  SELECT 1 FROM farrowing_records fr WHERE fr.breeding_id = br.id
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM failed_conceptions fc
+                  WHERE fc.sow_id = br.sow_id
+                    AND fc.mating_date = br.mating_date
+                    AND fc.boar_id = br.boar_id
+              )
+            LIMIT 1
+        """, (sow_id,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'This sow already has an active breeding cycle. Complete farrowing or record a failed conception before registering again.'
+            })
+
+        cursor.execute("""
+            SELECT id
+            FROM breeding_records
+            WHERE sow_id = %s AND boar_id = %s AND mating_date = %s
+            LIMIT 1
+        """, (sow_id, boar_id, mating_date))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'A breeding record already exists for this sow, boar, and mating date.'
+            })
         
         # Verify boar exists and is male
         cursor.execute("""
@@ -17914,23 +18136,27 @@ def get_breeding_records():
         recovery_cfg = cursor.fetchone() or {}
         serving_recovery_days = int(recovery_cfg.get('serving_recovery_days') or 21)
         
-        # Process records using breeding record status (per-cycle unique state)
-        from datetime import datetime
+        from datetime import datetime, timedelta
         today = datetime.now().date()
-        
-        # Auto-update sow pregnancy state based on time (pigs.breeding_status is the source of truth)
+
+        active_open_by_sow, latest_farrowed_by_sow = _breeding_record_cycle_maps(records)
+
+        # Promote served -> pregnant only for each sow's active open breeding cycle.
         for record in records:
+            breeding_id = int(record['id'])
+            if active_open_by_sow.get(record.get('sow_id')) != breeding_id:
+                continue
             st = (record.get('sow_breeding_status') or '').lower()
-            if record['mating_date'] and st == 'served':
-                mating_date = record['mating_date']
-                days_since_mating = (today - mating_date).days
-                if days_since_mating > 25:
-                    cursor.execute("""
-                        UPDATE pigs
-                        SET breeding_status = 'pregnant'
-                        WHERE id = %s
-                    """, (record['sow_id'],))
-                    record['sow_breeding_status'] = 'pregnant'
+            mating_date = _coerce_sql_date(record.get('mating_date'))
+            if not mating_date or st != 'served':
+                continue
+            if (today - mating_date).days > 25:
+                cursor.execute("""
+                    UPDATE pigs
+                    SET breeding_status = 'pregnant'
+                    WHERE id = %s
+                """, (record['sow_id'],))
+                record['sow_breeding_status'] = 'pregnant'
 
         conn.commit()
 
@@ -17938,94 +18164,59 @@ def get_breeding_records():
         for record in records:
             record_dict = dict(record)
             is_failed = bool(record.get('is_failed'))
-            # Breeding status is always the sow's current pigs.breeding_status (re-fetched in loop for served→pregnant)
-            breeding_status = (record.get('sow_breeding_status') or '') or None
-            if breeding_status:
-                breeding_status = str(breeding_status).lower()
-            record_dict['breeding_status'] = breeding_status
+            record_status, is_current_cycle = _derive_breeding_record_status(
+                record, today, active_open_by_sow, latest_farrowed_by_sow
+            )
+            record_dict['breeding_status'] = record_status
+            record_dict['sow_breeding_status'] = (record.get('sow_breeding_status') or '') or None
+            record_dict['is_current_cycle'] = is_current_cycle
             record_dict['is_failed'] = is_failed
             record_dict['breeding_ref'] = f"BR-{int(record['id']):05d}"
             record_dict['has_farrowing_record'] = bool(record.get('has_farrowing_record'))
             record_dict['has_registered_litter'] = bool(record.get('has_registered_litter'))
             record_dict['current_litter_status'] = (record.get('current_litter_status') or '').lower() or None
+            last_farrowing = _coerce_sql_date(record.get('last_farrowing_date'))
+            record_dict['last_farrowing_date'] = last_farrowing.strftime('%Y-%m-%d') if last_farrowing else None
+            record_dict['actual_farrowing_date'] = record_dict['last_farrowing_date']
             
-            # Calculate days to farrowing (pregnancy is 114 days)
-            if record['mating_date']:
-                # Get mating_date as a date object for calculations
-                mating_date = record['mating_date']
-                if isinstance(mating_date, datetime):
-                    mating_date = mating_date.date()
-                elif isinstance(mating_date, str):
-                    # Parse string date (handle both date and datetime strings)
-                    from datetime import datetime as dt
-                    date_str = mating_date.split(' ')[0]  # Get date part if datetime string
-                    mating_date = dt.strptime(date_str, '%Y-%m-%d').date()
-                
-                # Format mating_date to show only date (YYYY-MM-DD) for response
+            mating_date = _coerce_sql_date(record.get('mating_date'))
+            if mating_date:
                 record_dict['mating_date'] = mating_date.strftime('%Y-%m-%d')
 
-                # Use stored expected due date when set; otherwise default to 114-day gestation.
-                stored_due = record.get('expected_due_date')
-                if isinstance(stored_due, datetime):
-                    stored_due = stored_due.date()
-                elif isinstance(stored_due, str) and stored_due.strip():
-                    from datetime import datetime as dt
-                    stored_due = dt.strptime(stored_due.split(' ')[0], '%Y-%m-%d').date()
-                else:
-                    stored_due = None
-
-                from datetime import timedelta
+                stored_due = _coerce_sql_date(record.get('expected_due_date'))
                 if not stored_due:
                     stored_due = mating_date + timedelta(days=114)
 
                 record_dict['expected_due_date'] = stored_due.strftime('%Y-%m-%d')
                 days_to_farrowing = (stored_due - today).days
                 
-                # Determine if can cancel based on breeding status and days
-                # Can only cancel within 25 days of mating (served status)
-                days_since_mating = (datetime.now().date() - mating_date).days
-                if breeding_status == 'served' and not is_failed and days_since_mating <= 25:
+                days_since_mating = (today - mating_date).days
+                if (
+                    is_current_cycle
+                    and record_status == 'served'
+                    and not is_failed
+                    and days_since_mating <= 25
+                ):
                     record_dict['can_cancel'] = True
                     record_dict['days_remaining_to_cancel'] = 25 - days_since_mating
-                elif breeding_status == 'pregnant':
-                    record_dict['can_cancel'] = False
-                    record_dict['days_remaining_to_cancel'] = 0
                 else:
                     record_dict['can_cancel'] = False
                     record_dict['days_remaining_to_cancel'] = 0
                 
-                record_dict['days_to_farrowing'] = days_to_farrowing
-                # Gestation countdown only applies while served or pregnant
-                if breeding_status not in ('served', 'pregnant') or is_failed:
+                if is_current_cycle and record_status in ('served', 'pregnant') and not is_failed:
+                    record_dict['days_to_farrowing'] = days_to_farrowing
+                else:
                     record_dict['days_to_farrowing'] = None
             else:
                 record_dict['can_cancel'] = False
                 record_dict['days_to_farrowing'] = None
                 record_dict['expected_due_date'] = None
 
-            # Days left to serve for farrowed sows:
-            # calculated from farrowing date against configured farrowing-activity due_day window.
             record_dict['days_left_to_serve'] = None
-            if breeding_status == 'farrowed':
-                farrowing_date = record.get('last_farrowing_date')
-
-                if isinstance(farrowing_date, datetime):
-                    farrowing_date = farrowing_date.date()
-                elif isinstance(farrowing_date, str):
-                    from datetime import datetime as dt
-                    try:
-                        farrowing_date = dt.strptime(farrowing_date.split(' ')[0], '%Y-%m-%d').date()
-                    except Exception:
-                        farrowing_date = None
-
-                # Backward-compatible fallback when farrowing date is not present
+            if is_current_cycle and record_status == 'farrowed':
+                farrowing_date = _coerce_sql_date(record.get('last_farrowing_date'))
                 if not farrowing_date and record_dict.get('expected_due_date'):
-                    from datetime import datetime as dt
-                    try:
-                        farrowing_date = dt.strptime(record_dict['expected_due_date'], '%Y-%m-%d').date()
-                    except Exception:
-                        farrowing_date = None
-
+                    farrowing_date = _coerce_sql_date(record_dict.get('expected_due_date'))
                 if farrowing_date:
                     days_since_farrowing = (today - farrowing_date).days
                     remaining_days = serving_recovery_days - days_since_farrowing
@@ -18036,8 +18227,9 @@ def get_breeding_records():
 
             days_to_farrow = record_dict.get('days_to_farrowing')
             record_dict['can_register_farrowing'] = (
-                not is_failed
-                and breeding_status in ('served', 'pregnant')
+                is_current_cycle
+                and not is_failed
+                and record_status in ('served', 'pregnant')
                 and not record_dict['has_registered_litter']
                 and not record_dict['has_farrowing_record']
                 and days_to_farrow is not None
@@ -19208,6 +19400,21 @@ def get_farrowing_activities(farrowing_id):
         """, (farrowing_id,))
         ctx_row = cursor.fetchone()
 
+        # Keep schedules aligned with Farrowing Activity Settings for active litters.
+        if ctx_row and (ctx_row.get('litter_id') is not None):
+            cursor.execute(
+                "SELECT status FROM litters WHERE id = %s LIMIT 1",
+                (ctx_row['litter_id'],),
+            )
+            litter_status_row = cursor.fetchone()
+            if litter_status_row and litter_status_row.get('status') == 'unweaned':
+                sync_farrowing_activities_from_templates(
+                    cursor,
+                    farrowing_id,
+                    ctx_row.get('farrowing_date'),
+                )
+                conn.commit()
+
         # Get farrowing activities with completion status
         cursor.execute("""
             SELECT fa.*, e.full_name as completed_by_name
@@ -19221,11 +19428,9 @@ def get_farrowing_activities(farrowing_id):
 
         def apply_canonical_farrowing_activity_due_dates(rows):
             """Use farrowing_date + due_day (actual farrowing), not a stale farrowing_activities.due_date."""
-            base = ctx_row.get('farrowing_date') if ctx_row else None
+            base = _coerce_farrowing_date(ctx_row.get('farrowing_date')) if ctx_row else None
             if not base:
                 return
-            if isinstance(base, datetime):
-                base = base.date()
             for a in rows:
                 try:
                     day = int(a['due_day'])
@@ -19234,9 +19439,11 @@ def get_farrowing_activities(farrowing_id):
                 a['due_date'] = base + timedelta(days=day)
 
         apply_canonical_farrowing_activity_due_dates(activities)
+        today = datetime.now().date()
+        farrowing_base = _coerce_farrowing_date(ctx_row.get('farrowing_date')) if ctx_row else None
+        litter_age_days = (today - farrowing_base).days if farrowing_base else None
         
         # Auto-complete activities that have reached their exact due day
-        today = datetime.now().date()
         for activity in activities:
             if not activity['completed'] and activity['due_date'] == today:
                 cursor.execute("""
@@ -19311,12 +19518,23 @@ def get_farrowing_activities(farrowing_id):
         for day in sorted(grouped.keys()):
             entry = grouped[day]
             latest_completed_date = max(entry['completed_dates']) if entry['completed_dates'] else None
+            due_day = entry['due_day']
+            days_overdue = None
+            days_until_due = None
+            if litter_age_days is not None:
+                if litter_age_days > due_day:
+                    days_overdue = litter_age_days - due_day
+                elif litter_age_days < due_day:
+                    days_until_due = due_day - litter_age_days
             activities_list.append({
                 'id': entry['id'],
                 'activity_ids': entry['activity_ids'],
                 'activity_name': '; '.join(entry['activity_names']),
-                'due_day': entry['due_day'],
+                'due_day': due_day,
                 'due_date': entry['due_date'].isoformat() if entry['due_date'] else None,
+                'litter_age_days': litter_age_days,
+                'days_until_due': days_until_due,
+                'days_overdue': days_overdue,
                 'completed': entry['all_completed'],
                 'completed_date': latest_completed_date.isoformat() if latest_completed_date else None,
                 'completed_by_name': ', '.join(entry['completed_by_names']) if entry['completed_by_names'] else None,
@@ -19330,10 +19548,11 @@ def get_farrowing_activities(farrowing_id):
 
         context = None
         if ctx_row:
-            farrowing_date_val = ctx_row.get('farrowing_date')
+            farrowing_date_val = _coerce_farrowing_date(ctx_row.get('farrowing_date'))
             context = {
                 'farrowing_id': ctx_row.get('farrowing_id'),
                 'farrowing_date': farrowing_date_val.isoformat() if farrowing_date_val else None,
+                'days_since_farrowing': litter_age_days,
                 'sow_id': ctx_row.get('sow_id'),
                 'sow_tag_id': ctx_row.get('sow_tag_id'),
                 'litter_id': ctx_row.get('litter_id'),
@@ -19404,6 +19623,7 @@ def create_farrowing_activity_template():
                 INSERT INTO farrowing_activity_templates (due_day, activity_name, is_active, created_by)
                 VALUES (%s, %s, 1, %s)
             """, (due_day, activity_name, session['employee_id']))
+        sync_unweaned_farrowing_activities_from_templates(cursor)
         conn.commit()
         cursor.close()
         conn.close()
@@ -19434,6 +19654,7 @@ def update_farrowing_activity_template(template_id):
         if cursor.rowcount == 0:
             return jsonify({'success': False, 'message': 'Template not found'}), 404
         combine_same_day_farrowing_templates(cursor)
+        sync_unweaned_farrowing_activities_from_templates(cursor)
         conn.commit()
         cursor.close()
         conn.close()
@@ -19452,6 +19673,7 @@ def delete_farrowing_activity_template(template_id):
         cursor.execute("DELETE FROM farrowing_activity_templates WHERE id = %s", (template_id,))
         if cursor.rowcount == 0:
             return jsonify({'success': False, 'message': 'Template not found'}), 404
+        sync_unweaned_farrowing_activities_from_templates(cursor)
         conn.commit()
         cursor.close()
         conn.close()
@@ -25150,25 +25372,54 @@ def get_litter_activities(litter_id):
             return jsonify({'success': False, 'message': f'Farrowing record not found for litter {litter_id}'})
         
         print(f"Found farrowing record: {farrowing_record}")
-        
-        # Use litter_check instead of litter
+
+        if litter_check.get('status') == 'unweaned':
+            sync_farrowing_activities_from_templates(
+                cursor,
+                litter_check['farrowing_record_id'],
+                farrowing_record.get('farrowing_date'),
+            )
+            conn.commit()
+
         litter = litter_check
-        
-        # Get all farrowing activities for this litter
+        today = datetime.now().date()
+        farrowing_base = _coerce_farrowing_date(farrowing_record.get('farrowing_date'))
+        litter_age_days = (today - farrowing_base).days if farrowing_base else None
+
         cursor.execute("""
-            SELECT fa.*, 
-                   CASE 
-                       WHEN fa.completed = TRUE THEN 'Completed'
-                       WHEN fa.due_date < CURRENT_DATE THEN 'Overdue'
-                       WHEN fa.due_date = CURRENT_DATE THEN 'Due Today'
-                       ELSE 'Upcoming'
-                   END as status_category
+            SELECT fa.*
             FROM farrowing_activities fa
             WHERE fa.farrowing_record_id = %s
             ORDER BY fa.due_day ASC
         """, (litter['farrowing_record_id'],))
-        
+
         activities = cursor.fetchall()
+        if farrowing_base:
+            for a in activities:
+                try:
+                    a['due_date'] = farrowing_base + timedelta(days=int(a['due_day']))
+                except (TypeError, ValueError):
+                    pass
+        for a in activities:
+            if a.get('completed'):
+                a['status_category'] = 'Completed'
+            elif litter_age_days is not None and litter_age_days > int(a['due_day']):
+                a['status_category'] = 'Overdue'
+            elif litter_age_days is not None and litter_age_days == int(a['due_day']):
+                a['status_category'] = 'Due Today'
+            elif a.get('due_date') and a['due_date'] < today:
+                a['status_category'] = 'Overdue'
+            elif a.get('due_date') and a['due_date'] == today:
+                a['status_category'] = 'Due Today'
+            else:
+                a['status_category'] = 'Upcoming'
+            if litter_age_days is not None:
+                due_day = int(a['due_day'])
+                a['litter_age_days'] = litter_age_days
+                if litter_age_days > due_day:
+                    a['days_overdue'] = litter_age_days - due_day
+                elif litter_age_days < due_day:
+                    a['days_until_due'] = due_day - litter_age_days
         
         print(f"Found {len(activities)} activities for litter {litter_id} (farrowing_record_id: {litter['farrowing_record_id']})")
         
