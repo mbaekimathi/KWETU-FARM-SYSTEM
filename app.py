@@ -18103,7 +18103,13 @@ def get_breeding_records():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
+        reconcile_summary = reconcile_complete_farrowing_cycles(
+            cursor, session.get('employee_id')
+        )
+        if reconcile_summary.get('updated'):
+            conn.commit()
+
         # Get all breeding records with pig and farm information
         cursor.execute("""
             SELECT br.id, br.sow_id, br.boar_id, br.mating_date, br.expected_due_date, br.notes,
@@ -18267,7 +18273,8 @@ def get_breeding_records():
         
         return jsonify({
             'success': True,
-            'records': processed_records
+            'records': processed_records,
+            'reconcile': reconcile_summary,
         })
         
     except Exception as e:
@@ -18598,6 +18605,10 @@ def get_completed_farrowings():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        reconcile_summary = {
+            'checked': 0, 'updated': 0,
+            'litters_weaned': [], 'sows_available': [], 'messages': [],
+        }
         
         # Ensure we're using the correct database
         cursor.execute(f"USE {DB_CONFIG['database']}")
@@ -18984,6 +18995,11 @@ def get_completed_farrowings():
             try:
                 # Ensure we're using the correct database
                 cursor.execute(f"USE {DB_CONFIG['database']}")
+                reconcile_summary = reconcile_complete_farrowing_cycles(
+                    cursor, session.get('employee_id')
+                )
+                if reconcile_summary.get('updated'):
+                    conn.commit()
                 cursor.execute("""
                     SELECT fr.id, fr.breeding_id, fr.farrowing_date, fr.alive_piglets, fr.still_births,
                            fr.dead_piglets, fr.weak_piglets, fr.avg_weight, fr.health_notes, fr.notes,
@@ -19021,13 +19037,15 @@ def get_completed_farrowings():
         else:
             print("Table not verified, returning empty records")
             records = []
+            reconcile_summary = {'checked': 0, 'updated': 0, 'litters_weaned': [], 'sows_available': [], 'messages': []}
         
         cursor.close()
         conn.close()
         
         return jsonify({
             'success': True,
-            'records': records
+            'records': records,
+            'reconcile': reconcile_summary,
         })
         
     except Exception as e:
@@ -19035,7 +19053,8 @@ def get_completed_farrowings():
         # Return empty list instead of error to prevent frontend issues
         return jsonify({
             'success': True,
-            'records': []
+            'records': [],
+            'reconcile': {'checked': 0, 'updated': 0, 'litters_weaned': [], 'sows_available': [], 'messages': []},
         })
 
 @app.route('/api/breeding/statistics', methods=['GET'])
@@ -19439,6 +19458,12 @@ def get_farrowing_activities(farrowing_id):
                 )
                 conn.commit()
 
+        cycle_on_load = finalize_farrowing_cycle_after_activity(
+            cursor, farrowing_id, session.get('employee_id')
+        )
+        if cycle_on_load.get('litter_weaned') or cycle_on_load.get('sow_available'):
+            conn.commit()
+
         # Get farrowing activities with completion status
         cursor.execute("""
             SELECT fa.*, e.full_name as completed_by_name
@@ -19595,6 +19620,27 @@ def get_farrowing_activities(farrowing_id):
     except Exception as e:
         print(f"Error getting farrowing activities: {str(e)}")
         return jsonify({'success': False, 'message': f'Failed to get activities: {str(e)}'})
+
+@app.route('/api/farrowing/reconcile-cycles', methods=['GET', 'POST'])
+def reconcile_farrowing_cycles_api():
+    """Run on farm page load: wean litters and free sows when all activities are already complete."""
+    if 'employee_id' not in session or session.get('employee_role') not in ['administrator', 'manager']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        summary = reconcile_complete_farrowing_cycles(
+            cursor, session.get('employee_id')
+        )
+        if summary.get('updated'):
+            conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'reconcile': summary})
+    except Exception as e:
+        print(f"Error reconciling farrowing cycles: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @app.route('/api/farrowing/activity-templates', methods=['GET'])
 def get_farrowing_activity_templates():
@@ -25419,6 +25465,16 @@ def get_litter_activities(litter_id):
             )
             conn.commit()
 
+        cycle_on_load = finalize_farrowing_cycle_after_activity(
+            cursor,
+            litter_check['farrowing_record_id'],
+            session.get('employee_id'),
+        )
+        if cycle_on_load.get('litter_weaned') or cycle_on_load.get('sow_available'):
+            conn.commit()
+            cursor.execute("SELECT * FROM litters WHERE litter_id = %s", (litter_id,))
+            litter_check = cursor.fetchone() or litter_check
+
         litter = litter_check
         today = datetime.now().date()
         farrowing_base = _coerce_farrowing_date(farrowing_record.get('farrowing_date'))
@@ -25509,6 +25565,58 @@ def _farrowing_all_activities_complete(cursor, farrowing_record_id):
     """, (farrowing_record_id,))
     row = cursor.fetchone()
     return bool(row and row['t'] and row['t'] == row['d'])
+
+
+def reconcile_complete_farrowing_cycles(cursor, employee_id=None):
+    """On page/system load: apply weaned + sow-available for cycles already fully complete."""
+    employee_id = employee_id or 1
+    summary = {
+        'checked': 0,
+        'updated': 0,
+        'litters_weaned': [],
+        'sows_available': [],
+        'messages': [],
+    }
+    cursor.execute("""
+        SELECT DISTINCT fr.id AS farrowing_record_id
+        FROM farrowing_records fr
+        WHERE EXISTS (
+            SELECT 1 FROM farrowing_activities fa
+            WHERE fa.farrowing_record_id = fr.id
+        )
+        AND (
+            EXISTS (
+                SELECT 1 FROM litters l
+                WHERE l.farrowing_record_id = fr.id AND l.status = 'unweaned'
+            )
+            OR EXISTS (
+                SELECT 1 FROM breeding_records br
+                JOIN pigs p ON br.sow_id = p.id
+                WHERE br.id = fr.breeding_id AND p.breeding_status = 'farrowed'
+            )
+        )
+    """)
+    candidates = cursor.fetchall() or []
+    for row in candidates:
+        farrowing_record_id = row.get('farrowing_record_id')
+        if not farrowing_record_id:
+            continue
+        summary['checked'] += 1
+        if not _farrowing_all_activities_complete(cursor, farrowing_record_id):
+            continue
+        result = finalize_farrowing_cycle_after_activity(
+            cursor, farrowing_record_id, employee_id
+        )
+        if result.get('litter_weaned') or result.get('sow_available'):
+            summary['updated'] += 1
+            if result.get('litter_tag'):
+                summary['litters_weaned'].append(result['litter_tag'])
+            if result.get('sow_tag_id'):
+                summary['sows_available'].append(result['sow_tag_id'])
+            for msg in result.get('messages') or []:
+                if msg not in summary['messages']:
+                    summary['messages'].append(msg)
+    return summary
 
 
 def finalize_farrowing_cycle_after_activity(cursor, farrowing_record_id, employee_id):

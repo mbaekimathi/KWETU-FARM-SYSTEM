@@ -452,6 +452,29 @@
       .catch(function () { window.location.href = '/'; });
   });
 
+  function reconcileFarrowingCyclesOnLoad() {
+    if (window.__farmFarrowingReconcileStarted) return;
+    window.__farmFarrowingReconcileStarted = true;
+    var root = (window.FARM_APP_ROOT != null && window.FARM_APP_ROOT !== '') ? window.FARM_APP_ROOT : '';
+    fetch(root + '/api/farrowing/reconcile-cycles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin'
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.success || !data.reconcile || !data.reconcile.updated) return;
+        window.__farmFarrowingReconcileResult = data.reconcile;
+        try {
+          document.dispatchEvent(new CustomEvent('farm:farrowing-cycles-reconciled', { detail: data.reconcile }));
+        } catch (e) {}
+        if (typeof window.loadNotifications === 'function') {
+          window.loadNotifications();
+        }
+      })
+      .catch(function () {});
+  }
+
   onReady(function () {
     setupThemeToggle();
     setupUserDropdown();
@@ -461,6 +484,7 @@
     setupPermissionDeniedAlertGuard();
     setupClock();
     syncThemeIcons();
+    reconcileFarrowingCyclesOnLoad();
   });
 })();
 </script>

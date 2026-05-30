@@ -245,6 +245,21 @@
             `;
         }
 
+        function applyReconcileNoticeIfNeeded(reconcile) {
+            if (!reconcile || !reconcile.updated) return;
+            showFarrowingCycleCompleteNotice({
+                all_activities_completed: true,
+                litter_weaned: (reconcile.litters_weaned || []).length > 0,
+                litter_tag: (reconcile.litters_weaned || [])[0] || null,
+                sow_available: (reconcile.sows_available || []).length > 0,
+                sow_tag_id: (reconcile.sows_available || [])[0] || null,
+                messages: reconcile.messages || []
+            });
+            if (typeof window.loadNotifications === 'function') {
+                window.loadNotifications();
+            }
+        }
+
         // Load completed farrowings
         async function loadCompletedFarrowings() {
             try {
@@ -257,6 +272,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    applyReconcileNoticeIfNeeded(data.reconcile);
                     const records = data.records || [];
                     
                     document.getElementById('total-farrowings-count').textContent = records.length;
@@ -302,6 +318,11 @@
             loadCompletedFarrowings();
             setupSearch();
             setupMobileMenu();
+        });
+
+        document.addEventListener('farm:farrowing-cycles-reconciled', (e) => {
+            applyReconcileNoticeIfNeeded(e.detail);
+            loadCompletedFarrowings();
         });
 
         // Check recovery status for a sow
